@@ -6,6 +6,7 @@ import { I18nManager, Pressable, StyleSheet, View } from 'react-native';
 
 import { TrendChart } from '@/components/charts/trend-chart';
 import { KpiCard } from '@/components/dashboard/kpi-card';
+import { AppHeader } from '@/components/navigation/app-header';
 import { Card, EmptyState, Screen, Skeleton, Text } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
 import { daysUntil, formatMoneyMinor, pctChange } from '@/lib/format';
@@ -73,7 +74,7 @@ export default function HomeScreen() {
   const deltaSub = (d: number | null) => (d === null ? undefined : `${d >= 0 ? '+' : ''}${d}% ${t('home.vsLastMonth')}`);
 
   return (
-    <Screen scroll>
+    <Screen scroll header={<AppHeader />}>
       <View style={{ gap: spacing.xs, marginTop: spacing.sm, marginBottom: spacing.lg }}>
         <Text variant="h1">{t('home.greeting', { name })}</Text>
         <Text variant="callout" color="mutedForeground">

@@ -26,12 +26,15 @@ interface TabMeta {
   iconActive: IconName;
 }
 
+// The Figma tab set + order: Home · Activity · AI Advisor · Reports · Tasks.
+const TAB_ORDER = ['index', 'activity', 'ai-advisor', 'reports', 'tasks'] as const;
+
 const TAB_META: Record<string, TabMeta> = {
   index: { labelKey: 'nav.home', icon: 'home-outline', iconActive: 'home' },
+  activity: { labelKey: 'nav.activity', icon: 'pulse-outline', iconActive: 'pulse' },
+  'ai-advisor': { labelKey: 'nav.aiAdvisor', icon: 'sparkles-outline', iconActive: 'sparkles' },
   reports: { labelKey: 'nav.reports', icon: 'bar-chart-outline', iconActive: 'bar-chart' },
-  documents: { labelKey: 'nav.documents', icon: 'receipt-outline', iconActive: 'receipt' },
   tasks: { labelKey: 'nav.tasks', icon: 'checkmark-circle-outline', iconActive: 'checkmark-circle' },
-  more: { labelKey: 'nav.more', icon: 'ellipsis-horizontal', iconActive: 'ellipsis-horizontal' },
 };
 
 function TabIcon({ focused, name, color, reduced }: { focused: boolean; name: IconName; color: string; reduced: boolean }) {
@@ -42,7 +45,7 @@ function TabIcon({ focused, name, color, reduced }: { focused: boolean; name: Ic
   const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
     <Animated.View style={style}>
-      <Ionicons name={name} size={24} color={color} />
+      <Ionicons name={name} size={22} color={color} />
     </Animated.View>
   );
 }
@@ -57,7 +60,12 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
   const indicatorX = useSharedValue(0);
   const indicatorW = useSharedValue(0);
 
-  const activeKey = state.routes[state.index]?.key;
+  // Render only the Figma tabs, in order (documents/more are href:null routes).
+  const tabs = TAB_ORDER.map((name) => state.routes.find((r) => r.name === name)).filter(
+    (r): r is BottomTabBarProps['state']['routes'][number] => Boolean(r),
+  );
+  const activeName = state.routes[state.index]?.name;
+  const activeKey = tabs.find((r) => r.name === activeName)?.key;
   const activeLayout = activeKey ? layouts[activeKey] : undefined;
   const activeX = activeLayout?.x;
   const activeW = activeLayout?.width;
@@ -78,20 +86,21 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
       style={[
         styles.container,
         {
-          backgroundColor: theme.colors.card,
+          backgroundColor: theme.colors.secondary,
           borderTopColor: theme.colors.border,
           paddingBottom: insets.bottom,
           height: TAB_BAR_HEIGHT + insets.bottom,
+          shadowColor: '#000',
         },
       ]}>
       <View style={styles.row}>
         <Animated.View
           pointerEvents="none"
-          style={[styles.indicator, { backgroundColor: theme.colors.accent, borderRadius: radius.md }, indicatorStyle]}
+          style={[styles.indicator, { backgroundColor: theme.colors.accent }, indicatorStyle]}
         />
-        {state.routes.map((route, index) => {
-          const focused = state.index === index;
-          const meta = TAB_META[route.name] ?? { labelKey: route.name, icon: 'ellipse-outline', iconActive: 'ellipse' };
+        {tabs.map((route) => {
+          const focused = route.name === activeName;
+          const meta = TAB_META[route.name];
           const color = focused ? theme.colors.primary : theme.colors.mutedForeground;
 
           const onPress = () => {
@@ -131,11 +140,18 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
 const styles = StyleSheet.create({
   container: {
     borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 12,
   },
   row: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 8,
   },
   tab: {
     flex: 1,
@@ -147,7 +163,8 @@ const styles = StyleSheet.create({
   indicator: {
     position: 'absolute',
     left: 0,
-    top: 8,
-    height: TAB_BAR_HEIGHT - 16,
+    top: 10,
+    height: TAB_BAR_HEIGHT - 20,
+    borderRadius: radius.md,
   },
 });

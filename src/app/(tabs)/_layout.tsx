@@ -6,10 +6,13 @@ export default function TabsLayout() {
   return (
     <Tabs tabBar={(props) => <AppTabBar {...props} />} screenOptions={{ headerShown: false }}>
       <Tabs.Screen name="index" />
+      <Tabs.Screen name="activity" />
+      <Tabs.Screen name="ai-advisor" />
       <Tabs.Screen name="reports" />
-      <Tabs.Screen name="documents" />
       <Tabs.Screen name="tasks" />
-      <Tabs.Screen name="more" />
+      {/* Reachable by navigation, but not shown in the tab bar. */}
+      <Tabs.Screen name="documents" options={{ href: null }} />
+      <Tabs.Screen name="more" options={{ href: null }} />
     </Tabs>
   );
 }

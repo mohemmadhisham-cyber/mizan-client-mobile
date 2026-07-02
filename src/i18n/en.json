@@ -11,6 +11,8 @@
   },
   "nav": {
     "home": "Home",
+    "activity": "Activity",
+    "aiAdvisor": "AI Advisor",
     "reports": "Reports",
     "documents": "Documents",
     "tasks": "Tasks",

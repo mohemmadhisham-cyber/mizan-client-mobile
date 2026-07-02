@@ -1,8 +1,9 @@
+import { AppHeader } from '@/components/navigation/app-header';
 import { EmptyState, Screen } from '@/components/ui';
 
 export default function TasksScreen() {
   return (
-    <Screen>
+    <Screen header={<AppHeader />}>
       <EmptyState
         icon="checkmark-done-outline"
         title="You're all caught up"

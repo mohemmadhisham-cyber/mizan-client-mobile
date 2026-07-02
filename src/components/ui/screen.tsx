@@ -14,6 +14,8 @@ interface ScreenProps {
   edges?: readonly Edge[];
   /** Add bottom spacing so content clears the floating tab bar (default true). */
   clearsTabBar?: boolean;
+  /** Full-bleed element rendered above the padded content (e.g. AppHeader). */
+  header?: ReactNode;
   style?: ViewStyle;
   contentContainerStyle?: ViewStyle;
 }
@@ -24,6 +26,7 @@ export function Screen({
   padded = true,
   edges = ['top'],
   clearsTabBar = true,
+  header,
   style,
   contentContainerStyle,
 }: ScreenProps) {
@@ -31,9 +34,10 @@ export function Screen({
   const bottomPad = clearsTabBar ? TAB_BAR_HEIGHT + spacing.xl : spacing.xl;
   const gutter = padded ? spacing.gutter : 0;
 
-  if (scroll) {
-    return (
-      <SafeAreaView edges={edges} style={[{ flex: 1, backgroundColor: theme.colors.background }, style]}>
+  return (
+    <SafeAreaView edges={edges} style={[{ flex: 1, backgroundColor: theme.colors.background }, style]}>
+      {header}
+      {scroll ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[
@@ -42,15 +46,11 @@ export function Screen({
           ]}>
           {children}
         </ScrollView>
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView edges={edges} style={[{ flex: 1, backgroundColor: theme.colors.background }, style]}>
-      <View style={[{ flex: 1, paddingHorizontal: gutter, paddingBottom: bottomPad }, contentContainerStyle]}>
-        {children}
-      </View>
+      ) : (
+        <View style={[{ flex: 1, paddingHorizontal: gutter, paddingBottom: bottomPad }, contentContainerStyle]}>
+          {children}
+        </View>
+      )}
     </SafeAreaView>
   );
 }
