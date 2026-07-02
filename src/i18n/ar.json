@@ -18,11 +18,23 @@
   },
   "home": {
     "greeting": "صباح الخير، {{name}}",
+    "subtitle": "إليك أداء أعمالك.",
     "cash": "النقد المتاح",
+    "cashPosition": "المركز النقدي",
     "moneyIn": "الوارد",
     "moneyOut": "الصادر",
     "profit": "الربح",
-    "vatDue": "ضريبة القيمة المضافة المستحقة"
+    "vatDue": "ضريبة القيمة المضافة المستحقة",
+    "runway": "مدى {{months}} أشهر",
+    "dueIn": "مستحقة خلال {{days}} يومًا",
+    "vsLastMonth": "مقارنة بالشهر الماضي",
+    "actionStrip": "بحاجة إلى انتباهك",
+    "whatChanged": "ما الجديد",
+    "revenueTrend": "هل ننمو؟",
+    "expenseTrend": "أين تذهب الأموال؟",
+    "allCaughtUp": "لا يوجد ما يستدعي انتباهك.",
+    "loadError": "تعذّر تحميل لوحة المعلومات",
+    "loadErrorBody": "تحقّق من اتصالك وحاول مرة أخرى."
   },
   "auth": {
     "welcomeTitle": "مديرك المالي في جيبك",

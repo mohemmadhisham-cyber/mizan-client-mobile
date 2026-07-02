@@ -10,6 +10,7 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Stack, ThemeProvider as NavigationThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -22,6 +23,12 @@ import { navigationTheme, ThemeProvider, useTheme } from '@/theme';
 import '@/i18n';
 
 SplashScreen.preventAutoHideAsync();
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 60_000, retry: 1, refetchOnWindowFocus: false },
+  },
+});
 
 function RootNav() {
   const theme = useTheme();
@@ -64,9 +71,11 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <RootNav />
-      </AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <RootNav />
+        </AuthProvider>
+      </QueryClientProvider>
     </ThemeProvider>
   );
 }

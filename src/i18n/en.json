@@ -18,11 +18,23 @@
   },
   "home": {
     "greeting": "Good morning, {{name}}",
+    "subtitle": "Here's how your business is doing.",
     "cash": "Cash on hand",
+    "cashPosition": "Cash position",
     "moneyIn": "Money in",
     "moneyOut": "Money out",
     "profit": "Profit",
-    "vatDue": "VAT due"
+    "vatDue": "VAT due",
+    "runway": "{{months}} months runway",
+    "dueIn": "Due in {{days}} days",
+    "vsLastMonth": "vs last month",
+    "actionStrip": "Needs your attention",
+    "whatChanged": "What changed",
+    "revenueTrend": "Are we growing?",
+    "expenseTrend": "Where is money going?",
+    "allCaughtUp": "You're all caught up.",
+    "loadError": "Couldn't load your dashboard",
+    "loadErrorBody": "Check your connection and try again."
   },
   "auth": {
     "welcomeTitle": "Your CFO, in your pocket",
