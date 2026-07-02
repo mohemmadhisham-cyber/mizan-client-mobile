@@ -11,11 +11,10 @@ import {
   Inter_700Bold,
 } from '@expo-google-fonts/inter';
 import { useFonts } from 'expo-font';
-import { ThemeProvider as NavigationThemeProvider } from 'expo-router';
+import { Stack, ThemeProvider as NavigationThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { useEffect } from 'react';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
 import { navigationTheme, ThemeProvider, useTheme } from '@/theme';
 
 import '@/i18n';
@@ -26,8 +25,12 @@ function ThemedApp() {
   const theme = useTheme();
   return (
     <NavigationThemeProvider value={navigationTheme(theme)}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: theme.colors.background },
+        }}
+      />
     </NavigationThemeProvider>
   );
 }
@@ -44,8 +47,12 @@ export default function RootLayout() {
     IBMPlexSansArabic_700Bold,
   });
 
-  // Hold on the native splash until fonts resolve; still render if they error
-  // so a font-load failure never hangs the app on the splash screen.
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
   if (!fontsLoaded && !fontError) {
     return null;
   }
