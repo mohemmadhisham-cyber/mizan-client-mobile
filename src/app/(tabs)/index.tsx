@@ -6,6 +6,7 @@ import { I18nManager, Pressable, StyleSheet, View } from 'react-native';
 
 import { TrendChart } from '@/components/charts/trend-chart';
 import { KpiCard } from '@/components/dashboard/kpi-card';
+import { QuickActionButton } from '@/components/dashboard/quick-action-button';
 import { AppHeader } from '@/components/navigation/app-header';
 import { Card, EmptyState, Screen, Skeleton, Text } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
@@ -29,6 +30,7 @@ function firstNameFrom(email?: string, fullName?: string): string {
 
 export default function HomeScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { user, firmId } = useAuth();
   const companyKey = firmId ?? 'none';
   const name = firstNameFrom(user?.email, (user?.user_metadata as { full_name?: string })?.full_name);
@@ -41,7 +43,7 @@ export default function HomeScreen() {
 
   if (kpis.isError) {
     return (
-      <Screen>
+      <Screen header={<AppHeader />}>
         <EmptyState
           icon="warning-outline"
           title={t('home.loadError')}
@@ -70,7 +72,6 @@ export default function HomeScreen() {
     exp.data && exp.data.length >= 2
       ? pctChange(exp.data[exp.data.length - 1].value, exp.data[exp.data.length - 2].value)
       : null;
-  const runway = k && k.moneyOut > 0 ? Math.round(k.cash / k.moneyOut) : null;
   const deltaSub = (d: number | null) => (d === null ? undefined : `${d >= 0 ? '+' : ''}${d}% ${t('home.vsLastMonth')}`);
 
   return (
@@ -82,40 +83,92 @@ export default function HomeScreen() {
         </Text>
       </View>
 
+      {/* Hero — Figma "Available to Spend" */}
       {k ? (
-        <Card elevated style={{ marginBottom: spacing.lg }}>
-          <View style={styles.snapshot}>
-            <View style={{ gap: 2, flexShrink: 1 }}>
-              <Text variant="footnote" color="mutedForeground">
-                {t('home.profit')}
-              </Text>
-              <Text variant="display" tabular adjustsFontSizeToFit numberOfLines={1}>
-                {formatMoneyMinor(k.profit, cur)}
+        <Card elevated style={{ alignItems: 'center', gap: spacing.xs, marginBottom: spacing.xl }}>
+          <Text variant="caption" color="mutedForeground" weight="semibold" style={{ letterSpacing: 0.6, textTransform: 'uppercase' }}>
+            {t('home.availableToSpend')}
+          </Text>
+          <Text variant="display" color="brand" tabular adjustsFontSizeToFit numberOfLines={1}>
+            {formatMoneyMinor(k.cash, cur)}
+          </Text>
+          {revDelta !== null ? (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                backgroundColor: trendTone(revDelta).soft,
+                borderRadius: radius.full,
+                paddingHorizontal: spacing.sm,
+                paddingVertical: 4,
+                marginTop: spacing.xs,
+              }}>
+              <Ionicons
+                name={revDelta >= 0 ? 'trending-up' : 'trending-down'}
+                size={13}
+                color={trendTone(revDelta).text}
+              />
+              <Text variant="caption" weight="semibold" style={{ color: trendTone(revDelta).text }}>
+                {deltaSub(revDelta)}
               </Text>
             </View>
-            <View style={{ alignItems: I18nManager.isRTL ? 'flex-start' : 'flex-end', gap: 2 }}>
-              <Text variant="footnote" color="mutedForeground">
-                {t('home.cashPosition')}
-              </Text>
-              <Text variant="title" tabular>
-                {formatMoneyMinor(k.cash, cur)}
-              </Text>
-              {runway != null ? (
-                <Text variant="caption" color="mutedForeground">
-                  {t('home.runway', { months: runway })}
-                </Text>
-              ) : null}
-            </View>
-          </View>
+          ) : null}
         </Card>
       ) : (
-        <Skeleton height={112} radius={radius.lg} style={{ marginBottom: spacing.lg }} />
+        <Skeleton height={132} radius={radius.lg} style={{ marginBottom: spacing.xl }} />
       )}
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }}>
+      {/* Quick Actions — Figma circular shortcut row */}
+      <SectionHeader title={t('home.quickActions')} />
+      <View style={{ flexDirection: 'row', gap: spacing.md, marginBottom: spacing.xl }}>
+        <QuickActionButton
+          label={t('home.photographReceipt')}
+          icon="camera"
+          tone="brand"
+          onPress={() => router.push('/documents')}
+        />
+        <QuickActionButton label={t('home.askAi')} icon="sparkles" tone="accent" onPress={() => router.push('/ai-advisor')} />
+        <QuickActionButton label={t('home.payBill')} icon="card-outline" tone="neutral" onPress={() => router.push('/more')} />
+        <QuickActionButton
+          label={t('home.transfer')}
+          icon="swap-horizontal-outline"
+          tone="neutral"
+          onPress={() => router.push('/more')}
+        />
+      </View>
+
+      {/* Cash Flow — Figma card hosting the real trend chart */}
+      <View style={{ marginBottom: spacing.xl }}>
+        {rev.data ? (
+          <TrendChart question={t('home.cashFlow')} data={rev.data} type="line" headingVariant="title" />
+        ) : (
+          <Skeleton height={180} radius={radius.lg} />
+        )}
+      </View>
+
+      {/* Critical Tasks — Figma-styled cards */}
+      <SectionHeader title={t('home.criticalTasks')} />
+      {!acts.data ? (
+        <ListSkeleton />
+      ) : acts.data.length === 0 ? (
+        <Card>
+          <Text variant="callout" color="mutedForeground">
+            {t('home.allCaughtUp')}
+          </Text>
+        </Card>
+      ) : (
+        <View style={{ gap: spacing.sm, marginBottom: spacing.xl }}>
+          {acts.data.map((a, i) => (
+            <TaskRow key={a.id} label={a.label} count={a.count} href={a.href} urgent={i === 0} />
+          ))}
+        </View>
+      )}
+
+      <SectionHeader title={t('home.thisMonth')} />
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginBottom: spacing.xl }}>
         {k ? (
           <>
-            <KpiCard label={t('home.cash')} value={formatMoneyMinor(k.cash, cur)} icon="wallet-outline" accent="good" />
             <KpiCard
               label={t('home.moneyIn')}
               value={formatMoneyMinor(k.moneyIn, cur)}
@@ -138,26 +191,9 @@ export default function HomeScreen() {
             />
           </>
         ) : (
-          Array.from({ length: 4 }).map((_, i) => <KpiSkeleton key={i} />)
+          Array.from({ length: 3 }).map((_, i) => <KpiSkeleton key={i} />)
         )}
       </View>
-
-      <SectionHeader title={t('home.actionStrip')} />
-      {!acts.data ? (
-        <ListSkeleton />
-      ) : acts.data.length === 0 ? (
-        <Card>
-          <Text variant="callout" color="mutedForeground">
-            {t('home.allCaughtUp')}
-          </Text>
-        </Card>
-      ) : (
-        <View style={{ gap: spacing.sm }}>
-          {acts.data.map((a) => (
-            <ActionRow key={a.id} label={a.label} count={a.count} href={a.href} />
-          ))}
-        </View>
-      )}
 
       <SectionHeader title={t('home.whatChanged')} />
       {!ins.data ? (
@@ -170,23 +206,9 @@ export default function HomeScreen() {
         </View>
       )}
 
-      <View style={{ gap: spacing.md, marginTop: spacing.lg }}>
-        {rev.data ? (
-          <TrendChart
-            question={t('home.revenueTrend')}
-            takeaway={
-              revDelta !== null
-                ? `${revDelta >= 0 ? '+' : ''}${revDelta}% ${t('home.vsLastMonth')}`
-                : undefined
-            }
-            data={rev.data}
-            type="bar"
-          />
-        ) : (
-          <Skeleton height={200} radius={radius.lg} />
-        )}
+      <View style={{ marginTop: spacing.lg }}>
         {exp.data ? (
-          <TrendChart question={t('home.expenseTrend')} data={exp.data} type="line" />
+          <TrendChart question={t('home.expenseTrend')} data={exp.data} type="bar" />
         ) : (
           <Skeleton height={200} radius={radius.lg} />
         )}
@@ -195,9 +217,16 @@ export default function HomeScreen() {
   );
 }
 
+// Small helper so the hero trend badge reads success (green) or danger (red).
+function trendTone(delta: number) {
+  return delta >= 0
+    ? { soft: 'rgba(0,109,55,0.14)', text: '#006D37' }
+    : { soft: 'rgba(220,38,38,0.12)', text: '#DC2626' };
+}
+
 function SectionHeader({ title }: { title: string }) {
   return (
-    <Text variant="subhead" weight="semibold" style={{ marginTop: spacing.xl, marginBottom: spacing.sm }}>
+    <Text variant="title" style={{ marginBottom: spacing.sm }}>
       {title}
     </Text>
   );
@@ -214,35 +243,41 @@ function KpiSkeleton() {
 
 function ListSkeleton() {
   return (
-    <View style={{ gap: spacing.sm }}>
-      {Array.from({ length: 3 }).map((_, i) => (
-        <Skeleton key={i} height={56} radius={radius.lg} />
+    <View style={{ gap: spacing.sm, marginBottom: spacing.xl }}>
+      {Array.from({ length: 2 }).map((_, i) => (
+        <Skeleton key={i} height={72} radius={radius.md} />
       ))}
     </View>
   );
 }
 
-function ActionRow({ label, count, href }: { label: string; count: number; href: string }) {
+function TaskRow({ label, count, href, urgent }: { label: string; count: number; href: string; urgent: boolean }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const router = useRouter();
   const chevron: keyof typeof Ionicons.glyphMap = I18nManager.isRTL ? 'chevron-back' : 'chevron-forward';
+  const badgeBg = urgent ? '#FFDAD6' : theme.colors.secondary;
+  const badgeFg = urgent ? '#B3261E' : theme.colors.mutedForeground;
+
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={() => router.push(href as Href)}
       style={({ pressed }) => [
-        styles.row,
-        { backgroundColor: theme.colors.card, borderColor: theme.colors.border, opacity: pressed ? 0.7 : 1 },
+        styles.taskRow,
+        { backgroundColor: theme.colors.card, opacity: pressed ? 0.75 : 1 },
+        theme.elevation.sm,
       ]}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 }}>
-        <View style={[styles.countBadge, { backgroundColor: theme.colors.warning }]}>
-          <Text variant="caption" weight="bold" style={{ color: theme.colors.warningForeground }}>
-            {count}
-          </Text>
-        </View>
-        <Text variant="callout" weight="medium" numberOfLines={1} style={{ flex: 1 }}>
+      <View style={[styles.taskBadge, { backgroundColor: badgeBg }]}>
+        <Ionicons name={urgent ? 'alert-circle' : 'ellipse'} size={urgent ? 20 : 12} color={badgeFg} />
+      </View>
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text variant="callout" weight="semibold" numberOfLines={1}>
           {label}
+        </Text>
+        <Text variant="footnote" color="mutedForeground" numberOfLines={1}>
+          {t('home.itemsPending', { count })}
         </Text>
       </View>
       <Ionicons name={chevron} size={18} color={theme.colors.mutedForeground} />
@@ -278,27 +313,19 @@ function InsightRow({ card }: { card: InsightCard }) {
 }
 
 const styles = StyleSheet.create({
-  snapshot: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    gap: spacing.md,
-  },
-  row: {
+  taskRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     padding: spacing.base,
-    gap: spacing.sm,
+    gap: spacing.md,
   },
-  countBadge: {
-    minWidth: 26,
-    height: 26,
+  taskBadge: {
+    width: 40,
+    height: 40,
     borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 6,
   },
   insightIcon: {
     width: 36,

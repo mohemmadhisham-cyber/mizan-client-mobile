@@ -11,12 +11,15 @@ interface TrendChartProps {
   takeaway?: string;
   data: TrendPoint[];
   type: 'bar' | 'line';
+  /** 'question' (default): small muted label for insight-led charts. 'title':
+   *  bold section heading, for plain-named charts like "Cash Flow". */
+  headingVariant?: 'question' | 'title';
 }
 
 const CHART_HEIGHT = 120;
 const PAD_X = 4;
 
-export function TrendChart({ question, takeaway, data, type }: TrendChartProps) {
+export function TrendChart({ question, takeaway, data, type, headingVariant = 'question' }: TrendChartProps) {
   const theme = useTheme();
   const [width, setWidth] = useState(0);
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
@@ -36,9 +39,13 @@ export function TrendChart({ question, takeaway, data, type }: TrendChartProps) 
 
   return (
     <Card elevated style={{ gap: spacing.sm }}>
-      <Text variant="subhead" color="mutedForeground">
-        {question}
-      </Text>
+      {headingVariant === 'title' ? (
+        <Text variant="title">{question}</Text>
+      ) : (
+        <Text variant="subhead" color="mutedForeground">
+          {question}
+        </Text>
+      )}
       {takeaway ? (
         <Text variant="callout" weight="semibold">
           {takeaway}
