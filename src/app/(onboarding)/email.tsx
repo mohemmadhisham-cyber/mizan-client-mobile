@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
-import { Button, Input, Screen, Text } from '@/components/ui';
+import { AmbientBackdrop } from '@/components/auth/ambient-backdrop';
+import { Button, Card, Input, Screen, Text } from '@/components/ui';
 import { emailSchema, peekInvite, sendEmailOtp } from '@/services/auth';
 import { spacing } from '@/theme';
 
@@ -44,15 +45,22 @@ export default function EmailScreen() {
 
   return (
     <Screen clearsTabBar={false} edges={['top', 'bottom']}>
-      <View style={{ flex: 1, gap: spacing.lg, paddingTop: spacing['3xl'] }}>
+      <AmbientBackdrop topColor="#D5E3FF" bottomColor="#6BFE9C" />
+      <View style={{ flex: 1, justifyContent: 'center', gap: spacing.xl }}>
         <View style={{ gap: spacing.sm }}>
-          <Text variant="h1">{t('auth.emailTitle')}</Text>
-          <Text variant="body" color="mutedForeground">
+          <Text variant="h1" center>
+            {t('auth.emailTitle')}
+          </Text>
+          <Text variant="body" color="mutedForeground" center>
             {t('auth.emailBody')}
           </Text>
         </View>
-        <View style={{ gap: spacing.xs }}>
+
+        <Card elevated style={{ gap: spacing.lg, paddingVertical: spacing.xl }}>
           <Input
+            label={t('auth.emailLabel')}
+            icon="mail-outline"
+            variant="underline"
             value={email}
             onChangeText={(v) => {
               setEmail(v);
@@ -72,16 +80,16 @@ export default function EmailScreen() {
               {error}
             </Text>
           ) : null}
-        </View>
+          <Button
+            title={t('auth.sendCode')}
+            icon="arrow-forward"
+            onPress={submit}
+            disabled={!valid}
+            loading={busy}
+            fullWidth
+          />
+        </Card>
       </View>
-      <Button
-        title={t('auth.sendCode')}
-        icon="mail-outline"
-        onPress={submit}
-        disabled={!valid}
-        loading={busy}
-        fullWidth
-      />
     </Screen>
   );
 }

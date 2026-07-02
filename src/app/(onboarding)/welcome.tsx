@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
+import { AmbientBackdrop } from '@/components/auth/ambient-backdrop';
 import { Button, Screen, Text } from '@/components/ui';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { radius, spacing, useTheme } from '@/theme';
@@ -16,6 +17,7 @@ export default function WelcomeScreen() {
 
   return (
     <Screen clearsTabBar={false} edges={['top', 'bottom']}>
+      <AmbientBackdrop topColor="#D5E3FF" bottomColor="#6BFE9C" />
       <View style={{ flex: 1, justifyContent: 'center' }}>
         <Animated.View
           entering={reduced ? undefined : FadeInDown.duration(500)}
