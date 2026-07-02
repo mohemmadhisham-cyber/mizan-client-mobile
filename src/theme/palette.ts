@@ -1,41 +1,43 @@
-import { oklchToColor, type Oklch } from './oklch';
-
 /**
- * Semantic color palettes, ported 1:1 from firm-guide-app styles.css.
+ * MIZAN design system — ported from the Figma "Mizan" file (design-to-code).
  *
- * White-label: only the four BrandTokens are firm-overridable at runtime; every
- * other semantic token derives from them or is fixed, so a single firm swap
- * re-themes the whole app and dark mode keeps working — matching the web engine.
+ * Palette: deep-navy brand (#001E40) + mint-green accent (#6BFE9C / dark-green
+ * #006D37 for text), on a light lavender-white (#F9F9FE). Cards are white
+ * surfaces (the Figma's translucent glass, flattened for native; expo-blur can
+ * layer real glass later). Values are hex straight from Figma.
+ *
+ * White-label still works: the four BrandTokens drive primary/ring; a firm swap
+ * re-themes the app.
  */
 
 export interface BrandTokens {
-  brand: Oklch;
-  brandForeground: Oklch;
-  brandAccent: Oklch;
-  brandAccentForeground: Oklch;
+  brand: string;
+  brandForeground: string;
+  brandAccent: string;
+  brandAccentForeground: string;
 }
 
 export const MIZAN_BRAND: BrandTokens = {
-  brand: [0.46, 0.08, 195],
-  brandForeground: [0.99, 0.005, 180],
-  brandAccent: [0.7, 0.12, 75],
-  brandAccentForeground: [0.24, 0.05, 70],
+  brand: '#001E40',
+  brandForeground: '#FFFFFF',
+  brandAccent: '#006D37',
+  brandAccentForeground: '#FFFFFF',
 };
 
-/** Demo firms for white-label verification (from firm-guide-app theme.tsx). */
+/** Demo firms for white-label verification. */
 export const FIRM_PRESETS: Record<string, BrandTokens> = {
   mizan: MIZAN_BRAND,
   'falcon-books': {
-    brand: [0.42, 0.14, 260],
-    brandForeground: [0.99, 0.005, 260],
-    brandAccent: [0.72, 0.13, 75],
-    brandAccentForeground: [0.24, 0.05, 70],
+    brand: '#2B2D6E',
+    brandForeground: '#FFFFFF',
+    brandAccent: '#B45309',
+    brandAccentForeground: '#FFFFFF',
   },
   'oasis-advisory': {
-    brand: [0.5, 0.13, 160],
-    brandForeground: [0.99, 0.005, 160],
-    brandAccent: [0.7, 0.14, 55],
-    brandAccentForeground: [0.24, 0.05, 60],
+    brand: '#0B5E4F',
+    brandForeground: '#FFFFFF',
+    brandAccent: '#B45309',
+    brandAccentForeground: '#FFFFFF',
   },
 };
 
@@ -86,103 +88,105 @@ export interface ColorTokens {
   sidebarRing: string;
 }
 
-function brandColors(b: BrandTokens) {
-  return {
-    brand: oklchToColor(b.brand),
-    brandForeground: oklchToColor(b.brandForeground),
-    brandAccent: oklchToColor(b.brandAccent),
-    brandAccentForeground: oklchToColor(b.brandAccentForeground),
-    primary: oklchToColor(b.brand),
-    primaryForeground: oklchToColor(b.brandForeground),
-  };
-}
-
 export function buildLightPalette(b: BrandTokens = MIZAN_BRAND): ColorTokens {
-  const brand = brandColors(b);
   return {
-    ...brand,
-    background: oklchToColor([0.99, 0.004, 95]),
-    foreground: oklchToColor([0.22, 0.02, 220]),
-    card: oklchToColor([1, 0, 0]),
-    cardForeground: oklchToColor([0.22, 0.02, 220]),
-    popover: oklchToColor([1, 0, 0]),
-    popoverForeground: oklchToColor([0.22, 0.02, 220]),
-    surface: oklchToColor([0.975, 0.006, 90]),
-    surfaceForeground: oklchToColor([0.22, 0.02, 220]),
-    secondary: oklchToColor([0.96, 0.008, 90]),
-    secondaryForeground: oklchToColor([0.3, 0.02, 215]),
-    muted: oklchToColor([0.965, 0.007, 90]),
-    mutedForeground: oklchToColor([0.45, 0.015, 220]),
-    accent: oklchToColor([0.95, 0.014, 195]),
-    accentForeground: oklchToColor([0.3, 0.04, 200]),
-    destructive: oklchToColor([0.58, 0.21, 27]),
-    destructiveForeground: oklchToColor([0.99, 0.005, 30]),
-    border: oklchToColor([0.92, 0.006, 90]),
-    input: oklchToColor([0.92, 0.006, 90]),
-    ring: brand.brand,
-    success: oklchToColor([0.62, 0.13, 155]),
-    successForeground: oklchToColor([0.99, 0.005, 160]),
-    warning: oklchToColor([0.76, 0.13, 80]),
-    warningForeground: oklchToColor([0.27, 0.05, 70]),
-    danger: oklchToColor([0.58, 0.21, 27]),
-    dangerForeground: oklchToColor([0.99, 0.005, 30]),
-    chart1: oklchToColor([0.48, 0.09, 200]),
-    chart2: oklchToColor([0.58, 0.11, 175]),
-    chart3: oklchToColor([0.66, 0.13, 150]),
-    chart4: oklchToColor([0.74, 0.13, 110]),
-    chart5: oklchToColor([0.8, 0.13, 85]),
-    sidebar: oklchToColor([0.975, 0.006, 90]),
-    sidebarForeground: oklchToColor([0.24, 0.02, 220]),
-    sidebarPrimary: brand.brand,
-    sidebarPrimaryForeground: brand.brandForeground,
-    sidebarAccent: oklchToColor([0.95, 0.014, 195]),
-    sidebarAccentForeground: oklchToColor([0.3, 0.04, 200]),
-    sidebarBorder: oklchToColor([0.92, 0.006, 90]),
-    sidebarRing: brand.brand,
+    brand: b.brand,
+    brandForeground: b.brandForeground,
+    brandAccent: b.brandAccent,
+    brandAccentForeground: b.brandAccentForeground,
+    background: '#F9F9FE',
+    foreground: '#1A1C1F',
+    card: '#FFFFFF',
+    cardForeground: '#1A1C1F',
+    popover: '#FFFFFF',
+    popoverForeground: '#1A1C1F',
+    surface: '#FFFFFF',
+    surfaceForeground: '#1A1C1F',
+    primary: b.brand,
+    primaryForeground: b.brandForeground,
+    secondary: '#E8E8ED',
+    secondaryForeground: '#1A1C1F',
+    muted: '#EFEFF4',
+    mutedForeground: '#6B7280',
+    // Flattened mint pill (Figma active-tab bg over the light surface).
+    accent: '#B2FBCD',
+    accentForeground: b.brand,
+    destructive: '#DC2626',
+    destructiveForeground: '#FFFFFF',
+    border: '#C3C6D1',
+    input: '#C3C6D1',
+    ring: b.brand,
+    success: '#006D37',
+    successForeground: '#FFFFFF',
+    warning: '#B45309',
+    warningForeground: '#FFFFFF',
+    danger: '#DC2626',
+    dangerForeground: '#FFFFFF',
+    // Brand-derived ramp: navy → mint.
+    chart1: '#001E40',
+    chart2: '#134E63',
+    chart3: '#2E8C6A',
+    chart4: '#4FD18B',
+    chart5: '#6BFE9C',
+    sidebar: '#F9F9FE',
+    sidebarForeground: '#1A1C1F',
+    sidebarPrimary: b.brand,
+    sidebarPrimaryForeground: b.brandForeground,
+    sidebarAccent: '#B2FBCD',
+    sidebarAccentForeground: b.brand,
+    sidebarBorder: '#C3C6D1',
+    sidebarRing: b.brand,
   };
 }
 
 export function buildDarkPalette(b: BrandTokens = MIZAN_BRAND): ColorTokens {
-  const brand = brandColors(b);
+  // Figma is light-first; this is a coherent deep-navy dark variant where mint
+  // green becomes the actionable accent.
+  const mint = '#6BFE9C';
   return {
-    ...brand,
-    background: oklchToColor([0.16, 0.018, 215]),
-    foreground: oklchToColor([0.96, 0.004, 95]),
-    card: oklchToColor([0.205, 0.02, 215]),
-    cardForeground: oklchToColor([0.96, 0.004, 95]),
-    popover: oklchToColor([0.205, 0.02, 215]),
-    popoverForeground: oklchToColor([0.96, 0.004, 95]),
-    surface: oklchToColor([0.2, 0.02, 215]),
-    surfaceForeground: oklchToColor([0.96, 0.004, 95]),
-    secondary: oklchToColor([0.26, 0.02, 215]),
-    secondaryForeground: oklchToColor([0.96, 0.004, 95]),
-    muted: oklchToColor([0.26, 0.02, 215]),
-    mutedForeground: oklchToColor([0.72, 0.02, 210]),
-    accent: oklchToColor([0.28, 0.03, 200]),
-    accentForeground: oklchToColor([0.96, 0.004, 95]),
-    destructive: oklchToColor([0.55, 0.22, 27]),
-    destructiveForeground: oklchToColor([0.99, 0.005, 30]),
-    border: oklchToColor([1, 0, 0, 0.12]),
-    input: oklchToColor([1, 0, 0, 0.16]),
-    ring: oklchToColor([0.65, 0.09, 190]),
-    success: oklchToColor([0.68, 0.14, 155]),
-    successForeground: oklchToColor([0.16, 0.018, 215]),
-    warning: oklchToColor([0.8, 0.13, 80]),
-    warningForeground: oklchToColor([0.2, 0.04, 70]),
-    danger: oklchToColor([0.55, 0.22, 27]),
-    dangerForeground: oklchToColor([0.99, 0.005, 30]),
-    chart1: oklchToColor([0.62, 0.1, 195]),
-    chart2: oklchToColor([0.68, 0.12, 175]),
-    chart3: oklchToColor([0.74, 0.13, 150]),
-    chart4: oklchToColor([0.8, 0.13, 110]),
-    chart5: oklchToColor([0.84, 0.12, 85]),
-    sidebar: oklchToColor([0.19, 0.02, 215]),
-    sidebarForeground: oklchToColor([0.96, 0.004, 95]),
-    sidebarPrimary: brand.brand,
-    sidebarPrimaryForeground: brand.brandForeground,
-    sidebarAccent: oklchToColor([0.26, 0.02, 215]),
-    sidebarAccentForeground: oklchToColor([0.96, 0.004, 95]),
-    sidebarBorder: oklchToColor([1, 0, 0, 0.1]),
-    sidebarRing: oklchToColor([0.65, 0.09, 190]),
+    brand: b.brand,
+    brandForeground: b.brandForeground,
+    brandAccent: mint,
+    brandAccentForeground: '#001E40',
+    background: '#0A1626',
+    foreground: '#EAF0F5',
+    card: '#0F2135',
+    cardForeground: '#EAF0F5',
+    popover: '#0F2135',
+    popoverForeground: '#EAF0F5',
+    surface: '#12233A',
+    surfaceForeground: '#EAF0F5',
+    primary: mint,
+    primaryForeground: '#001E40',
+    secondary: '#1B2E47',
+    secondaryForeground: '#EAF0F5',
+    muted: '#1B2E47',
+    mutedForeground: '#9AA6B2',
+    accent: '#123A28',
+    accentForeground: mint,
+    destructive: '#F04438',
+    destructiveForeground: '#FFFFFF',
+    border: 'rgba(255,255,255,0.12)',
+    input: 'rgba(255,255,255,0.16)',
+    ring: mint,
+    success: '#34D399',
+    successForeground: '#001E40',
+    warning: '#F59E0B',
+    warningForeground: '#001E40',
+    danger: '#F04438',
+    dangerForeground: '#FFFFFF',
+    chart1: '#3B82F6',
+    chart2: '#22D3B7',
+    chart3: '#34D399',
+    chart4: '#5FE0A0',
+    chart5: '#6BFE9C',
+    sidebar: '#0A1626',
+    sidebarForeground: '#EAF0F5',
+    sidebarPrimary: mint,
+    sidebarPrimaryForeground: '#001E40',
+    sidebarAccent: '#123A28',
+    sidebarAccentForeground: mint,
+    sidebarBorder: 'rgba(255,255,255,0.1)',
+    sidebarRing: mint,
   };
 }
