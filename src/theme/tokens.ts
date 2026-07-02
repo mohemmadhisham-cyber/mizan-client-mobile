@@ -35,10 +35,22 @@ export const spacing = {
   section: 40,
 } as const;
 
-export const fontFamily = {
-  // Loaded via expo-font in the app shell; falls back to system until ready.
-  sans: 'Inter',
-  arabic: 'IBMPlexSansArabic',
+// Font family names as registered by @expo-google-fonts (loaded in the shell).
+// On native, weight is selected by family variant, not by fontWeight, so we
+// keep the per-weight names and resolve them in the Text component.
+export const fonts = {
+  sans: {
+    regular: 'Inter_400Regular',
+    medium: 'Inter_500Medium',
+    semibold: 'Inter_600SemiBold',
+    bold: 'Inter_700Bold',
+  },
+  arabic: {
+    regular: 'IBMPlexSansArabic_400Regular',
+    medium: 'IBMPlexSansArabic_500Medium',
+    semibold: 'IBMPlexSansArabic_600SemiBold',
+    bold: 'IBMPlexSansArabic_700Bold',
+  },
 } as const;
 
 // Type scale (px). letterSpacing converted from em → px at the given size.

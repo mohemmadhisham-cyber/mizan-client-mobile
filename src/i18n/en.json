@@ -1,0 +1,27 @@
+{
+  "common": {
+    "appName": "Mizan",
+    "loading": "Loading…",
+    "retry": "Try again",
+    "cancel": "Cancel",
+    "save": "Save",
+    "continue": "Continue",
+    "done": "Done",
+    "offline": "You're offline"
+  },
+  "nav": {
+    "home": "Home",
+    "reports": "Reports",
+    "documents": "Documents",
+    "tasks": "Tasks",
+    "more": "More"
+  },
+  "home": {
+    "greeting": "Good morning, {{name}}",
+    "cash": "Cash on hand",
+    "moneyIn": "Money in",
+    "moneyOut": "Money out",
+    "profit": "Profit",
+    "vatDue": "VAT due"
+  }
+}

@@ -19,7 +19,7 @@ import {
   duration,
   easing,
   elevation,
-  fontFamily,
+  fonts,
   radius,
   spacing,
   typography,
@@ -38,7 +38,7 @@ export interface Theme {
   duration: typeof duration;
   easing: typeof easing;
   elevation: typeof elevation;
-  fontFamily: typeof fontFamily;
+  fonts: typeof fonts;
 }
 
 interface ThemeContextValue {
@@ -71,7 +71,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       duration,
       easing,
       elevation,
-      fontFamily,
+      fonts,
     };
   }, [scheme, brand]);
 
