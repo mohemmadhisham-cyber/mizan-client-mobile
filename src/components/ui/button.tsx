@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { radius, spacing, useTheme } from '@/theme';
 
@@ -14,6 +14,7 @@ interface ButtonProps {
   variant?: Variant;
   icon?: keyof typeof Ionicons.glyphMap;
   disabled?: boolean;
+  loading?: boolean;
   fullWidth?: boolean;
 }
 
@@ -23,9 +24,11 @@ export function Button({
   variant = 'primary',
   icon,
   disabled = false,
+  loading = false,
   fullWidth = false,
 }: ButtonProps) {
   const theme = useTheme();
+  const isDisabled = disabled || loading;
 
   const bg =
     variant === 'primary'
@@ -41,7 +44,7 @@ export function Button({
         : theme.colors.primary;
 
   const handlePress = () => {
-    if (disabled) return;
+    if (isDisabled) return;
     if (process.env.EXPO_OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     }
@@ -51,8 +54,8 @@ export function Button({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled }}
-      disabled={disabled}
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
+      disabled={isDisabled}
       onPress={handlePress}
       style={({ pressed }) => [
         styles.base,
@@ -60,14 +63,20 @@ export function Button({
           backgroundColor: bg,
           borderColor: variant === 'ghost' ? 'transparent' : bg,
           alignSelf: fullWidth ? 'stretch' : 'flex-start',
-          opacity: disabled ? 0.5 : pressed ? 0.85 : 1,
+          opacity: isDisabled ? 0.5 : pressed ? 0.85 : 1,
         },
       ]}>
       <View style={styles.content}>
-        {icon ? <Ionicons name={icon} size={18} color={fg} /> : null}
-        <Text variant="callout" weight="semibold" style={{ color: fg }}>
-          {title}
-        </Text>
+        {loading ? (
+          <ActivityIndicator color={fg} />
+        ) : (
+          <>
+            {icon ? <Ionicons name={icon} size={18} color={fg} /> : null}
+            <Text variant="callout" weight="semibold" style={{ color: fg }}>
+              {title}
+            </Text>
+          </>
+        )}
       </View>
     </Pressable>
   );
@@ -85,5 +94,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
+    minHeight: 22,
   },
 });

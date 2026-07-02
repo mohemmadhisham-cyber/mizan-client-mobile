@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { I18nManager, Pressable, StyleSheet, View } from 'react-native';
 
-import { Card, Screen, Text } from '@/components/ui';
+import { Button, Card, Screen, Text } from '@/components/ui';
+import { useAuth } from '@/lib/auth-context';
 import { radius, spacing, useTheme } from '@/theme';
 
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -46,16 +48,21 @@ function Row({ icon, label, isLast }: { icon: IconName; label: string; isLast: b
 }
 
 export default function MoreScreen() {
+  const { t } = useTranslation();
+  const { signOut } = useAuth();
   return (
     <Screen scroll>
       <Text variant="h1" style={{ marginTop: spacing.sm, marginBottom: spacing.lg }}>
-        More
+        {t('nav.more')}
       </Text>
       <Card padded={false}>
         {ITEMS.map((item, index) => (
           <Row key={item.label} icon={item.icon} label={item.label} isLast={index === ITEMS.length - 1} />
         ))}
       </Card>
+      <View style={{ marginTop: spacing.xl }}>
+        <Button title={t('auth.signOut')} variant="secondary" icon="log-out-outline" onPress={signOut} fullWidth />
+      </View>
     </Screen>
   );
 }

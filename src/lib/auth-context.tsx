@@ -1,0 +1,99 @@
+import type { Session, User } from '@supabase/supabase-js';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+
+import { supabase } from '@/lib/supabase';
+
+export type AppRole = 'hq_ops_admin' | 'hq_finance' | 'agent_owner' | 'agent_staff' | 'client_user';
+
+export interface AuthState {
+  session: Session | null;
+  user: User | null;
+  roles: AppRole[];
+  firmId: string | null;
+  loading: boolean;
+  signOut: () => Promise<void>;
+  refresh: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthState | undefined>(undefined);
+
+async function loadRoles(userId: string): Promise<{ roles: AppRole[]; firmId: string | null }> {
+  const { data } = await supabase.from('user_roles').select('role, firm_id').eq('user_id', userId);
+  const rows = data ?? [];
+  const roles = rows.map((r) => r.role as AppRole);
+  const firmRow = rows.find((r) => r.firm_id);
+  return { roles, firmId: (firmRow?.firm_id as string | undefined) ?? null };
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [roles, setRoles] = useState<AppRole[]>([]);
+  const [firmId, setFirmId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!mounted) return;
+      setSession(data.session);
+      setUser(data.session?.user ?? null);
+      if (data.session?.user) {
+        const r = await loadRoles(data.session.user.id);
+        if (!mounted) return;
+        setRoles(r.roles);
+        setFirmId(r.firmId);
+      }
+      setLoading(false);
+    })();
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
+      setSession(sess);
+      setUser(sess?.user ?? null);
+      if (sess?.user) {
+        // Defer the Supabase call to avoid re-entrancy deadlocks (Supabase guidance).
+        setTimeout(() => {
+          loadRoles(sess.user.id).then((r) => {
+            setRoles(r.roles);
+            setFirmId(r.firmId);
+          });
+        }, 0);
+      } else {
+        setRoles([]);
+        setFirmId(null);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
+  const value: AuthState = {
+    session,
+    user,
+    roles,
+    firmId,
+    loading,
+    signOut: async () => {
+      await supabase.auth.signOut();
+    },
+    refresh: async () => {
+      if (!user) return;
+      const r = await loadRoles(user.id);
+      setRoles(r.roles);
+      setFirmId(r.firmId);
+    },
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth(): AuthState {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within an AuthProvider');
+  return ctx;
+}

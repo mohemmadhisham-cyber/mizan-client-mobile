@@ -15,14 +15,25 @@ import { Stack, ThemeProvider as NavigationThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 
+import { useAuthGate } from '@/hooks/use-auth-gate';
+import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { navigationTheme, ThemeProvider, useTheme } from '@/theme';
 
 import '@/i18n';
 
 SplashScreen.preventAutoHideAsync();
 
-function ThemedApp() {
+function RootNav() {
   const theme = useTheme();
+  const { loading } = useAuth();
+  useAuthGate();
+
+  useEffect(() => {
+    // Hold the native splash until the session is resolved, so the auth gate
+    // can route to the right place before anything renders (no flash of tabs).
+    if (!loading) SplashScreen.hideAsync();
+  }, [loading]);
+
   return (
     <NavigationThemeProvider value={navigationTheme(theme)}>
       <Stack
@@ -47,19 +58,15 @@ export default function RootLayout() {
     IBMPlexSansArabic_700Bold,
   });
 
-  useEffect(() => {
-    if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded, fontError]);
-
   if (!fontsLoaded && !fontError) {
     return null;
   }
 
   return (
     <ThemeProvider>
-      <ThemedApp />
+      <AuthProvider>
+        <RootNav />
+      </AuthProvider>
     </ThemeProvider>
   );
 }

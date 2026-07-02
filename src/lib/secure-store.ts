@@ -17,6 +17,19 @@ const CHUNK_SIZE = 2000;
 const META_SUFFIX = '__meta';
 const isWeb = Platform.OS === 'web';
 
+interface WebStorageLike {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+  removeItem(key: string): void;
+}
+
+// Returns localStorage only when it's actually usable. During web static
+// rendering (Node), a partial/absent localStorage would otherwise throw.
+function webStorage(): WebStorageLike | null {
+  const ls = (globalThis as { localStorage?: WebStorageLike }).localStorage;
+  return ls && typeof ls.getItem === 'function' ? ls : null;
+}
+
 function baseKey(key: string): string {
   return key.replace(/[^A-Za-z0-9._-]/g, '_');
 }
@@ -68,19 +81,19 @@ async function nativeSet(key: string, value: string): Promise<void> {
 
 export const LargeSecureStore = {
   async getItem(key: string): Promise<string | null> {
-    if (isWeb) return globalThis.localStorage?.getItem(key) ?? null;
+    if (isWeb) return webStorage()?.getItem(key) ?? null;
     return nativeGet(key);
   },
   async setItem(key: string, value: string): Promise<void> {
     if (isWeb) {
-      globalThis.localStorage?.setItem(key, value);
+      webStorage()?.setItem(key, value);
       return;
     }
     await nativeSet(key, value);
   },
   async removeItem(key: string): Promise<void> {
     if (isWeb) {
-      globalThis.localStorage?.removeItem(key);
+      webStorage()?.removeItem(key);
       return;
     }
     await nativeRemove(key);

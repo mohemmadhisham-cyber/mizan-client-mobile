@@ -23,5 +23,23 @@
     "moneyOut": "Money out",
     "profit": "Profit",
     "vatDue": "VAT due"
+  },
+  "auth": {
+    "welcomeTitle": "Your CFO, in your pocket",
+    "welcomeBody": "Track cash, capture receipts, and stay on top of your numbers — with your accountant a tap away.",
+    "getStarted": "Get started",
+    "emailTitle": "What's your email?",
+    "emailBody": "We'll email you a 6-digit code to sign in. No password needed.",
+    "emailPlaceholder": "you@company.com",
+    "sendCode": "Email me a code",
+    "verifyTitle": "Enter your code",
+    "verifyBody": "We sent a 6-digit code to {{email}}.",
+    "verify": "Verify & continue",
+    "resend": "Resend code",
+    "resendIn": "Resend in {{seconds}}s",
+    "invalidEmail": "Enter a valid email address",
+    "codeError": "That code didn't work. Try again.",
+    "genericError": "Something went wrong. Please try again.",
+    "signOut": "Sign out"
   }
 }
