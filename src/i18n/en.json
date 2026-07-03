@@ -56,6 +56,9 @@
     "monthlyInsights": "Monthly Insights",
     "viewAll": "View All"
   },
+  "aiAdvisorScreen": {
+    "placeholder": "Ask Mizan..."
+  },
   "auth": {
     "welcomeTitle": "Your CFO, in your pocket",
     "welcomeBody": "Track cash, capture receipts, and stay on top of your numbers — with your accountant a tap away.",

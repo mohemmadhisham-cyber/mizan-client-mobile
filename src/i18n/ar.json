@@ -64,6 +64,9 @@
     "monthlyInsights": "رؤى الشهر",
     "viewAll": "عرض الكل"
   },
+  "aiAdvisorScreen": {
+    "placeholder": "اسأل ميزان..."
+  },
   "auth": {
     "welcomeTitle": "مديرك المالي في جيبك",
     "welcomeBody": "تابع النقد، وصوّر الإيصالات، وابقَ مطّلعًا على أرقامك — ومحاسبك على بُعد نقرة.",
