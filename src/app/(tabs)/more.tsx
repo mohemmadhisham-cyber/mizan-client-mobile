@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { type Href, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { I18nManager, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, I18nManager, Pressable, StyleSheet, View } from 'react-native';
 
 import { Button, Card, Screen, Text } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
@@ -8,26 +9,32 @@ import { radius, spacing, useTheme } from '@/theme';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-const ITEMS: { icon: IconName; label: string }[] = [
+interface MoreItem {
+  icon: IconName;
+  label: string;
+  href?: Href;
+}
+
+const ITEMS: MoreItem[] = [
   { icon: 'cash-outline', label: 'Money' },
-  { icon: 'calendar-outline', label: 'Calendar' },
+  { icon: 'calendar-outline', label: 'Calendar', href: '/calendar' },
   { icon: 'chatbubbles-outline', label: 'Messages' },
-  { icon: 'sparkles-outline', label: 'Ask AI' },
-  { icon: 'card-outline', label: 'Billing' },
-  { icon: 'people-outline', label: 'Team' },
-  { icon: 'business-outline', label: 'Companies' },
+  { icon: 'sparkles-outline', label: 'Ask AI', href: '/ai-advisor' },
+  { icon: 'card-outline', label: 'Billing', href: '/billing' },
+  { icon: 'people-outline', label: 'Team', href: { pathname: '/companies', params: { tab: 'team' } } },
+  { icon: 'business-outline', label: 'Companies', href: '/companies' },
   { icon: 'notifications-outline', label: 'Notifications' },
   { icon: 'settings-outline', label: 'Settings' },
 ];
 
-function Row({ icon, label, isLast }: { icon: IconName; label: string; isLast: boolean }) {
+function Row({ item, isLast, onPress }: { item: MoreItem; isLast: boolean; onPress: () => void }) {
   const theme = useTheme();
   const chevron: IconName = I18nManager.isRTL ? 'chevron-back' : 'chevron-forward';
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={() => {}}
+      accessibilityLabel={item.label}
+      onPress={onPress}
       style={({ pressed }) => [
         styles.row,
         {
@@ -37,10 +44,10 @@ function Row({ icon, label, isLast }: { icon: IconName; label: string; isLast: b
         },
       ]}>
       <View style={[styles.iconWrap, { backgroundColor: theme.colors.accent }]}>
-        <Ionicons name={icon} size={18} color={theme.colors.primary} />
+        <Ionicons name={item.icon} size={18} color={theme.colors.primary} />
       </View>
       <Text variant="body" weight="medium" style={{ flex: 1 }}>
-        {label}
+        {item.label}
       </Text>
       <Ionicons name={chevron} size={18} color={theme.colors.mutedForeground} />
     </Pressable>
@@ -50,6 +57,16 @@ function Row({ icon, label, isLast }: { icon: IconName; label: string; isLast: b
 export default function MoreScreen() {
   const { t } = useTranslation();
   const { signOut } = useAuth();
+  const router = useRouter();
+
+  function handlePress(item: MoreItem) {
+    if (item.href) {
+      router.push(item.href);
+    } else {
+      Alert.alert('Coming soon', `${item.label} isn't available yet.`);
+    }
+  }
+
   return (
     <Screen scroll>
       <Text variant="h1" style={{ marginTop: spacing.sm, marginBottom: spacing.lg }}>
@@ -57,7 +74,7 @@ export default function MoreScreen() {
       </Text>
       <Card padded={false}>
         {ITEMS.map((item, index) => (
-          <Row key={item.label} icon={item.icon} label={item.label} isLast={index === ITEMS.length - 1} />
+          <Row key={item.label} item={item} isLast={index === ITEMS.length - 1} onPress={() => handlePress(item)} />
         ))}
       </Card>
       <View style={{ marginTop: spacing.xl }}>

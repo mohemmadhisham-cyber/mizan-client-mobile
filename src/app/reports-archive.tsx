@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DetailHeader } from '@/components/navigation/detail-header';
 import { Card, EmptyState, Input, Skeleton, Text } from '@/components/ui';
 import { CATEGORY_ICON, CATEGORY_LABEL, CATEGORY_TINT } from '@/services/report-presentation';
 import { reportsService } from '@/services/reports';
@@ -37,14 +38,7 @@ export default function ReportsArchiveScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.gutter, paddingBottom: spacing.md }}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => router.back()} hitSlop={8}>
-          <Ionicons name="chevron-back" size={22} color={theme.colors.foreground} />
-        </Pressable>
-        <Text variant="h2" weight="semibold">
-          Document Archive
-        </Text>
-      </View>
+      <DetailHeader title="Document Archive" />
 
       <View style={{ paddingHorizontal: spacing.gutter, gap: spacing.md, marginBottom: spacing.md }}>
         <Input icon="search-outline" placeholder="Search reports" value={query} onChangeText={setQuery} returnKeyType="search" />

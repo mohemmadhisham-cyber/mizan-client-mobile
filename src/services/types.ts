@@ -73,3 +73,59 @@ export interface CompletedSummary {
   count: number;
   label: string;
 }
+
+export interface BillingPlan {
+  name: string;
+  status: 'active' | 'past_due' | 'canceled';
+  priceMinor: number;
+  currency: 'AED' | 'SAR' | 'USD';
+  nextPaymentDate: string;
+}
+
+export interface PaymentMethodInfo {
+  brand: string;
+  last4: string;
+  expiry: string;
+}
+
+export interface Invoice {
+  id: string;
+  date: string;
+  amountMinor: number;
+  currency: 'AED' | 'SAR' | 'USD';
+}
+
+export interface CompanyInfo {
+  id: string;
+  name: string;
+  status: 'active' | 'inactive';
+  lastSyncedLabel: string;
+}
+
+export type TeamRole = 'owner' | 'admin' | 'viewer';
+
+export interface TeamMemberInfo {
+  id: string;
+  name: string;
+  role: TeamRole;
+  email: string;
+}
+
+export type CalendarEventKind = 'deadline' | 'meeting' | 'task';
+
+export interface CalendarEvent {
+  id: string;
+  kind: CalendarEventKind;
+  title: string;
+  subtitle: string;
+  timeLabel: string;
+  description?: string;
+  actionLabel?: string;
+}
+
+export interface CalendarDay {
+  date: string;
+  dayLabel: string;
+  dayNumber: number;
+  eventKinds: CalendarEventKind[];
+}

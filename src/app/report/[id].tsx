@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { Alert, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TrendChart } from '@/components/charts/trend-chart';
+import { DetailHeader } from '@/components/navigation/detail-header';
 import { Button, Card, EmptyState, Skeleton, Text } from '@/components/ui';
 import { CATEGORY_ICON, CATEGORY_LABEL, CATEGORY_TINT } from '@/services/report-presentation';
 import { reportsService } from '@/services/reports';
@@ -12,7 +13,6 @@ import { radius, spacing, useTheme } from '@/theme';
 
 export default function ReportDetailScreen() {
   const theme = useTheme();
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
 
@@ -24,14 +24,7 @@ export default function ReportDetailScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.gutter, paddingBottom: spacing.md }}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={() => router.back()} hitSlop={8}>
-          <Ionicons name="chevron-back" size={22} color={theme.colors.foreground} />
-        </Pressable>
-        <Text variant="h2" weight="semibold" numberOfLines={1} style={{ flex: 1 }}>
-          {report.data?.title ?? 'Report'}
-        </Text>
-      </View>
+      <DetailHeader title={report.data?.title ?? 'Report'} />
 
       {report.isLoading ? (
         <View style={{ paddingHorizontal: spacing.gutter, gap: spacing.md }}>
