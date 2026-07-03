@@ -32,3 +32,25 @@ export interface ActionItem {
   count: number;
   href: string;
 }
+
+export type ReportType = 'monthly' | 'quarterly' | 'vat' | 'cashflow' | 'yearly';
+export type ReportCategory = 'pl' | 'balance_sheet' | 'tax' | 'audit';
+
+export interface Report {
+  id: string;
+  title: string;
+  category: ReportCategory;
+  type: ReportType;
+  publishedAt: string;
+  sizeLabel: string;
+  narrative: string;
+  highlights: string[];
+  series: TrendPoint[];
+}
+
+export interface ReportsKeyMetrics {
+  revenueGrowthPct: number;
+  savingsPotentialMinor: number;
+  savingsCategoryCount: number;
+  currency: 'AED' | 'SAR';
+}

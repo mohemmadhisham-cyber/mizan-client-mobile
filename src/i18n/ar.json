@@ -47,6 +47,23 @@
     "loadError": "تعذّر تحميل لوحة المعلومات",
     "loadErrorBody": "تحقّق من اتصالك وحاول مرة أخرى."
   },
+  "reportsScreen": {
+    "title": "التقارير والرؤى",
+    "subtitle": "الأداء المالي للربع الثالث",
+    "thisQuarter": "هذا الربع",
+    "revenueGrowth": "نمو الإيرادات",
+    "vsLastQuarter": "مقارنة بالربع الماضي",
+    "savingsPotential": "فرصة توفير",
+    "acrossCategories_zero": "ضمن 0 فئة",
+    "acrossCategories_one": "ضمن فئة واحدة",
+    "acrossCategories_two": "ضمن فئتين",
+    "acrossCategories_few": "ضمن {{count}} فئات",
+    "acrossCategories_many": "ضمن {{count}} فئة",
+    "acrossCategories_other": "ضمن {{count}} فئة",
+    "profitAndLoss": "الأرباح والخسائر",
+    "monthlyInsights": "رؤى الشهر",
+    "viewAll": "عرض الكل"
+  },
   "auth": {
     "welcomeTitle": "مديرك المالي في جيبك",
     "welcomeBody": "تابع النقد، وصوّر الإيصالات، وابقَ مطّلعًا على أرقامك — ومحاسبك على بُعد نقرة.",

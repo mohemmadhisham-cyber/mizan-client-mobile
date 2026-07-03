@@ -43,6 +43,19 @@
     "loadError": "Couldn't load your dashboard",
     "loadErrorBody": "Check your connection and try again."
   },
+  "reportsScreen": {
+    "title": "Reports & Insights",
+    "subtitle": "Financial performance for Q3",
+    "thisQuarter": "This Quarter",
+    "revenueGrowth": "Revenue Growth",
+    "vsLastQuarter": "vs last quarter",
+    "savingsPotential": "Savings Potential",
+    "acrossCategories_one": "Across {{count}} category",
+    "acrossCategories_other": "Across {{count}} categories",
+    "profitAndLoss": "Profit & Loss",
+    "monthlyInsights": "Monthly Insights",
+    "viewAll": "View All"
+  },
   "auth": {
     "welcomeTitle": "Your CFO, in your pocket",
     "welcomeBody": "Track cash, capture receipts, and stay on top of your numbers — with your accountant a tap away.",
