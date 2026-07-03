@@ -54,3 +54,22 @@ export interface ReportsKeyMetrics {
   savingsCategoryCount: number;
   currency: 'AED' | 'SAR';
 }
+
+export type TaskUrgency = 'urgent' | 'pending';
+export type TaskActionKind = 'approve' | 'upload-receipt' | 'coming-soon';
+
+export interface ActionCenterTask {
+  id: string;
+  title: string;
+  description: string;
+  urgency: TaskUrgency;
+  badgeLabel: string;
+  metaLabel?: string;
+  actionLabel: string;
+  actionKind: TaskActionKind;
+}
+
+export interface CompletedSummary {
+  count: number;
+  label: string;
+}
