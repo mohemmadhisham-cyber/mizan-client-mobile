@@ -23,8 +23,8 @@ const ITEMS: MoreItem[] = [
   { icon: 'card-outline', label: 'Billing', href: '/billing' },
   { icon: 'people-outline', label: 'Team', href: { pathname: '/companies', params: { tab: 'team' } } },
   { icon: 'business-outline', label: 'Companies', href: '/companies' },
-  { icon: 'notifications-outline', label: 'Notifications' },
-  { icon: 'settings-outline', label: 'Settings' },
+  { icon: 'notifications-outline', label: 'Notifications', href: '/notifications' },
+  { icon: 'settings-outline', label: 'Settings', href: '/settings' },
 ];
 
 function Row({ item, isLast, onPress }: { item: MoreItem; isLast: boolean; onPress: () => void }) {

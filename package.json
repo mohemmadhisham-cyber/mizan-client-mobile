@@ -57,7 +57,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "check:secrets": "node ./scripts/check-no-secrets.mjs"
+    "check:secrets": "node ./scripts/check-no-secrets.mjs",
+    "check:i18n": "node ./scripts/check-i18n-parity.mjs"
   },
   "private": true
 }

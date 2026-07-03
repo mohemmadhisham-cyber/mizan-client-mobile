@@ -39,7 +39,7 @@ export function AppHeader() {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Notifications"
-        onPress={() => router.push('/more')}
+        onPress={() => router.push('/notifications')}
         hitSlop={8}>
         <Ionicons name="notifications-outline" size={22} color={theme.colors.foreground} />
       </Pressable>

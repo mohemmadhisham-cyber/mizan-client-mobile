@@ -129,3 +129,17 @@ export interface CalendarDay {
   dayNumber: number;
   eventKinds: CalendarEventKind[];
 }
+
+export type NotificationCategory = 'system' | 'accountant' | 'ai_advisor';
+export type NotificationSeverity = 'alert' | 'good' | 'info';
+
+export interface NotificationItem {
+  id: string;
+  category: NotificationCategory;
+  severity: NotificationSeverity;
+  title: string;
+  body: string;
+  timeLabel: string;
+  read: boolean;
+  actionLabel?: string;
+}
