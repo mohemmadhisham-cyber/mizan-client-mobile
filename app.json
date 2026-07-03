@@ -34,7 +34,20 @@
         }
       ],
       "expo-secure-store",
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Mizan uses your camera to photograph receipts so your accountant can review and record them.",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Mizan needs access to your photos so you can upload an existing receipt image."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -126,7 +126,7 @@ export default function HomeScreen() {
           label={t('home.photographReceipt')}
           icon="camera"
           tone="brand"
-          onPress={() => router.push('/documents')}
+          onPress={() => router.push('/capture')}
         />
         <QuickActionButton label={t('home.askAi')} icon="sparkles" tone="accent" onPress={() => router.push('/ai-advisor')} />
         <QuickActionButton label={t('home.payBill')} icon="card-outline" tone="neutral" onPress={() => router.push('/more')} />

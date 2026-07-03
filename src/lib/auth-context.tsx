@@ -10,6 +10,8 @@ export interface AuthState {
   user: User | null;
   roles: AppRole[];
   firmId: string | null;
+  /** Set only for the client_user role (via user_roles.client_id). */
+  clientId: string | null;
   loading: boolean;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -17,12 +19,23 @@ export interface AuthState {
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
-async function loadRoles(userId: string): Promise<{ roles: AppRole[]; firmId: string | null }> {
-  const { data } = await supabase.from('user_roles').select('role, firm_id').eq('user_id', userId);
+interface LoadedRoles {
+  roles: AppRole[];
+  firmId: string | null;
+  clientId: string | null;
+}
+
+async function loadRoles(userId: string): Promise<LoadedRoles> {
+  const { data } = await supabase.from('user_roles').select('role, firm_id, client_id').eq('user_id', userId);
   const rows = data ?? [];
   const roles = rows.map((r) => r.role as AppRole);
   const firmRow = rows.find((r) => r.firm_id);
-  return { roles, firmId: (firmRow?.firm_id as string | undefined) ?? null };
+  const clientRow = rows.find((r) => r.role === 'client_user' && r.client_id);
+  return {
+    roles,
+    firmId: (firmRow?.firm_id as string | undefined) ?? null,
+    clientId: (clientRow?.client_id as string | undefined) ?? null,
+  };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -30,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [firmId, setFirmId] = useState<string | null>(null);
+  const [clientId, setClientId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -45,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!mounted) return;
         setRoles(r.roles);
         setFirmId(r.firmId);
+        setClientId(r.clientId);
       }
       setLoading(false);
     })();
@@ -58,11 +73,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           loadRoles(sess.user.id).then((r) => {
             setRoles(r.roles);
             setFirmId(r.firmId);
+            setClientId(r.clientId);
           });
         }, 0);
       } else {
         setRoles([]);
         setFirmId(null);
+        setClientId(null);
       }
     });
 
@@ -77,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     roles,
     firmId,
+    clientId,
     loading,
     signOut: async () => {
       await supabase.auth.signOut();
@@ -86,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const r = await loadRoles(user.id);
       setRoles(r.roles);
       setFirmId(r.firmId);
+      setClientId(r.clientId);
     },
   };
 

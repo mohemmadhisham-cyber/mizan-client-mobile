@@ -47,8 +47,9 @@ function RootNav() {
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: theme.colors.background },
-        }}
-      />
+        }}>
+        <Stack.Screen name="capture" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
+      </Stack>
     </NavigationThemeProvider>
   );
 }
