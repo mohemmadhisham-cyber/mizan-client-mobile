@@ -75,22 +75,18 @@ export interface CompletedSummary {
 }
 
 export interface BillingPlan {
-  name: string;
-  status: 'active' | 'past_due' | 'canceled';
+  firmName: string;
+  planName: string | null;
   priceMinor: number;
   currency: 'AED' | 'SAR' | 'USD';
-  nextPaymentDate: string;
-}
-
-export interface PaymentMethodInfo {
-  brand: string;
-  last4: string;
-  expiry: string;
+  nextPaymentDue: string | null;
 }
 
 export interface Invoice {
   id: string;
+  number: string;
   date: string;
+  status: string;
   amountMinor: number;
   currency: 'AED' | 'SAR' | 'USD';
 }

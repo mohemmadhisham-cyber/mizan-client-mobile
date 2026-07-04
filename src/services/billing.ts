@@ -1,32 +1,55 @@
-import type { BillingPlan, Invoice, PaymentMethodInfo } from './types';
+import { supabase } from '@/lib/supabase';
 
-/** Billing & Subscriptions. Fixture-backed (real interface) -- swap to a live
- * query once a client-facing billing/invoices endpoint exists. */
+import type { BillingPlan, Invoice } from './types';
 
-const PLAN: BillingPlan = {
-  name: 'Professional',
-  status: 'active',
-  priceMinor: 14_900,
-  currency: 'USD',
-  nextPaymentDate: '2023-10-24',
-};
+/** Billing & Subscriptions, read-only for a client_user.
+ * Subscriptions are firm-scoped (the accountant's firm pays Mizan, not the
+ * individual SME client) -- get_my_firm_billing_summary/get_my_firm_invoices
+ * resolve the caller's own firm server-side and expose only safe display
+ * fields (no payment method/card data, which this app never shows a client). */
 
-const PAYMENT_METHOD: PaymentMethodInfo = { brand: 'VISA', last4: '4242', expiry: '12/25' };
+interface BillingSummaryRow {
+  firm_name: string;
+  plan_name: string | null;
+  plan_price_monthly: number | null;
+  plan_currency: string | null;
+  next_invoice_due: string | null;
+}
 
-const INVOICES: Invoice[] = [
-  { id: 'i1', date: '2023-09-24', amountMinor: 14_900, currency: 'USD' },
-  { id: 'i2', date: '2023-08-24', amountMinor: 14_900, currency: 'USD' },
-  { id: 'i3', date: '2023-07-24', amountMinor: 14_900, currency: 'USD' },
-];
+interface InvoiceRow {
+  id: string;
+  number: string;
+  amount: number;
+  currency: string;
+  status: string;
+  due_date: string | null;
+  created_at: string;
+}
 
 export const billingService = {
-  async getPlan(): Promise<BillingPlan> {
-    return PLAN;
+  async getPlan(): Promise<BillingPlan | null> {
+    const { data, error } = await supabase.rpc('get_my_firm_billing_summary');
+    if (error || !data || (data as BillingSummaryRow[]).length === 0) return null;
+    const row = (data as BillingSummaryRow[])[0];
+    return {
+      firmName: row.firm_name,
+      planName: row.plan_name,
+      priceMinor: Math.round((row.plan_price_monthly ?? 0) * 100),
+      currency: (row.plan_currency ?? 'AED') as BillingPlan['currency'],
+      nextPaymentDue: row.next_invoice_due,
+    };
   },
-  async getPaymentMethod(): Promise<PaymentMethodInfo> {
-    return PAYMENT_METHOD;
-  },
+
   async getInvoices(): Promise<Invoice[]> {
-    return INVOICES;
+    const { data, error } = await supabase.rpc('get_my_firm_invoices');
+    if (error || !data) return [];
+    return (data as InvoiceRow[]).map((r) => ({
+      id: r.id,
+      number: r.number,
+      date: r.created_at.slice(0, 10),
+      status: r.status,
+      amountMinor: Math.round(r.amount * 100),
+      currency: r.currency as Invoice['currency'],
+    }));
   },
 };
