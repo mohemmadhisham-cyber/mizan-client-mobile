@@ -13,6 +13,8 @@ export interface AuthState {
   /** Set only for the client_user role (via user_roles.client_id). */
   clientId: string | null;
   loading: boolean;
+  /** True while roles/clientId are being (re)fetched for an established session. */
+  rolesLoading: boolean;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -45,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [firmId, setFirmId] = useState<string | null>(null);
   const [clientId, setClientId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [rolesLoading, setRolesLoading] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -55,11 +58,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data.session);
       setUser(data.session?.user ?? null);
       if (data.session?.user) {
+        setRolesLoading(true);
         const r = await loadRoles(data.session.user.id);
         if (!mounted) return;
         setRoles(r.roles);
         setFirmId(r.firmId);
         setClientId(r.clientId);
+        setRolesLoading(false);
       }
       setLoading(false);
     })();
@@ -68,18 +73,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(sess);
       setUser(sess?.user ?? null);
       if (sess?.user) {
+        setRolesLoading(true);
         // Defer the Supabase call to avoid re-entrancy deadlocks (Supabase guidance).
         setTimeout(() => {
           loadRoles(sess.user.id).then((r) => {
             setRoles(r.roles);
             setFirmId(r.firmId);
             setClientId(r.clientId);
+            setRolesLoading(false);
           });
         }, 0);
       } else {
         setRoles([]);
         setFirmId(null);
         setClientId(null);
+        setRolesLoading(false);
       }
     });
 
@@ -96,15 +104,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     firmId,
     clientId,
     loading,
+    rolesLoading,
     signOut: async () => {
       await supabase.auth.signOut();
     },
     refresh: async () => {
       if (!user) return;
+      setRolesLoading(true);
       const r = await loadRoles(user.id);
       setRoles(r.roles);
       setFirmId(r.firmId);
       setClientId(r.clientId);
+      setRolesLoading(false);
     },
   };
 

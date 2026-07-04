@@ -6,7 +6,7 @@ import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DetailHeader } from '@/components/navigation/detail-header';
-import { Button, Card, Skeleton, Text } from '@/components/ui';
+import { Badge, Button, Card, Skeleton, Text } from '@/components/ui';
 import { calendarService } from '@/services/calendar';
 import type { CalendarEvent, CalendarEventKind } from '@/services/types';
 import { radius, spacing, useTheme } from '@/theme';
@@ -147,11 +147,7 @@ function EventCard({ event, onAction }: { event: CalendarEvent; onAction: () => 
               </Text>
             </View>
           </View>
-          <View style={{ backgroundColor: colors.bg, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 4 }}>
-            <Text variant="caption" weight="semibold" style={{ color: colors.fg, letterSpacing: 0.6 }}>
-              {event.timeLabel}
-            </Text>
-          </View>
+          <Badge label={event.timeLabel} bg={colors.bg} fg={colors.fg} />
         </View>
         {event.description ? (
           <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: spacing.sm }}>

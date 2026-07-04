@@ -2,10 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
 
 import { AmbientBackdrop } from '@/components/auth/ambient-backdrop';
-import { Keypad } from '@/components/auth/keypad';
 import { OtpBoxInput } from '@/components/auth/otp-box-input';
 import { Button, Card, Text } from '@/components/ui';
 import { acceptInvite, sendEmailOtp, verifyEmailOtp } from '@/services/auth';
@@ -61,62 +60,63 @@ export default function VerifyScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background, alignItems: 'center', justifyContent: 'center', padding: spacing.gutter }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <AmbientBackdrop topColor="#D5E3FF" bottomColor="#6BFE9C" />
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.gutter }}
+          keyboardShouldPersistTaps="handled">
+          <Card elevated style={{ width: '100%', maxWidth: 448, alignItems: 'center', gap: spacing.md }}>
+            <View style={{ alignItems: 'center', gap: 4 }}>
+              <Text variant="h1" center>
+                {t('auth.verifyTitle')}
+              </Text>
+              <Text variant="footnote" color="mutedForeground" center>
+                {t('auth.verifyBodyPrefix')}
+              </Text>
+              <Text variant="title" weight="semibold" center>
+                {email}
+              </Text>
+            </View>
 
-      <Card elevated style={{ width: '100%', maxWidth: 448, alignItems: 'center', gap: spacing.md }}>
-        <View style={{ alignItems: 'center', gap: 4 }}>
-          <Text variant="h1" center>
-            {t('auth.verifyTitle')}
-          </Text>
-          <Text variant="footnote" color="mutedForeground" center>
-            {t('auth.verifyBodyPrefix')}
-          </Text>
-          <Text variant="title" weight="semibold" center>
-            {email}
-          </Text>
-        </View>
+            <OtpBoxInput
+              value={code}
+              onChangeText={(v) => {
+                setError(null);
+                setCode(v);
+              }}
+              onSubmit={submit}
+            />
 
-        <OtpBoxInput value={code} />
+            {error ? (
+              <Text variant="footnote" color="danger" center>
+                {error}
+              </Text>
+            ) : null}
 
-        {error ? (
-          <Text variant="footnote" color="danger" center>
-            {error}
-          </Text>
-        ) : null}
+            <Pressable onPress={resend} disabled={cooldown > 0} accessibilityRole="button" hitSlop={8}>
+              <Text variant="caption" weight="semibold" color={cooldown > 0 ? 'mutedForeground' : 'primary'} style={{ letterSpacing: 1.2, textTransform: 'uppercase' }}>
+                {t('auth.resend')} {cooldown > 0 ? `(0:${String(cooldown).padStart(2, '0')})` : ''}
+              </Text>
+            </Pressable>
 
-        <Pressable onPress={resend} disabled={cooldown > 0} accessibilityRole="button" hitSlop={8}>
-          <Text variant="caption" weight="semibold" color={cooldown > 0 ? 'mutedForeground' : 'primary'} style={{ letterSpacing: 1.2, textTransform: 'uppercase' }}>
-            {t('auth.resend')} {cooldown > 0 ? `(0:${String(cooldown).padStart(2, '0')})` : ''}
-          </Text>
-        </Pressable>
+            <Button
+              title={t('auth.verify')}
+              onPress={submit}
+              disabled={code.length < 6}
+              loading={busy}
+              fullWidth
+            />
 
-        <Keypad
-          onDigit={(d) => {
-            setError(null);
-            setCode((c) => (c.length < 6 ? c + d : c));
-          }}
-          onBackspace={() => {
-            setError(null);
-            setCode((c) => c.slice(0, -1));
-          }}
-        />
-
-        <Button
-          title={t('auth.verify')}
-          onPress={submit}
-          disabled={code.length < 6}
-          loading={busy}
-          fullWidth
-        />
-
-        <Pressable onPress={() => router.back()} accessibilityRole="button" style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <Ionicons name="chevron-back" size={14} color={theme.colors.mutedForeground} />
-          <Text variant="footnote" color="mutedForeground">
-            {t('auth.backToEmail')}
-          </Text>
-        </Pressable>
-      </Card>
+            <Pressable onPress={() => router.back()} accessibilityRole="button" style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Ionicons name="chevron-back" size={14} color={theme.colors.mutedForeground} />
+              <Text variant="footnote" color="mutedForeground">
+                {t('auth.backToEmail')}
+              </Text>
+            </Pressable>
+          </Card>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

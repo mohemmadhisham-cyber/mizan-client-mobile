@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -22,6 +23,7 @@ const MODES: { key: ThemeMode; label: string; icon: keyof typeof Ionicons.glyphM
 export default function SettingsScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { mode, setMode } = useThemeControls();
   const { user, signOut } = useAuth();
 
@@ -100,8 +102,8 @@ export default function SettingsScreen() {
         <View style={{ gap: spacing.sm }}>
           <Text variant="title">About</Text>
           <Card padded={false} style={{ overflow: 'hidden' }}>
-            <ActionRow icon="document-text-outline" label="Privacy Policy" onPress={() => comingSoon('Privacy Policy')} />
-            <ActionRow icon="document-text-outline" label="Terms of Service" onPress={() => comingSoon('Terms of Service')} isLast />
+            <ActionRow icon="document-text-outline" label="Privacy Policy" onPress={() => router.push('/privacy-policy')} />
+            <ActionRow icon="document-text-outline" label="Terms of Service" onPress={() => router.push('/terms-of-service')} isLast />
           </Card>
         </View>
 

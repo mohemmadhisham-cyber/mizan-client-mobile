@@ -1,15 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { type Href, useRouter } from 'expo-router';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { I18nManager, Pressable, StyleSheet, View } from 'react-native';
 
 import { TrendChart } from '@/components/charts/trend-chart';
+import { EditDashboardModal } from '@/components/dashboard/edit-dashboard-modal';
 import { KpiCard } from '@/components/dashboard/kpi-card';
 import { QuickActionButton } from '@/components/dashboard/quick-action-button';
 import { AppHeader } from '@/components/navigation/app-header';
 import { Card, EmptyState, Screen, Skeleton, Text } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
+import { useDashboardPrefs } from '@/lib/dashboard-prefs';
 import { daysUntil, formatMoneyMinor, pctChange } from '@/lib/format';
 import { clientDataService } from '@/services/client-data';
 import type { InsightCard, Severity } from '@/services/types';
@@ -31,9 +34,12 @@ function firstNameFrom(email?: string, fullName?: string): string {
 export default function HomeScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const theme = useTheme();
   const { user, firmId } = useAuth();
   const companyKey = firmId ?? 'none';
   const name = firstNameFrom(user?.email, (user?.user_metadata as { full_name?: string })?.full_name);
+  const { visible, toggle } = useDashboardPrefs();
+  const [editingDashboard, setEditingDashboard] = useState(false);
 
   const kpis = useQuery({ queryKey: ['kpis', companyKey], queryFn: clientDataService.getKpis });
   const rev = useQuery({ queryKey: ['rev', companyKey], queryFn: clientDataService.getRevenueSeries });
@@ -75,12 +81,23 @@ export default function HomeScreen() {
   const deltaSub = (d: number | null) => (d === null ? undefined : `${d >= 0 ? '+' : ''}${d}% ${t('home.vsLastMonth')}`);
 
   return (
-    <Screen scroll header={<AppHeader />}>
-      <View style={{ gap: spacing.xs, marginTop: spacing.sm, marginBottom: spacing.lg }}>
-        <Text variant="h1">{t('home.greeting', { name })}</Text>
-        <Text variant="callout" color="mutedForeground">
-          {t('home.subtitle')}
-        </Text>
+    <>
+      <Screen scroll header={<AppHeader />}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginTop: spacing.sm, marginBottom: spacing.lg }}>
+        <View style={{ gap: spacing.xs, flex: 1 }}>
+          <Text variant="h1">{t('home.greeting', { name })}</Text>
+          <Text variant="callout" color="mutedForeground">
+            {t('home.subtitle')}
+          </Text>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Edit dashboard"
+          onPress={() => setEditingDashboard(true)}
+          hitSlop={8}
+          style={{ padding: spacing.xs }}>
+          <Ionicons name="options-outline" size={22} color={theme.colors.mutedForeground} />
+        </Pressable>
       </View>
 
       {/* Hero — Figma "Available to Spend" */}
@@ -139,81 +156,105 @@ export default function HomeScreen() {
       </View>
 
       {/* Cash Flow — Figma card hosting the real trend chart */}
-      <View style={{ marginBottom: spacing.xl }}>
-        {rev.data ? (
-          <TrendChart question={t('home.cashFlow')} data={rev.data} type="line" headingVariant="title" />
-        ) : (
-          <Skeleton height={180} radius={radius.lg} />
-        )}
-      </View>
+      {visible.cashFlow ? (
+        <View style={{ marginBottom: spacing.xl }}>
+          {rev.data ? (
+            <TrendChart question={t('home.cashFlow')} data={rev.data} type="line" headingVariant="title" currency={cur} />
+          ) : (
+            <Skeleton height={180} radius={radius.lg} />
+          )}
+        </View>
+      ) : null}
 
       {/* Critical Tasks — Figma-styled cards */}
-      <SectionHeader title={t('home.criticalTasks')} />
-      {!acts.data ? (
-        <ListSkeleton />
-      ) : acts.data.length === 0 ? (
-        <Card>
-          <Text variant="callout" color="mutedForeground">
-            {t('home.allCaughtUp')}
-          </Text>
-        </Card>
-      ) : (
-        <View style={{ gap: spacing.sm, marginBottom: spacing.xl }}>
-          {acts.data.map((a, i) => (
-            <TaskRow key={a.id} label={a.label} count={a.count} href={a.href} urgent={i === 0} />
-          ))}
+      {visible.criticalTasks ? (
+        <>
+          <SectionHeader title={t('home.criticalTasks')} />
+          {!acts.data ? (
+            <ListSkeleton />
+          ) : acts.data.length === 0 ? (
+            <Card>
+              <Text variant="callout" color="mutedForeground">
+                {t('home.allCaughtUp')}
+              </Text>
+            </Card>
+          ) : (
+            <View style={{ gap: spacing.sm, marginBottom: spacing.xl }}>
+              {acts.data.map((a, i) => (
+                <TaskRow key={a.id} label={a.label} count={a.count} href={a.href} urgent={i === 0} />
+              ))}
+            </View>
+          )}
+        </>
+      ) : null}
+
+      {visible.thisMonth ? (
+        <>
+          <SectionHeader title={t('home.thisMonth')} />
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginBottom: spacing.xl }}>
+            {k ? (
+              <>
+                <KpiCard
+                  label={t('home.moneyIn')}
+                  value={formatMoneyMinor(k.moneyIn, cur)}
+                  icon="arrow-down-circle-outline"
+                  accent="good"
+                  sub={deltaSub(revDelta)}
+                />
+                <KpiCard
+                  label={t('home.moneyOut')}
+                  value={formatMoneyMinor(k.moneyOut, cur)}
+                  icon="arrow-up-circle-outline"
+                  sub={deltaSub(expDelta)}
+                />
+                <KpiCard
+                  label={t('home.vatDue')}
+                  value={formatMoneyMinor(k.vatDue, cur)}
+                  icon="document-text-outline"
+                  accent={days <= 7 ? 'alert' : 'warn'}
+                  sub={t('home.dueIn', { days })}
+                />
+              </>
+            ) : (
+              Array.from({ length: 3 }).map((_, i) => <KpiSkeleton key={i} />)
+            )}
+          </View>
+        </>
+      ) : null}
+
+      {visible.whatChanged ? (
+        <>
+          <SectionHeader title={t('home.whatChanged')} />
+          {!ins.data ? (
+            <ListSkeleton />
+          ) : (
+            <View style={{ gap: spacing.sm }}>
+              {ins.data.map((card) => (
+                <InsightRow key={card.id} card={card} />
+              ))}
+            </View>
+          )}
+        </>
+      ) : null}
+
+      {visible.expenseTrend ? (
+        <View style={{ marginTop: spacing.lg }}>
+          {exp.data ? (
+            <TrendChart question={t('home.expenseTrend')} data={exp.data} type="bar" currency={cur} />
+          ) : (
+            <Skeleton height={200} radius={radius.lg} />
+          )}
         </View>
-      )}
+      ) : null}
+      </Screen>
 
-      <SectionHeader title={t('home.thisMonth')} />
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginBottom: spacing.xl }}>
-        {k ? (
-          <>
-            <KpiCard
-              label={t('home.moneyIn')}
-              value={formatMoneyMinor(k.moneyIn, cur)}
-              icon="arrow-down-circle-outline"
-              accent="good"
-              sub={deltaSub(revDelta)}
-            />
-            <KpiCard
-              label={t('home.moneyOut')}
-              value={formatMoneyMinor(k.moneyOut, cur)}
-              icon="arrow-up-circle-outline"
-              sub={deltaSub(expDelta)}
-            />
-            <KpiCard
-              label={t('home.vatDue')}
-              value={formatMoneyMinor(k.vatDue, cur)}
-              icon="document-text-outline"
-              accent={days <= 7 ? 'alert' : 'warn'}
-              sub={t('home.dueIn', { days })}
-            />
-          </>
-        ) : (
-          Array.from({ length: 3 }).map((_, i) => <KpiSkeleton key={i} />)
-        )}
-      </View>
-
-      <SectionHeader title={t('home.whatChanged')} />
-      {!ins.data ? (
-        <ListSkeleton />
-      ) : (
-        <View style={{ gap: spacing.sm }}>
-          {ins.data.map((card) => (
-            <InsightRow key={card.id} card={card} />
-          ))}
-        </View>
-      )}
-
-      <View style={{ marginTop: spacing.lg }}>
-        {exp.data ? (
-          <TrendChart question={t('home.expenseTrend')} data={exp.data} type="bar" />
-        ) : (
-          <Skeleton height={200} radius={radius.lg} />
-        )}
-      </View>
-    </Screen>
+      <EditDashboardModal
+        visible={editingDashboard}
+        sectionVisibility={visible}
+        onToggle={toggle}
+        onDone={() => setEditingDashboard(false)}
+      />
+    </>
   );
 }
 

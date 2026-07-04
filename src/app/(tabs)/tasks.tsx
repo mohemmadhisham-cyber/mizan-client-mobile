@@ -6,7 +6,7 @@ import { Alert, Pressable, View } from 'react-native';
 
 import { AppHeader } from '@/components/navigation/app-header';
 import { StepUpModal } from '@/components/tasks/step-up-modal';
-import { Card, Screen, Skeleton, Text } from '@/components/ui';
+import { Badge, Card, Screen, Skeleton, Text } from '@/components/ui';
 import { tasksService } from '@/services/tasks';
 import type { ActionCenterTask } from '@/services/types';
 import { radius, spacing, useTheme } from '@/theme';
@@ -143,16 +143,6 @@ export default function TasksScreen() {
   );
 }
 
-function Badge({ label, bg, fg }: { label: string; bg: string; fg: string }) {
-  return (
-    <View style={{ backgroundColor: bg, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 4 }}>
-      <Text variant="caption" weight="semibold" style={{ color: fg, letterSpacing: 0.6 }}>
-        {label}
-      </Text>
-    </View>
-  );
-}
-
 function UrgentTaskRow({ task, isLast, onAction }: { task: ActionCenterTask; isLast: boolean; onAction: () => void }) {
   const theme = useTheme();
   const isPrimary = task.actionKind === 'approve';
@@ -164,7 +154,7 @@ function UrgentTaskRow({ task, isLast, onAction }: { task: ActionCenterTask; isL
         borderBottomWidth: isLast ? 0 : 1,
         borderBottomColor: 'rgba(0,0,0,0.05)',
       }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <View style={{ flex: 1, gap: 4, paddingRight: spacing.md }}>
           <Text variant="title">{task.title}</Text>
           <Text variant="footnote" color="mutedForeground">

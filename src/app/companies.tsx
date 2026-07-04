@@ -6,7 +6,7 @@ import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DetailHeader } from '@/components/navigation/detail-header';
-import { Card, Skeleton, Text } from '@/components/ui';
+import { Badge, Card, Skeleton, Text } from '@/components/ui';
 import { companiesService } from '@/services/companies';
 import type { CompanyInfo, TeamMemberInfo, TeamRole } from '@/services/types';
 import { radius, spacing, useTheme } from '@/theme';
@@ -101,11 +101,11 @@ function CompanyCard({ company }: { company: CompanyInfo }) {
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <View style={{ gap: spacing.sm }}>
           <Text variant="title">{company.name}</Text>
-          <View style={{ backgroundColor: theme.colors.secondary, borderRadius: radius.full, alignSelf: 'flex-start', paddingHorizontal: spacing.sm, paddingVertical: 4 }}>
-            <Text variant="caption" weight="semibold" color="mutedForeground" style={{ letterSpacing: 0.6 }}>
-              {company.status === 'active' ? 'Active' : 'Inactive'}
-            </Text>
-          </View>
+          <Badge
+            label={company.status === 'active' ? 'Active' : 'Inactive'}
+            bg={theme.colors.secondary}
+            fg={theme.colors.mutedForeground}
+          />
         </View>
         <Pressable accessibilityRole="button" onPress={() => comingSoon('Company options')} hitSlop={8}>
           <Ionicons name="ellipsis-vertical" size={18} color={theme.colors.mutedForeground} />

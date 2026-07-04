@@ -101,6 +101,14 @@ export default function CaptureScreen() {
     setProgress(null);
   }
 
+  function close() {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  }
+
   if (!permission) {
     return <View style={styles.root} />;
   }
@@ -116,7 +124,7 @@ export default function CaptureScreen() {
           Mizan uses your camera to photograph receipts for your accountant to review.
         </Text>
         <Button title="Enable camera" onPress={() => requestPermission()} />
-        <Pressable onPress={() => router.back()} style={{ marginTop: 16 }}>
+        <Pressable onPress={close} style={{ marginTop: 16 }}>
           <Text variant="footnote" style={{ color: 'rgba(255,255,255,0.6)' }}>
             Cancel
           </Text>
@@ -140,7 +148,7 @@ export default function CaptureScreen() {
 
       <View style={[styles.overlay, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <View style={styles.topBar}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={() => router.back()} style={styles.roundButton}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={close} style={styles.roundButton}>
             <Ionicons name="close" size={20} color="#FFFFFF" />
           </Pressable>
           <Pressable
@@ -195,7 +203,7 @@ export default function CaptureScreen() {
               <Ionicons name="checkmark-circle" size={56} color="#6BFE9C" />
               <Text style={styles.statusTitle}>Receipt uploaded</Text>
               <Text style={styles.statusBody}>Pending review by your accountant.</Text>
-              <Button title="Done" onPress={() => router.back()} />
+              <Button title="Done" onPress={close} />
             </>
           ) : (
             <>

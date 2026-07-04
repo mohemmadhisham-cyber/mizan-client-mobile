@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Modal, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Keypad } from '@/components/auth/keypad';
 import { OtpBoxInput } from '@/components/auth/otp-box-input';
 import { Button, Card, Text } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
@@ -86,24 +85,20 @@ export function StepUpModal({ visible, scope, title, onCancel, onVerified }: Ste
             {email}
           </Text>
 
-          <OtpBoxInput value={code} />
+          <OtpBoxInput
+            value={code}
+            onChangeText={(v) => {
+              setError(null);
+              setCode(v);
+            }}
+            onSubmit={submit}
+          />
 
           {error ? (
             <Text variant="footnote" color="danger" center>
               {error}
             </Text>
           ) : null}
-
-          <Keypad
-            onDigit={(d) => {
-              setError(null);
-              setCode((c) => (c.length < 6 ? c + d : c));
-            }}
-            onBackspace={() => {
-              setError(null);
-              setCode((c) => c.slice(0, -1));
-            }}
-          />
 
           <Button title={`Verify — ${title}`} onPress={submit} disabled={code.length < 6} loading={busy} fullWidth />
           <Pressable accessibilityRole="button" onPress={onCancel}>

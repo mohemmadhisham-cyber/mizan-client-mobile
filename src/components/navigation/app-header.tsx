@@ -1,14 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 
-import { Text } from '@/components/ui';
+import { PressableScale, Text } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
 import { radius, spacing, useTheme } from '@/theme';
 
+const WORDMARK_LIGHT = require('../../../assets/images/mizan-wordmark.png');
+const WORDMARK_DARK = require('../../../assets/images/mizan-wordmark-light.png');
+
 /**
- * Figma top app bar: profile avatar (→ settings/more, incl. sign-out) · "Mizan"
- * wordmark · notification bell. Rendered full-bleed via Screen's `header` slot.
+ * Figma top app bar: profile avatar (→ settings/more, incl. sign-out) · real
+ * Mizan wordmark · notification bell. Rendered full-bleed via Screen's
+ * `header` slot.
  */
 export function AppHeader() {
   const theme = useTheme();
@@ -22,7 +26,7 @@ export function AppHeader() {
         styles.bar,
         { paddingHorizontal: spacing.gutter, borderBottomColor: theme.colors.border, backgroundColor: theme.colors.background },
       ]}>
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel="Profile and settings"
         onPress={() => router.push('/more')}
@@ -30,19 +34,22 @@ export function AppHeader() {
         <Text variant="footnote" weight="bold" style={{ color: theme.colors.primaryForeground }}>
           {initial}
         </Text>
-      </Pressable>
+      </PressableScale>
 
-      <Text variant="h2" weight="bold" style={{ color: theme.colors.primary }}>
-        Mizan
-      </Text>
+      <Image
+        source={theme.dark ? WORDMARK_DARK : WORDMARK_LIGHT}
+        style={styles.wordmark}
+        resizeMode="contain"
+        accessibilityLabel="Mizan"
+      />
 
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel="Notifications"
         onPress={() => router.push('/notifications')}
         hitSlop={8}>
         <Ionicons name="notifications-outline" size={22} color={theme.colors.foreground} />
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }
@@ -54,6 +61,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  wordmark: {
+    height: 22,
+    width: 102,
   },
   avatar: {
     width: 36,
