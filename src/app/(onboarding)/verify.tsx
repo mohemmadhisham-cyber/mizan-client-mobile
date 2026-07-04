@@ -51,7 +51,10 @@ export default function VerifyScreen() {
   const resend = async () => {
     if (cooldown > 0) return;
     setError(null);
-    const res = await sendEmailOtp(email, true);
+    // Never create-a-new-account here: by the time we're on this screen the
+    // account was already resolved (existing login, or just created via a
+    // validated invite back on the email step) -- resend never needs to.
+    const res = await sendEmailOtp(email, false);
     if (!res.ok) {
       setError(res.error ?? t('auth.genericError'));
       return;

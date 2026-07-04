@@ -7,6 +7,7 @@ import { I18nManager, Pressable, StyleSheet, View } from 'react-native';
 
 import { TrendChart } from '@/components/charts/trend-chart';
 import { EditDashboardModal } from '@/components/dashboard/edit-dashboard-modal';
+import { GracePeriodBanner } from '@/components/dashboard/grace-period-banner';
 import { KpiCard } from '@/components/dashboard/kpi-card';
 import { QuickActionButton } from '@/components/dashboard/quick-action-button';
 import { AppHeader } from '@/components/navigation/app-header';
@@ -99,6 +100,8 @@ export default function HomeScreen() {
           <Ionicons name="options-outline" size={22} color={theme.colors.mutedForeground} />
         </Pressable>
       </View>
+
+      <GracePeriodBanner />
 
       {/* Hero — Figma "Available to Spend" */}
       {k ? (

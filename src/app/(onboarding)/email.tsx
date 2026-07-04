@@ -17,11 +17,18 @@ export default function EmailScreen() {
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Only a *validated* invite (checked server-side via peekInvite) is allowed
+  // to create a brand-new account. This app has no self-serve sign-up --
+  // every account is provisioned by an accountant's invite.
+  const [invitedEmail, setInvitedEmail] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return;
     peekInvite(token).then((r) => {
-      if (r.valid && r.email) setEmail(r.email);
+      if (r.valid && r.email) {
+        setEmail(r.email);
+        setInvitedEmail(r.email);
+      }
     });
   }, [token]);
 
@@ -31,15 +38,21 @@ export default function EmailScreen() {
     if (!valid || busy) return;
     setError(null);
     setBusy(true);
-    const res = await sendEmailOtp(email, true);
+    const normalized = email.trim().toLowerCase();
+    const canCreateAccount = invitedEmail !== null && invitedEmail.toLowerCase() === normalized;
+    const res = await sendEmailOtp(email, canCreateAccount);
     setBusy(false);
     if (!res.ok) {
-      setError(res.error ?? t('auth.genericError'));
+      setError(
+        canCreateAccount
+          ? (res.error ?? t('auth.genericError'))
+          : "We couldn't find an account for that email. Ask your accountant to send you an invite.",
+      );
       return;
     }
     router.push({
       pathname: '/verify',
-      params: { email: email.trim().toLowerCase(), ...(token ? { token } : {}) },
+      params: { email: normalized, ...(token ? { token } : {}) },
     });
   };
 
