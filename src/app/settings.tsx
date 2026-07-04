@@ -94,7 +94,7 @@ export default function SettingsScreen() {
         <View style={{ gap: spacing.sm }}>
           <Text variant="title">Security</Text>
           <Card padded={false} style={{ overflow: 'hidden' }}>
-            <ActionRow icon="finger-print-outline" label="Two-factor authentication" onPress={() => comingSoon('Two-factor authentication')} />
+            <ActionRow icon="finger-print-outline" label="Backup codes" onPress={() => router.push('/backup-codes')} />
             <ActionRow icon="phone-portrait-outline" label="Active sessions" onPress={() => comingSoon('Active sessions')} isLast />
           </Card>
         </View>
