@@ -9,6 +9,10 @@
 export const EXPO_PUBLIC_SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 export const EXPO_PUBLIC_SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
+/** Web app base URL — used to open browser-based flows (e.g. a renewal
+ * payment link) that this native app doesn't render itself. Not a secret. */
+export const EXPO_PUBLIC_WEB_APP_URL = process.env.EXPO_PUBLIC_WEB_APP_URL ?? 'https://mizan.team';
+
 export const isSupabaseConfigured =
   EXPO_PUBLIC_SUPABASE_URL.length > 0 && EXPO_PUBLIC_SUPABASE_ANON_KEY.length > 0;
 

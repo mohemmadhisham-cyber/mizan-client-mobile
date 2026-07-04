@@ -12,6 +12,10 @@ export interface AuthState {
   firmId: string | null;
   /** Set only for the client_user role (via user_roles.client_id). */
   clientId: string | null;
+  /** The linked client company's access status ('active' | 'suspended'), or
+   * null if there's no linked client yet. Read directly (not via RLS-gated
+   * user_client()) so a suspended client can still see WHY they're gated. */
+  clientStatus: string | null;
   loading: boolean;
   /** True while roles/clientId are being (re)fetched for an established session. */
   rolesLoading: boolean;
@@ -25,6 +29,7 @@ interface LoadedRoles {
   roles: AppRole[];
   firmId: string | null;
   clientId: string | null;
+  clientStatus: string | null;
 }
 
 async function loadRoles(userId: string): Promise<LoadedRoles> {
@@ -33,10 +38,23 @@ async function loadRoles(userId: string): Promise<LoadedRoles> {
   const roles = rows.map((r) => r.role as AppRole);
   const firmRow = rows.find((r) => r.firm_id);
   const clientRow = rows.find((r) => r.role === 'client_user' && r.client_id);
+  const clientId = (clientRow?.client_id as string | undefined) ?? null;
+
+  let clientStatus: string | null = null;
+  if (clientId) {
+    // Deliberately NOT gated by user_client() (which only resolves active
+    // clients) — a suspended client still needs to read their own status to
+    // see the suspended screen. RLS still restricts this to the caller's own
+    // client row via a dedicated policy, not user_client().
+    const { data: client } = await supabase.from('clients').select('status').eq('id', clientId).maybeSingle();
+    clientStatus = client?.status ?? null;
+  }
+
   return {
     roles,
     firmId: (firmRow?.firm_id as string | undefined) ?? null,
-    clientId: (clientRow?.client_id as string | undefined) ?? null,
+    clientId,
+    clientStatus,
   };
 }
 
@@ -46,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [firmId, setFirmId] = useState<string | null>(null);
   const [clientId, setClientId] = useState<string | null>(null);
+  const [clientStatus, setClientStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [rolesLoading, setRolesLoading] = useState(false);
 
@@ -64,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRoles(r.roles);
         setFirmId(r.firmId);
         setClientId(r.clientId);
+        setClientStatus(r.clientStatus);
         setRolesLoading(false);
       }
       setLoading(false);
@@ -80,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setRoles(r.roles);
             setFirmId(r.firmId);
             setClientId(r.clientId);
+            setClientStatus(r.clientStatus);
             setRolesLoading(false);
           });
         }, 0);
@@ -87,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRoles([]);
         setFirmId(null);
         setClientId(null);
+        setClientStatus(null);
         setRolesLoading(false);
       }
     });
@@ -103,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     roles,
     firmId,
     clientId,
+    clientStatus,
     loading,
     rolesLoading,
     signOut: async () => {
@@ -115,6 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRoles(r.roles);
       setFirmId(r.firmId);
       setClientId(r.clientId);
+      setClientStatus(r.clientStatus);
       setRolesLoading(false);
     },
   };

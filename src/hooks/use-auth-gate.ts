@@ -11,11 +11,13 @@ import { useAuth } from '@/lib/auth-context';
  *    (covers self-serve "Get Started" signups, which never exchange an
  *    invite token, so user_roles.client_id stays null; invite-link signups
  *    already have client_id by the time this runs and skip straight through)
+ *  - linked, but the firm suspended this client (e.g. non-renewal) →
+ *    access-suspended screen
  * RLS enforces per-tenant data access regardless, so this gate is UX, not the
  * security boundary.
  */
 export function useAuthGate() {
-  const { session, loading, rolesLoading, clientId } = useAuth();
+  const { session, loading, rolesLoading, clientId, clientStatus } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
@@ -23,6 +25,8 @@ export function useAuthGate() {
     if (loading) return;
     const inOnboarding = segments[0] === '(onboarding)';
     const onPendingScreen = segments[0] === 'pending-approval';
+    const onSuspendedScreen = segments[0] === 'access-suspended';
+    const suspended = !!clientId && clientStatus === 'suspended';
 
     if (!session && !inOnboarding) {
       router.replace('/welcome');
@@ -36,8 +40,12 @@ export function useAuthGate() {
       router.replace('/pending-approval');
       return;
     }
-    if (session && clientId && onPendingScreen) {
+    if (session && !rolesLoading && suspended && !onSuspendedScreen) {
+      router.replace('/access-suspended');
+      return;
+    }
+    if (session && clientId && !suspended && (onPendingScreen || onSuspendedScreen)) {
       router.replace('/');
     }
-  }, [session, loading, rolesLoading, clientId, segments, router]);
+  }, [session, loading, rolesLoading, clientId, clientStatus, segments, router]);
 }
