@@ -1,14 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AddEventModal } from '@/components/calendar/add-event-modal';
 import { DetailHeader } from '@/components/navigation/detail-header';
-import { Badge, Button, Card, Skeleton, Text } from '@/components/ui';
+import { Badge, Card, Skeleton, Text } from '@/components/ui';
+import { useAuth } from '@/lib/auth-context';
 import { calendarService } from '@/services/calendar';
-import type { CalendarEvent, CalendarEventKind } from '@/services/types';
+import type { CalendarEvent, CalendarEventKind, NewCalendarEvent } from '@/services/types';
 import { radius, spacing, useTheme } from '@/theme';
 
 const KIND_ICON: Record<CalendarEventKind, keyof typeof Ionicons.glyphMap> = {
@@ -23,11 +24,25 @@ const KIND_COLOR: Record<CalendarEventKind, { bg: string; fg: string; dot: strin
   task: { bg: '#6BFE9C', fg: '#006D37', dot: '#006D37' },
 };
 
+function formatTimeLabel(time?: string | null): string {
+  if (!time) return 'All day';
+  const [h, m] = time.split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
+}
+
+function monthYearLabel(dateKey: string): string {
+  return new Date(`${dateKey}T00:00:00`).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+}
+
 export default function CalendarScreen() {
   const theme = useTheme();
-  const router = useRouter();
   const insets = useSafeAreaInsets();
+  const qc = useQueryClient();
+  const { clientId, user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(calendarService.defaultDate);
+  const [addingEvent, setAddingEvent] = useState(false);
 
   const days = useQuery({ queryKey: ['calendar-days'], queryFn: calendarService.getDays });
   const events = useQuery({
@@ -35,19 +50,44 @@ export default function CalendarScreen() {
     queryFn: () => calendarService.getEventsForDate(selectedDate),
   });
 
+  async function handleCreate(draft: Omit<NewCalendarEvent, 'eventDate'>) {
+    if (!clientId || !user) {
+      Alert.alert('Not linked yet', 'Your account is not linked to a company yet.');
+      return;
+    }
+    const res = await calendarService.createEvent({ ...draft, eventDate: selectedDate }, clientId, user.id);
+    if (!res.ok) {
+      Alert.alert('Could not add event', res.error ?? 'Try again.');
+      return;
+    }
+    setAddingEvent(false);
+    void qc.invalidateQueries({ queryKey: ['calendar-events', selectedDate] });
+    void qc.invalidateQueries({ queryKey: ['calendar-days'] });
+  }
+
+  async function handleDelete(id: string) {
+    const res = await calendarService.deleteEvent(id);
+    if (!res.ok) {
+      Alert.alert('Could not delete event', res.error ?? 'Try again.');
+      return;
+    }
+    void qc.invalidateQueries({ queryKey: ['calendar-events', selectedDate] });
+    void qc.invalidateQueries({ queryKey: ['calendar-days'] });
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
-      <DetailHeader title="October 2023" />
+      <DetailHeader title={monthYearLabel(selectedDate)} />
 
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.gutter, marginBottom: spacing.md }}>
           <Text variant="footnote" color="mutedForeground">
-            {events.data?.length ?? 0} events today
+            {events.data?.length ?? 0} events this day
           </Text>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Add event"
-            onPress={() => Alert.alert('Coming soon', 'Creating calendar events is not yet available.')}
+            onPress={() => setAddingEvent(true)}
             style={{ width: 40, height: 40, borderRadius: radius.full, backgroundColor: theme.colors.primary, alignItems: 'center', justifyContent: 'center' }}>
             <Ionicons name="add" size={18} color={theme.colors.primaryForeground} />
           </Pressable>
@@ -56,7 +96,8 @@ export default function CalendarScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: spacing.gutter, gap: spacing.sm, marginBottom: spacing.lg }}>
+          style={{ flexGrow: 0 }}
+          contentContainerStyle={{ alignItems: 'center', paddingHorizontal: spacing.gutter, gap: spacing.sm, marginBottom: spacing.lg }}>
           {!days.data
             ? Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} width={64} height={88} radius={radius.lg} />)
             : days.data.map((d) => {
@@ -98,7 +139,7 @@ export default function CalendarScreen() {
 
         <View style={{ paddingHorizontal: spacing.gutter }}>
           <Text variant="title" style={{ marginBottom: spacing.md }}>
-            Today&apos;s Schedule
+            Schedule
           </Text>
 
           {!events.data ? (
@@ -112,23 +153,24 @@ export default function CalendarScreen() {
           ) : (
             <View style={{ borderLeftWidth: 2, borderLeftColor: theme.colors.border, paddingLeft: spacing.lg, gap: spacing.lg }}>
               {events.data.map((e) => (
-                <EventCard
-                  key={e.id}
-                  event={e}
-                  onAction={() => {
-                    if (e.actionLabel === 'Review Now') router.push('/tasks');
-                  }}
-                />
+                <EventCard key={e.id} event={e} onDelete={() => handleDelete(e.id)} />
               ))}
             </View>
           )}
         </View>
       </ScrollView>
+
+      <AddEventModal
+        visible={addingEvent}
+        dateLabel={new Date(`${selectedDate}T00:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+        onCancel={() => setAddingEvent(false)}
+        onCreate={handleCreate}
+      />
     </View>
   );
 }
 
-function EventCard({ event, onAction }: { event: CalendarEvent; onAction: () => void }) {
+function EventCard({ event, onDelete }: { event: CalendarEvent; onDelete: () => void }) {
   const theme = useTheme();
   const colors = KIND_COLOR[event.kind];
   return (
@@ -142,12 +184,14 @@ function EventCard({ event, onAction }: { event: CalendarEvent; onAction: () => 
             </View>
             <View style={{ flex: 1 }}>
               <Text variant="title">{event.title}</Text>
-              <Text variant="footnote" color="mutedForeground">
-                {event.subtitle}
-              </Text>
+              {event.location ? (
+                <Text variant="footnote" color="mutedForeground">
+                  {event.location}
+                </Text>
+              ) : null}
             </View>
           </View>
-          <Badge label={event.timeLabel} bg={colors.bg} fg={colors.fg} />
+          <Badge label={formatTimeLabel(event.eventTime)} bg={colors.bg} fg={colors.fg} />
         </View>
         {event.description ? (
           <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: spacing.sm }}>
@@ -156,9 +200,11 @@ function EventCard({ event, onAction }: { event: CalendarEvent; onAction: () => 
             </Text>
           </View>
         ) : null}
-        {event.actionLabel ? (
-          <Button title={event.actionLabel} variant="secondary" fullWidth onPress={onAction} />
-        ) : null}
+        <Pressable accessibilityRole="button" onPress={onDelete} style={{ alignSelf: 'flex-end' }}>
+          <Text variant="caption" weight="semibold" color="danger">
+            Delete
+          </Text>
+        </Pressable>
       </Card>
     </View>
   );

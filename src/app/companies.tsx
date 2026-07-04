@@ -7,24 +7,24 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DetailHeader } from '@/components/navigation/detail-header';
 import { Badge, Card, Skeleton, Text } from '@/components/ui';
+import { useAuth } from '@/lib/auth-context';
 import { companiesService } from '@/services/companies';
-import type { CompanyInfo, TeamMemberInfo, TeamRole } from '@/services/types';
+import type { CompanyInfo, TeamMemberInfo } from '@/services/types';
 import { radius, spacing, useTheme } from '@/theme';
 
 function comingSoon(feature: string) {
   Alert.alert('Coming soon', `${feature} isn't available yet.`);
 }
 
-const ROLE_LABEL: Record<TeamRole, string> = { owner: 'Owner', admin: 'Admin', viewer: 'Viewer' };
-
 export default function CompaniesScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ tab?: string }>();
   const [tab, setTab] = useState<'companies' | 'team'>(params.tab === 'team' ? 'team' : 'companies');
+  const { user, clientId } = useAuth();
 
-  const companies = useQuery({ queryKey: ['companies'], queryFn: companiesService.getCompanies });
-  const team = useQuery({ queryKey: ['team'], queryFn: companiesService.getTeam });
+  const companies = useQuery({ queryKey: ['companies', clientId], queryFn: () => companiesService.getCompanies(clientId) });
+  const team = useQuery({ queryKey: ['team', clientId], queryFn: companiesService.getTeam });
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
@@ -67,10 +67,16 @@ export default function CompaniesScreen() {
           )
         ) : !team.data ? (
           <Skeleton height={200} radius={radius.lg} />
+        ) : team.data.length === 0 ? (
+          <Card>
+            <Text variant="callout" color="mutedForeground">
+              No teammates yet.
+            </Text>
+          </Card>
         ) : (
           <Card padded={false} elevated style={{ overflow: 'hidden' }}>
             {team.data.map((m, i) => (
-              <TeamRow key={m.id} member={m} isLast={i === team.data.length - 1} />
+              <TeamRow key={m.userId} member={m} isSelf={m.userId === user?.id} isLast={i === team.data.length - 1} />
             ))}
           </Card>
         )}
@@ -118,8 +124,12 @@ function CompanyCard({ company }: { company: CompanyInfo }) {
   );
 }
 
-function TeamRow({ member, isLast }: { member: TeamMemberInfo; isLast: boolean }) {
+function TeamRow({ member, isSelf, isLast }: { member: TeamMemberInfo; isSelf: boolean; isLast: boolean }) {
   const theme = useTheme();
+  const joined = new Date(member.joinedAt);
+  const joinedLabel = Number.isNaN(joined.getTime())
+    ? ''
+    : `Joined ${joined.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}`;
   return (
     <View
       style={{
@@ -140,20 +150,17 @@ function TeamRow({ member, isLast }: { member: TeamMemberInfo; isLast: boolean }
           justifyContent: 'center',
         }}>
         <Text variant="callout" weight="bold" color="primary">
-          {member.name[0]}
+          {member.email[0]?.toUpperCase()}
         </Text>
       </View>
       <View style={{ flex: 1 }}>
         <Text variant="callout" weight="semibold">
-          {member.name}
+          {isSelf ? 'You' : member.email}
         </Text>
         <Text variant="footnote" color="mutedForeground">
-          {member.email}
+          {isSelf ? member.email : joinedLabel}
         </Text>
       </View>
-      <Text variant="caption" weight="semibold" color="mutedForeground">
-        {ROLE_LABEL[member.role]}
-      </Text>
     </View>
   );
 }

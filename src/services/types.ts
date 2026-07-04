@@ -102,13 +102,10 @@ export interface CompanyInfo {
   lastSyncedLabel: string;
 }
 
-export type TeamRole = 'owner' | 'admin' | 'viewer';
-
 export interface TeamMemberInfo {
-  id: string;
-  name: string;
-  role: TeamRole;
+  userId: string;
   email: string;
+  joinedAt: string;
 }
 
 export type CalendarEventKind = 'deadline' | 'meeting' | 'task';
@@ -117,10 +114,19 @@ export interface CalendarEvent {
   id: string;
   kind: CalendarEventKind;
   title: string;
-  subtitle: string;
-  timeLabel: string;
+  description?: string | null;
+  location?: string | null;
+  eventDate: string;
+  eventTime?: string | null;
+}
+
+export interface NewCalendarEvent {
+  kind: CalendarEventKind;
+  title: string;
   description?: string;
-  actionLabel?: string;
+  location?: string;
+  eventDate: string;
+  eventTime?: string;
 }
 
 export interface CalendarDay {

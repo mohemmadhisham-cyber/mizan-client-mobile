@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -14,7 +15,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppHeader } from '@/components/navigation/app-header';
 import { TypingIndicator } from '@/components/ai-advisor/typing-indicator';
-import { EmptyState, Text } from '@/components/ui';
+import { AccountantChatView } from '@/components/accountant-chat/accountant-chat-view';
+import { Text } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
 import { askAi } from '@/services/ai-advisor';
 import { radius, spacing, useTheme } from '@/theme';
@@ -39,8 +41,9 @@ export default function AiAdvisorScreen() {
   const theme = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { clientId } = useAuth();
-  const [tab, setTab] = useState<'advisor' | 'queries'>('advisor');
+  const { clientId, firmId, user } = useAuth();
+  const params = useLocalSearchParams<{ tab?: string }>();
+  const [tab, setTab] = useState<'advisor' | 'queries'>(params.tab === 'queries' ? 'queries' : 'advisor');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -82,11 +85,7 @@ export default function AiAdvisorScreen() {
       </View>
 
       {tab === 'queries' ? (
-        <EmptyState
-          icon="chatbubbles-outline"
-          title="Accountant Queries"
-          message="Batch-answering your accountant's transaction questions is coming soon."
-        />
+        <AccountantChatView clientId={clientId} firmId={firmId} userId={user?.id} />
       ) : (
         <KeyboardAvoidingView
           style={{ flex: 1 }}

@@ -17,7 +17,7 @@ interface MoreItem {
 
 const ITEMS: MoreItem[] = [
   { icon: 'calendar-outline', label: 'Calendar', href: '/calendar' },
-  { icon: 'chatbubbles-outline', label: 'Messages' },
+  { icon: 'chatbubbles-outline', label: 'Messages', href: { pathname: '/ai-advisor', params: { tab: 'queries' } } },
   { icon: 'sparkles-outline', label: 'Ask AI', href: '/ai-advisor' },
   { icon: 'card-outline', label: 'Billing', href: '/billing' },
   { icon: 'people-outline', label: 'Team', href: { pathname: '/companies', params: { tab: 'team' } } },
