@@ -1,11 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState, Text } from '@/components/ui';
-import { accountantChatService, type ChatAttachment, type ChatMessage } from '@/services/accountant-chat';
+import { useVoiceRecorder } from '@/hooks/use-voice-recorder';
+import { accountantChatService, isAudioMime, type ChatAttachment, type ChatMessage } from '@/services/accountant-chat';
 import { radius, spacing, useTheme } from '@/theme';
 
 interface AccountantChatViewProps {
@@ -22,6 +24,7 @@ export function AccountantChatView({ clientId, firmId, userId }: AccountantChatV
   const [pending, setPending] = useState<ChatAttachment | null>(null);
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+  const voice = useVoiceRecorder();
 
   useEffect(() => {
     if (!clientId) return;
@@ -54,15 +57,13 @@ export function AccountantChatView({ clientId, firmId, userId }: AccountantChatV
     setPending({ uri: asset.uri, mimeType: asset.mimeType ?? 'image/jpeg', fileName: asset.fileName ?? undefined });
   }
 
-  async function send() {
-    const body = input.trim();
-    if ((!body && !pending) || busy) return;
+  async function sendWith(attachment: ChatAttachment | null, body: string) {
     if (!clientId || !firmId || !userId) {
       Alert.alert('Not linked yet', 'Your account is not linked to a company yet.');
       return;
     }
     setBusy(true);
-    const res = await accountantChatService.sendMessage(clientId, firmId, userId, body || '(attachment)', pending ?? undefined);
+    const res = await accountantChatService.sendMessage(clientId, firmId, userId, body, attachment ?? undefined);
     setBusy(false);
     if (!res.ok) {
       Alert.alert('Could not send', res.error ?? 'Try again.');
@@ -70,6 +71,21 @@ export function AccountantChatView({ clientId, firmId, userId }: AccountantChatV
     }
     setInput('');
     setPending(null);
+  }
+
+  async function send() {
+    const body = input.trim();
+    if ((!body && !pending) || busy) return;
+    await sendWith(pending, body || '(attachment)');
+  }
+
+  async function handleMicPress() {
+    if (voice.isRecording) {
+      const recording = await voice.stop();
+      if (recording) await sendWith({ uri: recording.uri, mimeType: 'audio/m4a' }, 'Voice message');
+      return;
+    }
+    await voice.start();
   }
 
   if (!clientId) {
@@ -83,7 +99,7 @@ export function AccountantChatView({ clientId, firmId, userId }: AccountantChatV
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={insets.top}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={insets.top}>
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={{ padding: spacing.gutter, gap: spacing.md, flexGrow: 1 }}
@@ -113,6 +129,15 @@ export function AccountantChatView({ clientId, firmId, userId }: AccountantChatV
           </View>
         ) : null}
 
+        {voice.isRecording ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.danger }} />
+            <Text variant="footnote" color="mutedForeground">
+              Recording… {Math.round(voice.durationMillis / 1000)}s — tap the mic to send
+            </Text>
+          </View>
+        ) : null}
+
         <View
           style={{
             flexDirection: 'row',
@@ -132,9 +157,17 @@ export function AccountantChatView({ clientId, firmId, userId }: AccountantChatV
             placeholderTextColor={theme.colors.mutedForeground}
             style={{ flex: 1, color: theme.colors.foreground, fontSize: 16, paddingVertical: spacing.sm }}
             multiline
+            editable={!voice.isRecording}
           />
-          <Pressable accessibilityRole="button" accessibilityLabel="Attach" onPress={pickAttachment} style={{ padding: spacing.sm }}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Attach" onPress={pickAttachment} style={{ padding: spacing.sm }} disabled={voice.isRecording}>
             <Ionicons name="attach-outline" size={20} color={theme.colors.mutedForeground} />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={voice.isRecording ? 'Stop and send recording' : 'Record voice message'}
+            onPress={handleMicPress}
+            style={{ padding: spacing.sm }}>
+            <Ionicons name={voice.isRecording ? 'stop-circle' : 'mic-outline'} size={20} color={voice.isRecording ? theme.colors.danger : theme.colors.mutedForeground} />
           </Pressable>
           <Pressable
             accessibilityRole="button"
@@ -161,6 +194,7 @@ export function AccountantChatView({ clientId, firmId, userId }: AccountantChatV
 function MessageBubble({ message, isSelf }: { message: ChatMessage; isSelf: boolean }) {
   const theme = useTheme();
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
+  const isAudio = isAudioMime(message.attachmentMime);
 
   useEffect(() => {
     if (!message.attachmentPath) return;
@@ -184,16 +218,38 @@ function MessageBubble({ message, isSelf }: { message: ChatMessage; isSelf: bool
           paddingHorizontal: spacing.base,
           paddingVertical: spacing.md,
         }}>
-        {attachmentUrl ? (
+        {isAudio && attachmentUrl ? (
+          <VoiceMessagePlayer uri={attachmentUrl} tint={isSelf ? '#001B3C' : theme.colors.foreground} />
+        ) : attachmentUrl ? (
           <Image source={{ uri: attachmentUrl }} style={{ width: 160, height: 160, borderRadius: radius.sm, marginBottom: spacing.xs }} />
         ) : null}
-        <Text variant="body" style={{ color: isSelf ? '#001B3C' : theme.colors.foreground }}>
-          {message.body}
-        </Text>
+        {!isAudio ? (
+          <Text variant="body" style={{ color: isSelf ? '#001B3C' : theme.colors.foreground }}>
+            {message.body}
+          </Text>
+        ) : null}
       </View>
       <Text variant="caption" color="mutedForeground" style={{ alignSelf: isSelf ? 'flex-end' : 'flex-start' }}>
         {new Date(message.createdAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
       </Text>
     </View>
+  );
+}
+
+function VoiceMessagePlayer({ uri, tint }: { uri: string; tint: string }) {
+  const player = useAudioPlayer(uri);
+  const status = useAudioPlayerStatus(player);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={status.playing ? 'Pause voice message' : 'Play voice message'}
+      onPress={() => (status.playing ? player.pause() : player.play())}
+      style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minWidth: 140 }}>
+      <Ionicons name={status.playing ? 'pause-circle' : 'play-circle'} size={32} color={tint} />
+      <Text variant="footnote" style={{ color: tint }}>
+        {status.duration ? `${Math.round((status.playing ? status.duration - status.currentTime : status.duration))}s` : 'Voice message'}
+      </Text>
+    </Pressable>
   );
 }

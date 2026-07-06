@@ -47,6 +47,12 @@
         {
           "photosPermission": "Mizan needs access to your photos so you can upload an existing receipt image."
         }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Mizan uses your microphone to record voice messages for your accountant and voice questions for the AI Advisor."
+        }
       ]
     ],
     "experiments": {

@@ -29,7 +29,11 @@ interface MessageRow {
 }
 
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
-const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/heic', 'image/webp', 'application/pdf']);
+const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/heic', 'image/webp', 'application/pdf', 'audio/m4a', 'audio/mp4']);
+
+export function isAudioMime(mime: string | null): boolean {
+  return !!mime && mime.startsWith('audio/');
+}
 
 function fromRow(r: MessageRow): ChatMessage {
   return {
