@@ -17,8 +17,10 @@ import { AppHeader } from '@/components/navigation/app-header';
 import { TypingIndicator } from '@/components/ai-advisor/typing-indicator';
 import { AccountantChatView } from '@/components/accountant-chat/accountant-chat-view';
 import { Text } from '@/components/ui';
+import { useVoiceRecorder } from '@/hooks/use-voice-recorder';
 import { useAuth } from '@/lib/auth-context';
 import { askAi } from '@/services/ai-advisor';
+import { transcribeRecording } from '@/services/transcription';
 import { radius, spacing, useTheme } from '@/theme';
 
 type Role = 'user' | 'assistant' | 'system';
@@ -47,7 +49,9 @@ export default function AiAdvisorScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+  const voice = useVoiceRecorder();
 
   useEffect(() => {
     scrollRef.current?.scrollToEnd({ animated: true });
@@ -74,6 +78,23 @@ export default function AiAdvisorScreen() {
     }
 
     setMessages((m) => [...m, { id: nextId(), role: 'assistant', text: res.content ?? '' }]);
+  }
+
+  async function handleMicPress() {
+    if (voice.isRecording) {
+      const recording = await voice.stop();
+      if (!recording) return;
+      setTranscribing(true);
+      const res = await transcribeRecording(recording.uri);
+      setTranscribing(false);
+      if (!res.ok) {
+        Alert.alert('Could not transcribe', res.error ?? 'Try again, or type your question instead.');
+        return;
+      }
+      if (res.text) setInput((prev) => (prev ? `${prev} ${res.text}` : (res.text ?? '')));
+      return;
+    }
+    await voice.start();
   }
 
   return (
@@ -133,6 +154,19 @@ export default function AiAdvisorScreen() {
               ))}
             </ScrollView>
 
+            {voice.isRecording ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.danger }} />
+                <Text variant="footnote" color="mutedForeground">
+                  Recording… {Math.round(voice.durationMillis / 1000)}s — tap the mic to transcribe
+                </Text>
+              </View>
+            ) : transcribing ? (
+              <Text variant="footnote" color="mutedForeground">
+                Transcribing…
+              </Text>
+            ) : null}
+
             <View
               style={{
                 flexDirection: 'row',
@@ -152,6 +186,7 @@ export default function AiAdvisorScreen() {
                 placeholderTextColor={theme.colors.mutedForeground}
                 style={{ flex: 1, color: theme.colors.foreground, fontSize: 16, paddingVertical: spacing.sm }}
                 multiline
+                editable={!voice.isRecording}
                 onSubmitEditing={() => send(input)}
                 returnKeyType="send"
               />
@@ -159,8 +194,21 @@ export default function AiAdvisorScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Attach"
                 onPress={() => Alert.alert('Coming soon', 'Attachments are not yet available in Ask AI.')}
-                style={{ padding: spacing.sm }}>
+                style={{ padding: spacing.sm }}
+                disabled={voice.isRecording}>
                 <Ionicons name="attach-outline" size={20} color={theme.colors.mutedForeground} />
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={voice.isRecording ? 'Stop and transcribe' : 'Record a voice question'}
+                onPress={handleMicPress}
+                disabled={transcribing}
+                style={{ padding: spacing.sm }}>
+                <Ionicons
+                  name={voice.isRecording ? 'stop-circle' : 'mic-outline'}
+                  size={20}
+                  color={voice.isRecording ? theme.colors.danger : theme.colors.mutedForeground}
+                />
               </Pressable>
               <Pressable
                 accessibilityRole="button"
