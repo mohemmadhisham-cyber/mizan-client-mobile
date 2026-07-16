@@ -9,10 +9,12 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.mizan.client",
+      "buildNumber": "1",
       "supportsTablet": true
     },
     "android": {
       "package": "com.mizan.client",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#F9F9FE",
         "foregroundImage": "./assets/images/mizan-mark.png"
