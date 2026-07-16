@@ -1,80 +1,110 @@
-import type { ActionItem, InsightCard, KpiBlock, TrendPoint } from './types';
+import { supabase } from '@/lib/supabase';
+
+import type { ActionItem, InsightCard, KpiBlock, Severity, TrendPoint } from './types';
 
 /**
- * Client dashboard data. Currently fixture-backed (integer MINOR units) behind
- * the real service interface — swap the bodies to live Supabase queries once the
- * client-data endpoints/seed land (a balance-beams backend dependency). The
- * exported signatures must not change (two-repo contract).
+ * Client dashboard data — real, backed by the client's own Odoo books and
+ * Supabase tables. KPIs + revenue/expense series come from the `client-
+ * dashboard` edge function's `mobile` block (integer MINOR units, computed
+ * live from the client's dedicated Odoo db). Insights come from the real
+ * `insights` table (RLS: client_id + audience client/both). Action counts are
+ * real pending-item counts (approvals awaiting the client's decision +
+ * document requests to fulfil). Nothing here is fabricated; when the client's
+ * Odoo workspace isn't provisioned yet the service throws a typed error the
+ * screen turns into an empty state.
  */
 
-const KPIS: KpiBlock = {
-  cash: 41_235_000,
-  moneyIn: 18_640_000,
-  moneyOut: 12_910_000,
-  profit: 5_730_000,
-  vatDue: 2_145_000,
-  vatDueDate: new Date(Date.now() + 26 * 24 * 60 * 60 * 1000).toISOString(),
-  currency: 'AED',
+type MobileSummary = {
+  cash: number;
+  moneyIn: number;
+  moneyOut: number;
+  profit: number;
+  vatDue: number;
+  vatDueDate: string;
+  currency: string;
+  revenueSeries: { month: string; value: number }[];
+  expenseSeries: { month: string; value: number }[];
 };
 
-const REVENUE: TrendPoint[] = [
-  { month: 'Jan', value: 142_000 },
-  { month: 'Feb', value: 156_000 },
-  { month: 'Mar', value: 149_000 },
-  { month: 'Apr', value: 171_000 },
-  { month: 'May', value: 168_000 },
-  { month: 'Jun', value: 186_400 },
-];
+export class DashboardUnavailableError extends Error {
+  constructor(public code: string) {
+    super(code);
+    this.name = 'DashboardUnavailableError';
+  }
+}
 
-const EXPENSE: TrendPoint[] = [
-  { month: 'Jan', value: 98_000 },
-  { month: 'Feb', value: 104_000 },
-  { month: 'Mar', value: 112_000 },
-  { month: 'Apr', value: 121_000 },
-  { month: 'May', value: 118_000 },
-  { month: 'Jun', value: 129_100 },
-];
+let cached: { at: number; data: MobileSummary } | null = null;
 
-const INSIGHTS: InsightCard[] = [
-  {
-    id: 'i1',
-    title: 'Revenue is up 11% this month',
-    body: 'June sales outpaced May, driven by two new retainer clients.',
-    severity: 'good',
-  },
-  {
-    id: 'i2',
-    title: 'VAT return due soon',
-    body: 'Your Q2 VAT filing is due in under a month. Documents are being prepared.',
-    severity: 'warn',
-  },
-  {
-    id: 'i3',
-    title: '3 receipts need your input',
-    body: 'Your accountant has questions on a few transactions.',
-    severity: 'info',
-  },
-];
+async function fetchMobile(): Promise<MobileSummary> {
+  // Coalesce the five dashboard queries onto a single edge-function round trip
+  // (each getX below would otherwise re-invoke it). 30s window matches the
+  // app's query staleTime.
+  if (cached && Date.now() - cached.at < 30_000) return cached.data;
+  const { data, error } = await supabase.functions.invoke('client-dashboard');
+  if (error || !data) throw new DashboardUnavailableError('network_error');
+  if (!data.ok) throw new DashboardUnavailableError(data.error ?? 'unavailable');
+  const mobile = data.mobile as MobileSummary | undefined;
+  if (!mobile) throw new DashboardUnavailableError('unavailable');
+  cached = { at: Date.now(), data: mobile };
+  return mobile;
+}
 
-const ACTIONS: ActionItem[] = [
-  { id: 'a1', label: 'Answer transaction questions', count: 3, href: '/tasks' },
-  { id: 'a2', label: 'Upload requested documents', count: 2, href: '/documents' },
-];
+function currencyCode(c: string): 'AED' | 'SAR' {
+  return c === 'SAR' ? 'SAR' : 'AED';
+}
+
+function severityOf(s: string): Severity {
+  if (s === 'good' || s === 'warn' || s === 'alert' || s === 'info') return s;
+  return 'info';
+}
 
 export const clientDataService = {
   async getKpis(): Promise<KpiBlock> {
-    return KPIS;
+    const m = await fetchMobile();
+    return {
+      cash: m.cash,
+      moneyIn: m.moneyIn,
+      moneyOut: m.moneyOut,
+      profit: m.profit,
+      vatDue: m.vatDue,
+      vatDueDate: m.vatDueDate,
+      currency: currencyCode(m.currency),
+    };
   },
+
   async getRevenueSeries(): Promise<TrendPoint[]> {
-    return REVENUE;
+    return (await fetchMobile()).revenueSeries;
   },
+
   async getExpenseSeries(): Promise<TrendPoint[]> {
-    return EXPENSE;
+    return (await fetchMobile()).expenseSeries;
   },
+
   async getInsights(): Promise<InsightCard[]> {
-    return INSIGHTS;
+    const { data, error } = await supabase
+      .from('insights')
+      .select('id, title, summary, severity, generated_at')
+      .order('generated_at', { ascending: false })
+      .limit(5);
+    if (error) return [];
+    return ((data ?? []) as { id: string; title: string; summary: string | null; severity: string }[]).map((r) => ({
+      id: r.id,
+      title: r.title,
+      body: r.summary ?? '',
+      severity: severityOf(r.severity),
+    }));
   },
+
   async getActions(): Promise<ActionItem[]> {
-    return ACTIONS;
+    const [approvals, docs] = await Promise.all([
+      supabase.from('approval_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+      supabase.from('document_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    ]);
+    const items: ActionItem[] = [];
+    const approvalCount = approvals.count ?? 0;
+    const docCount = docs.count ?? 0;
+    if (approvalCount > 0) items.push({ id: 'a-approvals', label: 'Review & approve pending items', count: approvalCount, href: '/tasks' });
+    if (docCount > 0) items.push({ id: 'a-docs', label: 'Upload requested documents', count: docCount, href: '/documents' });
+    return items;
   },
 };

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DetailHeader } from '@/components/navigation/detail-header';
@@ -34,6 +34,7 @@ const CATEGORY_ICON: Record<NotificationCategory, keyof typeof Ionicons.glyphMap
 export default function NotificationsScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState<Filter>('all');
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
 
@@ -44,8 +45,22 @@ export default function NotificationsScreen() {
     return filter === 'all' ? base : base.filter((n) => n.category === filter);
   }, [data, filter, readIds]);
 
+  // Optimistically flip locally for instant feedback, then persist to the
+  // notifications table and refetch so the state survives a reload.
+  function markOneRead(id: string) {
+    setReadIds((prev) => new Set(prev).add(id));
+    notificationsService
+      .markRead(id)
+      .then(() => queryClient.invalidateQueries({ queryKey: ['notifications'] }))
+      .catch(() => {});
+  }
+
   function markAllRead() {
     setReadIds(new Set((data ?? []).map((n) => n.id)));
+    notificationsService
+      .markAllRead()
+      .then(() => queryClient.invalidateQueries({ queryKey: ['notifications'] }))
+      .catch(() => {});
   }
 
   return (
@@ -102,8 +117,8 @@ export default function NotificationsScreen() {
             <NotificationRow
               key={n.id}
               item={n}
-              onPress={() => setReadIds((prev) => new Set(prev).add(n.id))}
-              onAction={() => Alert.alert('Coming soon', `${n.actionLabel} isn't available yet.`)}
+              onPress={() => markOneRead(n.id)}
+              onAction={() => markOneRead(n.id)}
             />
           ))
         )}

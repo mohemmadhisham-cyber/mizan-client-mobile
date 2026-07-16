@@ -35,9 +35,27 @@ export default function TasksScreen() {
   }
 
   function handleVerified() {
-    if (stepUpTask) setApprovedIds((prev) => new Set(prev).add(stepUpTask.id));
+    const task = stepUpTask;
     setStepUpTask(null);
-    void qc.invalidateQueries({ queryKey: ['tasks-completed-summary'] });
+    if (!task) return;
+    setApprovedIds((prev) => new Set(prev).add(task.id));
+    // Persist the real decision (RLS-scoped update on the client's own
+    // approval_request), then refresh the lists + completed summary.
+    tasksService
+      .decideApproval(task.id, 'approved')
+      .then(() => {
+        void qc.invalidateQueries({ queryKey: ['tasks-urgent'] });
+        void qc.invalidateQueries({ queryKey: ['tasks-completed-summary'] });
+      })
+      .catch(() => {
+        // Roll the optimistic hide back so the item reappears on failure.
+        setApprovedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(task.id);
+          return next;
+        });
+        Alert.alert('Could not approve', 'Something went wrong saving your approval. Please try again.');
+      });
   }
 
   return (

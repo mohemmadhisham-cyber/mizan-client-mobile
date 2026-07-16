@@ -71,7 +71,7 @@ export default function ReportsArchiveScreen() {
               <ArchiveRow key={r.id} report={r} onPress={() => router.push({ pathname: '/report/[id]', params: { id: r.id } })} />
             ))}
             <Text variant="caption" color="mutedForeground" center style={{ marginTop: spacing.sm }}>
-              Showing 1-{filtered.length} of {reportsService.totalReportCount}
+              Showing {filtered.length} report{filtered.length === 1 ? '' : 's'}
             </Text>
           </>
         )}

@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
-import { Alert, ScrollView, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, Linking, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TrendChart } from '@/components/charts/trend-chart';
@@ -16,11 +17,28 @@ export default function ReportDetailScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
 
+  const [downloading, setDownloading] = useState(false);
   const report = useQuery({
     queryKey: ['report', id],
     queryFn: () => reportsService.getReport(id as string),
     enabled: Boolean(id),
   });
+
+  async function downloadPdf() {
+    setDownloading(true);
+    try {
+      const url = await reportsService.getReportPdfUrl(id as string);
+      if (!url) {
+        Alert.alert('No PDF yet', 'This report doesn’t have a downloadable PDF attached.');
+        return;
+      }
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert('Download failed', 'Could not open the report PDF. Please try again.');
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
@@ -73,13 +91,12 @@ export default function ReportDetailScreen() {
           {report.data.series.length > 0 ? <TrendChart question="Trend" data={report.data.series} type="line" /> : null}
 
           <Button
-            title="Download PDF"
+            title={downloading ? 'Opening…' : 'Download PDF'}
             icon="download-outline"
             variant="secondary"
             fullWidth
-            onPress={() =>
-              Alert.alert('Not yet available', 'PDF downloads will be available once your firm publishes reports through Mizan.')
-            }
+            disabled={downloading}
+            onPress={downloadPdf}
           />
         </ScrollView>
       )}
