@@ -175,3 +175,40 @@ export async function submitReceiptReview(input: {
   if (error || !data?.ok) return { ok: false, error: error?.message ?? data?.error ?? 'Could not save.' };
   return { ok: true };
 }
+
+export type ReceiptStatus = 'uploaded' | 'extracting' | 'extracted' | 'needs_review' | 'approved' | 'rejected' | 'posted';
+
+export interface MyReceipt {
+  id: string;
+  status: ReceiptStatus;
+  vendorName: string | null;
+  receiptDate: string | null;
+  totalMinor: number | null;
+  currency: string | null;
+  category: string | null;
+  createdAt: string;
+}
+
+/** The client's own receipts, newest first (RLS "receipts client read":
+ * client_id = user_client(auth.uid()), so no client filter needed here). */
+export async function listMyReceipts(): Promise<MyReceipt[]> {
+  const { data, error } = await supabase
+    .from('receipts')
+    .select('id, status, vendor_name, receipt_date, total_amount, currency, category, created_at')
+    .order('created_at', { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return ((data ?? []) as {
+    id: string; status: string; vendor_name: string | null; receipt_date: string | null;
+    total_amount: number | null; currency: string | null; category: string | null; created_at: string;
+  }[]).map((r) => ({
+    id: r.id,
+    status: r.status as ReceiptStatus,
+    vendorName: r.vendor_name,
+    receiptDate: r.receipt_date,
+    totalMinor: r.total_amount,
+    currency: r.currency,
+    category: r.category,
+    createdAt: r.created_at,
+  }));
+}

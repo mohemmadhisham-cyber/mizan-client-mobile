@@ -113,7 +113,7 @@ function CompanyCard({ company }: { company: CompanyInfo }) {
             fg={theme.colors.mutedForeground}
           />
         </View>
-        <Pressable accessibilityRole="button" onPress={() => comingSoon('Company options')} hitSlop={8}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Company options" onPress={() => comingSoon('Company options')} hitSlop={8}>
           <Ionicons name="ellipsis-vertical" size={18} color={theme.colors.mutedForeground} />
         </Pressable>
       </View>

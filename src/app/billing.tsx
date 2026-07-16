@@ -88,6 +88,8 @@ export default function BillingScreen() {
               variant="caption"
               weight="semibold"
               color="primary"
+              accessibilityRole="button"
+              accessibilityLabel="Change plan"
               style={{ letterSpacing: 0.6 }}
               onPress={() => notAvailable('Changing plans')}>
               Change Plan
@@ -99,6 +101,8 @@ export default function BillingScreen() {
           variant="caption"
           weight="semibold"
           color="primary"
+          accessibilityRole="button"
+          accessibilityLabel="Update payment method"
           style={{ letterSpacing: 0.6 }}
           onPress={() => notAvailable('Updating the payment method')}>
           Update payment method
