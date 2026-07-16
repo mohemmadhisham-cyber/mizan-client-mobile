@@ -39,6 +39,7 @@ export default function CaptureScreen() {
     }
     setStatus('uploading');
     setErrorMsg(null);
+    let lastReceiptId: string | undefined;
     for (let i = 0; i < files.length; i++) {
       setProgress({ done: i, total: files.length });
       const res = await uploadReceipt(files[i], firmId as string, clientId as string, (user as { id: string }).id);
@@ -47,8 +48,19 @@ export default function CaptureScreen() {
         setErrorMsg(res.error ?? 'Upload failed.');
         return;
       }
+      lastReceiptId = res.receiptId;
     }
     setProgress({ done: files.length, total: files.length });
+
+    // Single capture → straight into the review/categorise wizard (OCR runs
+    // there). Batch uploads skip it: categorising a whole queue one-by-one
+    // here would be worse than letting the accountant triage them.
+    if (files.length === 1 && lastReceiptId) {
+      setStatus('idle');
+      setProgress(null);
+      router.replace({ pathname: '/receipt-wizard', params: { id: lastReceiptId } });
+      return;
+    }
     setStatus('success');
   }
 

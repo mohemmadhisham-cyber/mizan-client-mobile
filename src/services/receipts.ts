@@ -110,3 +110,68 @@ export async function uploadReceipt(
 
   return { ok: true, receiptId: data.id as string };
 }
+
+/**
+ * Expense categories the client picks in the capture wizard. Each maps to a
+ * SUGGESTED GL code/name — a hint for the accountant, who maps it to the real
+ * Odoo account on approval. Nothing here posts to the ledger (CLAUDE.md §14).
+ */
+export interface ExpenseCategory {
+  key: string;
+  label: string;
+  glCode: string;
+  glName: string;
+  icon: string;
+}
+
+export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
+  { key: 'office', label: 'Office Supplies', glCode: '6010', glName: 'Office Supplies', icon: 'briefcase-outline' },
+  { key: 'travel', label: 'Travel & Transport', glCode: '6020', glName: 'Travel & Transport', icon: 'airplane-outline' },
+  { key: 'meals', label: 'Meals & Entertainment', glCode: '6030', glName: 'Meals & Entertainment', icon: 'restaurant-outline' },
+  { key: 'software', label: 'Software & Subscriptions', glCode: '6040', glName: 'Software & Subscriptions', icon: 'cloud-outline' },
+  { key: 'rent', label: 'Rent', glCode: '6050', glName: 'Rent', icon: 'business-outline' },
+  { key: 'utilities', label: 'Utilities', glCode: '6060', glName: 'Utilities', icon: 'flash-outline' },
+  { key: 'professional', label: 'Professional Fees', glCode: '6070', glName: 'Professional Fees', icon: 'document-text-outline' },
+  { key: 'marketing', label: 'Marketing & Advertising', glCode: '6080', glName: 'Marketing & Advertising', icon: 'megaphone-outline' },
+  { key: 'telecom', label: 'Telephone & Internet', glCode: '6090', glName: 'Telephone & Internet', icon: 'call-outline' },
+  { key: 'bank', label: 'Bank Charges', glCode: '6100', glName: 'Bank Charges', icon: 'card-outline' },
+  { key: 'other', label: 'Other Expenses', glCode: '6900', glName: 'Other Expenses', icon: 'ellipsis-horizontal' },
+];
+
+export interface ExtractedReceipt {
+  vendor: string | null;
+  date: string | null;
+  totalMinor: number | null;
+  vatMinor: number | null;
+  currency: string | null;
+  confidence: number | null;
+}
+
+/** Kick off OCR extraction on an uploaded receipt (server-side, via the
+ * receipt-ocr edge function). Returns the extracted draft fields, or null
+ * when the OCR service isn't wired yet (the wizard then starts blank). */
+export async function extractReceipt(
+  receiptId: string,
+): Promise<{ extracted: ExtractedReceipt | null; ocrConfigured: boolean }> {
+  const { data, error } = await supabase.functions.invoke('receipt-ocr', { body: { action: 'extract', receiptId } });
+  if (error || !data?.ok) return { extracted: null, ocrConfigured: false };
+  return { extracted: (data.extracted as ExtractedReceipt | null) ?? null, ocrConfigured: Boolean(data.ocrConfigured) };
+}
+
+/** Submit the client's confirmed fields + picked category/GL suggestion. The
+ * receipt moves to needs_review for the accountant. */
+export async function submitReceiptReview(input: {
+  receiptId: string;
+  category: string;
+  glCode: string;
+  glName: string;
+  vendor: string | null;
+  date: string | null;
+  totalMinor: number | null;
+  vatMinor: number | null;
+  currency: string | null;
+}): Promise<{ ok: boolean; error?: string }> {
+  const { data, error } = await supabase.functions.invoke('receipt-ocr', { body: { action: 'submit', ...input } });
+  if (error || !data?.ok) return { ok: false, error: error?.message ?? data?.error ?? 'Could not save.' };
+  return { ok: true };
+}
