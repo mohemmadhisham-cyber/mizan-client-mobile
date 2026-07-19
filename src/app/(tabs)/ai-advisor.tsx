@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,6 +21,7 @@ import { Text } from '@/components/ui';
 import { useVoiceRecorder } from '@/hooks/use-voice-recorder';
 import { useAuth } from '@/lib/auth-context';
 import { askAi } from '@/services/ai-advisor';
+import { uploadReceipt } from '@/services/receipts';
 import { transcribeRecording } from '@/services/transcription';
 import { radius, spacing, useTheme } from '@/theme';
 
@@ -78,6 +80,36 @@ export default function AiAdvisorScreen() {
     }
 
     setMessages((m) => [...m, { id: nextId(), role: 'assistant', text: res.content ?? '' }]);
+  }
+
+  // "Ask AI" is text-only server-side, so an attached document is genuinely
+  // useful as something the ACCOUNTANT reviews — this uploads it through the
+  // real receipts pipeline (same as Capture) and confirms in the thread.
+  async function attachDocument() {
+    if (!firmId || !clientId || !user) {
+      Alert.alert('Not linked yet', 'Your account is not linked to a company yet. Ask your accountant to check your invite.');
+      return;
+    }
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Photo access needed', 'Enable photo access to attach a document.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'images', quality: 0.8 });
+    if (result.canceled || !result.assets?.[0]) return;
+    const asset = result.assets[0];
+    setMessages((m) => [...m, { id: nextId(), role: 'system', text: 'Uploading your document…' }]);
+    const res = await uploadReceipt({ uri: asset.uri, mimeType: asset.mimeType ?? 'image/jpeg' }, firmId, clientId, user.id);
+    setMessages((m) => [
+      ...m,
+      {
+        id: nextId(),
+        role: 'system',
+        text: res.ok
+          ? 'Document sent to your accountant to review. Add the details any time from Capture.'
+          : `Could not attach that document: ${res.error ?? 'please try again'}.`,
+      },
+    ]);
   }
 
   async function handleMicPress() {
@@ -193,7 +225,7 @@ export default function AiAdvisorScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Attach"
-                onPress={() => Alert.alert('Coming soon', 'Attachments are not yet available in Ask AI.')}
+                onPress={attachDocument}
                 style={{ padding: spacing.sm }}
                 disabled={voice.isRecording}>
                 <Ionicons name="attach-outline" size={20} color={theme.colors.mutedForeground} />

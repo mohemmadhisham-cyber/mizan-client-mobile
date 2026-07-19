@@ -12,8 +12,11 @@ import { companiesService } from '@/services/companies';
 import type { CompanyInfo, TeamMemberInfo } from '@/services/types';
 import { radius, spacing, useTheme } from '@/theme';
 
-function comingSoon(feature: string) {
-  Alert.alert('Coming soon', `${feature} isn't available yet.`);
+function explainAddCompany() {
+  Alert.alert(
+    'Add a company',
+    'Companies are linked to your account by your accountant. Ask them to send an invite to your email — it appears here automatically once you accept.',
+  );
 }
 
 export default function CompaniesScreen() {
@@ -48,7 +51,7 @@ export default function CompaniesScreen() {
               ))}
               <Pressable
                 accessibilityRole="button"
-                onPress={() => comingSoon('Adding a company')}
+                onPress={explainAddCompany}
                 style={{
                   borderWidth: 2,
                   borderStyle: 'dashed',
@@ -113,7 +116,16 @@ function CompanyCard({ company }: { company: CompanyInfo }) {
             fg={theme.colors.mutedForeground}
           />
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="Company options" onPress={() => comingSoon('Company options')} hitSlop={8}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Company options"
+          onPress={() =>
+            Alert.alert(
+              company.name,
+              `Status: ${company.status === 'active' ? 'Active' : 'Inactive'}\n${company.lastSyncedLabel}\n\nThis company is managed by your accountant.`,
+            )
+          }
+          hitSlop={8}>
           <Ionicons name="ellipsis-vertical" size={18} color={theme.colors.mutedForeground} />
         </Pressable>
       </View>

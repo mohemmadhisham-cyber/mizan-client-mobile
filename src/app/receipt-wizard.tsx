@@ -25,7 +25,8 @@ export default function ReceiptWizardScreen() {
   const theme = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, manual } = useLocalSearchParams<{ id: string; manual?: string }>();
+  const isManual = manual === '1';
 
   const [loading, setLoading] = useState(true);
   const [ocrConfigured, setOcrConfigured] = useState(true);
@@ -42,6 +43,12 @@ export default function ReceiptWizardScreen() {
     let cancelled = false;
     (async () => {
       if (!id) return;
+      // Manual entry has no photo — skip OCR entirely and start blank.
+      if (isManual) {
+        setOcrConfigured(false);
+        setLoading(false);
+        return;
+      }
       const { extracted: e, ocrConfigured: configured } = await extractReceipt(id);
       if (cancelled) return;
       setOcrConfigured(configured);
@@ -57,7 +64,7 @@ export default function ReceiptWizardScreen() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, isManual]);
 
   function toMinor(v: string): number | null {
     const n = Number(v.replace(/,/g, ''));

@@ -10,7 +10,7 @@ import { CaptureControls } from '@/components/capture/capture-controls';
 import { ScanningReticle } from '@/components/capture/scanning-reticle';
 import { Button, Text } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
-import { uploadReceipt, type CapturedFile } from '@/services/receipts';
+import { createManualReceipt, uploadReceipt, type CapturedFile } from '@/services/receipts';
 
 type CaptureMode = 'single' | 'batch';
 type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
@@ -96,8 +96,18 @@ export default function CaptureScreen() {
     await runUpload([{ uri: asset.uri, mimeType: asset.mimeType ?? '' }]);
   }
 
-  function handleManualEntry() {
-    Alert.alert('Manual entry', 'Manual receipt entry is coming soon.');
+  async function handleManualEntry() {
+    if (!canUpload) {
+      Alert.alert('Not linked yet', 'Your account is not linked to a company yet. Ask your accountant to check your invite.');
+      return;
+    }
+    const res = await createManualReceipt(firmId as string, clientId as string, (user as { id: string }).id);
+    if (!res.ok || !res.receiptId) {
+      Alert.alert('Could not start', res.error ?? 'Please try again.');
+      return;
+    }
+    // Reuse the review wizard, but skip OCR (there's no photo to read).
+    router.replace({ pathname: '/receipt-wizard', params: { id: res.receiptId, manual: '1' } });
   }
 
   function finishBatch() {

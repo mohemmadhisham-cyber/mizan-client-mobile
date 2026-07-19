@@ -112,6 +112,27 @@ export async function uploadReceipt(
 }
 
 /**
+ * Creates a photo-less receipt row for MANUAL entry (no camera/upload). The
+ * client fills the details in the same review wizard. Mirrors uploadReceipt's
+ * minimal insert (money/category fields are set later via submitReceiptReview,
+ * server-side; CLAUDE.md §9/§14) — just without a storage_path.
+ */
+export async function createManualReceipt(
+  firmId: string,
+  clientId: string,
+  uploadedBy: string,
+): Promise<UploadReceiptResult> {
+  assertSupabaseConfigured();
+  const { data, error } = await supabase
+    .from('receipts')
+    .insert({ firm_id: firmId, client_id: clientId, uploaded_by: uploadedBy, status: 'uploaded' })
+    .select('id')
+    .single();
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, receiptId: data.id as string };
+}
+
+/**
  * Expense categories the client picks in the capture wizard. Each maps to a
  * SUGGESTED GL code/name — a hint for the accountant, who maps it to the real
  * Odoo account on approval. Nothing here posts to the ledger (CLAUDE.md §14).

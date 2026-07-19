@@ -7,6 +7,7 @@ import { DetailHeader } from '@/components/navigation/detail-header';
 import { Button, Card, Text } from '@/components/ui';
 import i18n, { applyLayoutDirection, type AppLocale } from '@/i18n';
 import { useAuth } from '@/lib/auth-context';
+import { supabase } from '@/lib/supabase';
 import { radius, spacing, useTheme, useThemeControls, type ThemeMode } from '@/theme';
 
 const LANGUAGES: { code: AppLocale; label: string }[] = [
@@ -36,8 +37,25 @@ export default function SettingsScreen() {
     }
   }
 
-  function comingSoon(feature: string) {
-    Alert.alert('Coming soon', `${feature} isn't available yet.`);
+  // "Active sessions": the Supabase client can't enumerate other devices
+  // (that's an admin-only API), but it CAN revoke every session for this user.
+  // So this is a real security control — sign out everywhere.
+  function handleActiveSessions() {
+    Alert.alert(
+      'Active sessions',
+      "You're signed in on this device. If you've lost a device or just want to be safe, you can sign out everywhere — you'll need to sign in again on all your devices.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign out everywhere',
+          style: 'destructive',
+          onPress: async () => {
+            const { error } = await supabase.auth.signOut({ scope: 'global' });
+            if (error) Alert.alert('Could not sign out', error.message);
+          },
+        },
+      ],
+    );
   }
 
   return (
@@ -95,7 +113,7 @@ export default function SettingsScreen() {
           <Text variant="title">Security</Text>
           <Card padded={false} style={{ overflow: 'hidden' }}>
             <ActionRow icon="finger-print-outline" label="Backup codes" onPress={() => router.push('/backup-codes')} />
-            <ActionRow icon="phone-portrait-outline" label="Active sessions" onPress={() => comingSoon('Active sessions')} isLast />
+            <ActionRow icon="phone-portrait-outline" label="Active sessions" onPress={handleActiveSessions} isLast />
           </Card>
         </View>
 
