@@ -5,8 +5,11 @@ import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { AiConsent } from '@/components/ai-advisor/ai-consent';
 import { DetailHeader } from '@/components/navigation/detail-header';
 import { Button, Card, Input, Text } from '@/components/ui';
+import { aiDeclinedThisRun, hasAiConsent, noteAiDeclined } from '@/lib/ai-consent';
+import { useAuth } from '@/lib/auth-context';
 import { EXPENSE_CATEGORIES, extractReceipt, submitReceiptReview, type ExpenseCategory } from '@/services/receipts';
 import { radius, spacing, useTheme } from '@/theme';
 
@@ -22,6 +25,8 @@ import { radius, spacing, useTheme } from '@/theme';
  * The copy says so explicitly so the client isn't misled into thinking they've
  * booked anything.
  */
+type AiChoice = 'asking' | 'agreed' | 'declined';
+
 export default function ReceiptWizardScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -29,6 +34,14 @@ export default function ReceiptWizardScreen() {
   const insets = useSafeAreaInsets();
   const { id, manual } = useLocalSearchParams<{ id: string; manual?: string }>();
   const isManual = manual === '1';
+  const { user } = useAuth();
+  const userId = user?.id;
+  // Reading the photo sends it to an outside AI provider, so it waits for the
+  // person's agreement. Without it the form starts blank and is filled by hand.
+  const [aiChoice, setAiChoice] = useState<AiChoice>(() => {
+    if (isManual || !userId || aiDeclinedThisRun(userId)) return 'declined';
+    return hasAiConsent(userId) ? 'agreed' : 'asking';
+  });
 
   const [loading, setLoading] = useState(true);
   const [ocrConfigured, setOcrConfigured] = useState(true);
@@ -45,8 +58,10 @@ export default function ReceiptWizardScreen() {
     let cancelled = false;
     (async () => {
       if (!id) return;
-      // Manual entry has no photo — skip OCR entirely and start blank.
-      if (isManual) {
+      if (aiChoice === 'asking') return;
+      // Manual entry has no photo — skip OCR entirely and start blank. The same
+      // when the person has not agreed to the photo being sent to be read.
+      if (isManual || aiChoice === 'declined') {
         setOcrConfigured(false);
         setLoading(false);
         return;
@@ -66,7 +81,7 @@ export default function ReceiptWizardScreen() {
     return () => {
       cancelled = true;
     };
-  }, [id, isManual]);
+  }, [id, isManual, aiChoice]);
 
   function toMinor(v: string): number | null {
     const n = Number(v.replace(/,/g, ''));
@@ -94,6 +109,19 @@ export default function ReceiptWizardScreen() {
       return;
     }
     router.replace('/(tabs)');
+  }
+
+  if (aiChoice === 'asking' && userId) {
+    return (
+      <AiConsent
+        userId={userId}
+        onAgreed={() => setAiChoice('agreed')}
+        onDeclined={() => {
+          noteAiDeclined(userId);
+          setAiChoice('declined');
+        }}
+      />
+    );
   }
 
   return (

@@ -14,8 +14,10 @@ import { supabase } from '@/lib/supabase';
  *
  * On 2026-11-26 the server has no such function. The app calls the one it has
  * asked the backend for (`account-deletion`, `{ action: "request" }`). Until it
- * exists the answer is "not offered" and the screen tells the person to write
- * to support instead. The contract is in the shared notes.
+ * exists the answer is "not offered" (404, no such function) and the screen
+ * tells the person to write to support instead. Any other failure, a refusal
+ * included, is thrown: the screen says it failed and offers the email route
+ * beside it. The contract is in the shared notes.
  */
 
 const FUNCTION = 'account-deletion';
@@ -27,14 +29,14 @@ export type DeletionOutcome =
   | { status: 'not_offered' };
 
 const answerSchema = z.object({ ok: z.literal(true) });
-const NOT_OFFERED_STATUS = new Set([403, 404]);
+const NOT_OFFERED_STATUS = 404;
 
 /** Throws when the request could not be sent or the answer cannot be trusted: the screen then says it failed. */
 export async function requestAccountDeletion(): Promise<DeletionOutcome> {
   assertSupabaseConfigured();
   const { data, error } = await supabase.functions.invoke<unknown>(FUNCTION, { body: { action: 'request' } });
   if (error) {
-    if (error instanceof FunctionsHttpError && NOT_OFFERED_STATUS.has((error.context as Response).status)) {
+    if (error instanceof FunctionsHttpError && (error.context as Response).status === NOT_OFFERED_STATUS) {
       return { status: 'not_offered' };
     }
     throw new Error('deletion_request_failed');

@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { openBrowserAsync } from 'expo-web-browser';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
@@ -20,6 +21,7 @@ export default function AccessSuspendedScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
   const { refresh, signOut } = useAuth();
+  const router = useRouter();
   const [checking, setChecking] = useState(false);
   const [renewing, setRenewing] = useState(false);
   const [renewError, setRenewError] = useState<string | null>(null);
@@ -67,6 +69,15 @@ export default function AccessSuspendedScreen() {
       <Pressable accessibilityRole="button" onPress={() => void signOut()} style={{ alignSelf: 'center', paddingBottom: spacing.xl }}>
         <Text variant="footnote" color="mutedForeground">
           {t('auth.signOut')}
+        </Text>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.push('/delete-account')}
+        hitSlop={8}
+        style={{ alignSelf: 'center', paddingBottom: spacing.xl }}>
+        <Text variant="footnote" color="mutedForeground">
+          {t('support.deleteEntry')}
         </Text>
       </Pressable>
     </View>

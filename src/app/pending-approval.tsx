@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +20,7 @@ export default function PendingApprovalScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
   const { user, refresh, signOut } = useAuth();
+  const router = useRouter();
   const [checking, setChecking] = useState(false);
   const [stillPending, setStillPending] = useState(false);
 
@@ -50,6 +52,15 @@ export default function PendingApprovalScreen() {
       <Pressable accessibilityRole="button" onPress={() => void signOut()} style={{ alignSelf: 'center', paddingBottom: spacing.xl }}>
         <Text variant="footnote" color="mutedForeground">
           {t('auth.signOut')}
+        </Text>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.push('/delete-account')}
+        hitSlop={8}
+        style={{ alignSelf: 'center', paddingBottom: spacing.xl }}>
+        <Text variant="footnote" color="mutedForeground">
+          {t('support.deleteEntry')}
         </Text>
       </Pressable>
     </View>

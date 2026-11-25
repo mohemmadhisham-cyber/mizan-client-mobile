@@ -1,3 +1,4 @@
+import { StatusBar } from 'expo-status-bar';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import i18n from '@/i18n';
@@ -32,11 +33,12 @@ function words(key: string, fallback: string): string {
 export function AppError({ retry }: AppErrorProps) {
   return (
     <View style={styles.root} accessibilityRole="alert">
+      <StatusBar style="light" />
       <Text style={styles.title} accessibilityRole="header">
         {words('support.errorTitle', 'Something went wrong.')}
       </Text>
       <Text style={styles.body}>
-        {words('support.errorBody', 'This screen could not be shown. Your data is safe. Try again, and if it keeps happening, close the app and open it again.')}
+        {words('support.errorBody', 'This screen could not be shown. Try again, and if it keeps happening, close the app and open it again.')}
       </Text>
       <Pressable
         accessibilityRole="button"

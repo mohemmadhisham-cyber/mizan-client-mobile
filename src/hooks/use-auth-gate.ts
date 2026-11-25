@@ -16,6 +16,15 @@ import { useAuth } from '@/lib/auth-context';
  * RLS enforces per-tenant data access regardless, so this gate is UX, not the
  * security boundary.
  */
+
+/**
+ * Screens a signed-in person may open while waiting for a company link or
+ * while suspended. Both stores require that anyone who has an account can
+ * start deleting it in the app, and these are the accounts with nowhere else
+ * to go.
+ */
+const OPEN_WHILE_HELD: ReadonlySet<string> = new Set(['delete-account']);
+
 export function useAuthGate() {
   const { session, loading, rolesLoading, clientId, clientStatus } = useAuth();
   const segments = useSegments();
@@ -27,6 +36,7 @@ export function useAuthGate() {
     const onPendingScreen = segments[0] === 'pending-approval';
     const onSuspendedScreen = segments[0] === 'access-suspended';
     const suspended = !!clientId && clientStatus === 'suspended';
+    const onOpenScreen = OPEN_WHILE_HELD.has(segments[0] ?? '');
 
     if (!session && !inOnboarding) {
       router.replace('/welcome');
@@ -36,11 +46,11 @@ export function useAuthGate() {
       router.replace('/');
       return;
     }
-    if (session && !rolesLoading && !clientId && !inOnboarding && !onPendingScreen) {
+    if (session && !rolesLoading && !clientId && !inOnboarding && !onPendingScreen && !onOpenScreen) {
       router.replace('/pending-approval');
       return;
     }
-    if (session && !rolesLoading && suspended && !onSuspendedScreen) {
+    if (session && !rolesLoading && suspended && !onSuspendedScreen && !onOpenScreen) {
       router.replace('/access-suspended');
       return;
     }

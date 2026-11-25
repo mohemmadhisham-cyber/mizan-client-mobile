@@ -59,6 +59,12 @@ export default function DeleteAccountScreen() {
     ]);
   }
 
+  // Opened from a link there may be nothing to go back to.
+  function leave() {
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
+  }
+
   async function emailRequest() {
     try {
       await Linking.openURL(supportMailto(t('support.deleteEmailSubject')));
@@ -79,12 +85,12 @@ export default function DeleteAccountScreen() {
       animateKey={stage}
       lines={lines}
       sub={user?.email ?? undefined}
-      top={<FieldBack colors={colors} />}
+      top={<FieldBack colors={colors} onPress={leave} />}
       bridge={stage === 'explain' ? { start: HORIZON_GUTTER, width: BRIDGE_WIDTH } : null}>
       {stage === 'requested' ? (
         <View style={{ padding: HORIZON_GUTTER, gap: 16 }}>
           <Text variant="body">{t('support.deleteSentBody')}</Text>
-          <Cta title={t('common.done')} onPress={() => router.back()} />
+          <Cta title={t('common.done')} onPress={leave} />
         </View>
       ) : stage === 'by-email' ? (
         <View style={{ padding: HORIZON_GUTTER, gap: 16 }}>
@@ -103,7 +109,11 @@ export default function DeleteAccountScreen() {
               </Text>
             ) : null}
             <Cta title={t('support.deleteAction')} busy={sending} onPress={confirm} />
-            <Cta kind="outline" title={t('support.deleteKeep')} disabled={sending} onPress={() => router.back()} />
+            {failed ? (
+              // The request must be possible even when the server will not take it.
+              <Cta kind="quiet" title={t('support.deleteByEmailAction')} disabled={sending} onPress={() => setStage('by-email')} />
+            ) : null}
+            <Cta kind="outline" title={t('support.deleteKeep')} disabled={sending} onPress={leave} />
           </View>
         </>
       )}
