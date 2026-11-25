@@ -5,6 +5,8 @@ import { type Edge, SafeAreaView } from 'react-native-safe-area-context';
 import { TAB_BAR_HEIGHT } from '@/components/navigation/metrics';
 import { spacing, useTheme } from '@/theme';
 
+import { AppRefreshControl } from './refresh';
+
 interface ScreenProps {
   children: ReactNode;
   scroll?: boolean;
@@ -18,6 +20,9 @@ interface ScreenProps {
   header?: ReactNode;
   style?: ViewStyle;
   contentContainerStyle?: ViewStyle;
+  /** Pull to refresh, for `scroll` screens. Pass both to enable it. */
+  refreshing?: boolean;
+  onRefresh?: () => void;
 }
 
 export function Screen({
@@ -29,6 +34,8 @@ export function Screen({
   header,
   style,
   contentContainerStyle,
+  refreshing = false,
+  onRefresh,
 }: ScreenProps) {
   const theme = useTheme();
   const bottomPad = clearsTabBar ? TAB_BAR_HEIGHT + spacing.xl : spacing.xl;
@@ -40,6 +47,7 @@ export function Screen({
       {scroll ? (
         <ScrollView
           showsVerticalScrollIndicator={false}
+          refreshControl={onRefresh ? <AppRefreshControl refreshing={refreshing} onRefresh={onRefresh} /> : undefined}
           contentContainerStyle={[
             { paddingHorizontal: gutter, paddingBottom: bottomPad, paddingTop: spacing.sm },
             contentContainerStyle,

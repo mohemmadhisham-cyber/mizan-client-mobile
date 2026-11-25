@@ -6,7 +6,8 @@ import { Pressable, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { AppHeader } from '@/components/navigation/app-header';
-import { Card, EmptyState, Screen, Skeleton, Text } from '@/components/ui';
+import { Card, EmptyState, ScreenList, Skeleton, Text } from '@/components/ui';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { localeTag } from '@/lib/format';
 import { listMyReceipts, type MyReceipt } from '@/services/receipts';
 import { reportsService } from '@/services/reports';
@@ -37,11 +38,11 @@ const RECEIPT_TITLE_KEY: Record<MyReceipt['status'], string> = {
  * actually happened on the account. Both sources are real and RLS-scoped. */
 export default function ActivityScreen() {
   const { t } = useTranslation();
-  const theme = useTheme();
   const router = useRouter();
 
   const receipts = useQuery({ queryKey: ['my-receipts'], queryFn: listMyReceipts });
-  const reports = useQuery({ queryKey: ['reports-insights'], queryFn: () => reportsService.getRecentInsights(10) });
+  // The count is part of the key: the Reports tab asks for 2 under the same name.
+  const reports = useQuery({ queryKey: ['reports-insights', 10], queryFn: () => reportsService.getRecentInsights(10) });
 
   const items = useMemo<ActivityItem[]>(() => {
     const r: ActivityItem[] = (receipts.data ?? []).map((rec) => ({
@@ -63,74 +64,82 @@ export default function ActivityScreen() {
   }, [receipts.data, reports.data, t]);
 
   const loading = receipts.isLoading || reports.isLoading;
+  const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([receipts.refetch(), reports.refetch()]));
 
   return (
-    <Screen scroll header={<AppHeader />}>
-      <View style={{ gap: 4, marginTop: spacing.sm, marginBottom: spacing.lg }}>
-        <Text variant="h2" weight="semibold">
-          {t('activity.title')}
-        </Text>
-        <Text variant="body" color="mutedForeground">
-          {t('activity.subtitle')}
+    <ScreenList
+      header={<AppHeader />}
+      data={items}
+      keyExtractor={activityId}
+      renderItem={(it) => (
+        <ActivityRow item={it} onOpenReport={(id) => router.push({ pathname: '/report/[id]', params: { id } })} />
+      )}
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      listHeader={
+        // The list adds `spacing.sm` under the header; the margin makes up the rest of `spacing.lg`.
+        <View style={{ gap: 4, marginTop: spacing.sm, marginBottom: spacing.lg - spacing.sm }}>
+          <Text variant="h2" weight="semibold">
+            {t('activity.title')}
+          </Text>
+          <Text variant="body" color="mutedForeground">
+            {t('activity.subtitle')}
+          </Text>
+        </View>
+      }
+      listEmpty={
+        loading ? (
+          <View style={{ gap: spacing.md }}>
+            <Skeleton height={64} radius={radius.lg} />
+            <Skeleton height={64} radius={radius.lg} />
+            <Skeleton height={64} radius={radius.lg} />
+          </View>
+        ) : (
+          <EmptyState icon="pulse-outline" title={t('activity.emptyTitle')} message={t('activity.emptyBody')} />
+        )
+      }
+    />
+  );
+}
+
+const activityId = (it: ActivityItem): string => it.id;
+
+function ActivityRow({ item, onOpenReport }: { item: ActivityItem; onOpenReport: (reportId: string) => void }) {
+  const theme = useTheme();
+  const reportId = item.reportId;
+  const row = (
+    <Card padded={false} style={{ padding: spacing.base }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+        <View
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: radius.full,
+            backgroundColor: theme.colors.secondary,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+          <Ionicons name={item.icon} size={18} color={theme.colors.mutedForeground} />
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text variant="callout" weight="semibold" numberOfLines={1}>
+            {item.title}
+          </Text>
+          <Text variant="footnote" color="mutedForeground" numberOfLines={1}>
+            {item.subtitle}
+          </Text>
+        </View>
+        <Text variant="caption" color="mutedForeground">
+          {new Date(item.at).toLocaleDateString(localeTag(), { day: 'numeric', month: 'short' })}
         </Text>
       </View>
-
-      {loading ? (
-        <View style={{ gap: spacing.md }}>
-          <Skeleton height={64} radius={radius.lg} />
-          <Skeleton height={64} radius={radius.lg} />
-          <Skeleton height={64} radius={radius.lg} />
-        </View>
-      ) : items.length === 0 ? (
-        <EmptyState
-          icon="pulse-outline"
-          title={t('activity.emptyTitle')}
-          message={t('activity.emptyBody')}
-        />
-      ) : (
-        <View style={{ gap: spacing.sm }}>
-          {items.map((it) => {
-            const row = (
-              <Card padded={false} style={{ padding: spacing.base }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-                  <View
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: radius.full,
-                      backgroundColor: theme.colors.secondary,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}>
-                    <Ionicons name={it.icon} size={18} color={theme.colors.mutedForeground} />
-                  </View>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text variant="callout" weight="semibold" numberOfLines={1}>
-                      {it.title}
-                    </Text>
-                    <Text variant="footnote" color="mutedForeground" numberOfLines={1}>
-                      {it.subtitle}
-                    </Text>
-                  </View>
-                  <Text variant="caption" color="mutedForeground">
-                    {new Date(it.at).toLocaleDateString(localeTag(), { day: 'numeric', month: 'short' })}
-                  </Text>
-                </View>
-              </Card>
-            );
-            return it.reportId ? (
-              <Pressable
-                key={it.id}
-                accessibilityRole="button"
-                onPress={() => router.push({ pathname: '/report/[id]', params: { id: it.reportId! } })}>
-                {row}
-              </Pressable>
-            ) : (
-              <View key={it.id}>{row}</View>
-            );
-          })}
-        </View>
-      )}
-    </Screen>
+    </Card>
+  );
+  return reportId ? (
+    <Pressable accessibilityRole="button" onPress={() => onOpenReport(reportId)}>
+      {row}
+    </Pressable>
+  ) : (
+    row
   );
 }

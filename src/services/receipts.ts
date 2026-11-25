@@ -221,19 +221,21 @@ export interface MyReceipt {
   createdAt: string;
 }
 
-/** The client's own receipts, newest first (RLS "receipts client read":
- * client_id = user_client(auth.uid()), so no client filter needed here). */
-export async function listMyReceipts(): Promise<MyReceipt[]> {
-  const { data, error } = await supabase
-    .from('receipts')
-    .select('id, status, vendor_name, receipt_date, total_amount, currency, category, created_at')
-    .order('created_at', { ascending: false })
-    .limit(100);
-  if (error) throw error;
-  return ((data ?? []) as {
-    id: string; status: string; vendor_name: string | null; receipt_date: string | null;
-    total_amount: number | null; currency: string | null; category: string | null; created_at: string;
-  }[]).map((r) => ({
+interface ReceiptListRow {
+  id: string;
+  status: string;
+  vendor_name: string | null;
+  receipt_date: string | null;
+  total_amount: number | null;
+  currency: string | null;
+  category: string | null;
+  created_at: string;
+}
+
+const RECEIPT_LIST_COLUMNS = 'id, status, vendor_name, receipt_date, total_amount, currency, category, created_at';
+
+function toMyReceipt(r: ReceiptListRow): MyReceipt {
+  return {
     id: r.id,
     status: r.status as ReceiptStatus,
     vendorName: r.vendor_name,
@@ -242,5 +244,34 @@ export async function listMyReceipts(): Promise<MyReceipt[]> {
     currency: r.currency,
     category: r.category,
     createdAt: r.created_at,
-  }));
+  };
+}
+
+/** The client's own receipts, newest first (RLS "receipts client read":
+ * client_id = user_client(auth.uid()), so no client filter needed here).
+ * The latest 100 only: used by the activity timeline. */
+export async function listMyReceipts(): Promise<MyReceipt[]> {
+  const { data, error } = await supabase
+    .from('receipts')
+    .select(RECEIPT_LIST_COLUMNS)
+    .order('created_at', { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return ((data ?? []) as ReceiptListRow[]).map(toMyReceipt);
+}
+
+export const RECEIPTS_PAGE_SIZE = 30;
+
+/** One page of the client's receipts, newest first. `offset` is the number of
+ * rows already loaded. Used by the receipts list, which loads as it scrolls. */
+export async function listMyReceiptsPage(offset: number): Promise<MyReceipt[]> {
+  const { data, error } = await supabase
+    .from('receipts')
+    .select(RECEIPT_LIST_COLUMNS)
+    .order('created_at', { ascending: false })
+    // Second sort key: receipts from one batch upload keep one order across pages.
+    .order('id', { ascending: false })
+    .range(offset, offset + RECEIPTS_PAGE_SIZE - 1);
+  if (error) throw error;
+  return ((data ?? []) as ReceiptListRow[]).map(toMyReceipt);
 }
