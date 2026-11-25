@@ -1,3 +1,4 @@
+import i18n from '@/i18n';
 import { assertSupabaseConfigured } from '@/lib/env';
 import { supabase } from '@/lib/supabase';
 
@@ -31,7 +32,7 @@ export async function issueStepUpOtp(email: string): Promise<StepUpResult> {
     cooldownMs?: number;
   }>('otp', { body: { action: 'issue', email, purpose: 'step_up' } });
   if (error) return { ok: false, error: error.message };
-  if (!data?.ok) return { ok: false, error: data?.error ?? 'Could not send a verification code.' };
+  if (!data?.ok) return { ok: false, error: data?.error ?? i18n.t('errors.stepUpSendFailed') };
   return { ok: true };
 }
 
@@ -43,6 +44,6 @@ export async function verifyStepUpOtp(email: string, code: string, scope: string
     stepUpGranted?: boolean;
   }>('otp', { body: { action: 'verify', email, purpose: 'step_up', code, scope } });
   if (error) return { ok: false, error: error.message };
-  if (!data?.ok) return { ok: false, error: data?.error ?? 'That code did not work.' };
+  if (!data?.ok) return { ok: false, error: data?.error ?? i18n.t('errors.stepUpCodeFailed') };
   return { ok: true, granted: Boolean(data.stepUpGranted) };
 }

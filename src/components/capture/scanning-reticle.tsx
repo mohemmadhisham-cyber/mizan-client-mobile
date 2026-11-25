@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { cameraChrome } from '@/theme';
@@ -15,6 +16,7 @@ const CORNER = 32;
  * most apps stay dark regardless of the app's light/dark setting.
  */
 export function ScanningReticle() {
+  const { t } = useTranslation();
   const reduced = useReducedMotion();
   const progress = useSharedValue(0);
 
@@ -37,7 +39,7 @@ export function ScanningReticle() {
       <Animated.View style={[styles.scanLine, lineStyle]} />
       <View style={styles.badge}>
         <View style={styles.badgeDot} />
-        <Animated.Text style={styles.badgeText}>AUTO-DETECT ACTIVE</Animated.Text>
+        <Animated.Text style={styles.badgeText}>{t('capture.autoDetect')}</Animated.Text>
       </View>
     </View>
   );

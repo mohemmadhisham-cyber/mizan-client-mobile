@@ -1,5 +1,6 @@
 import * as FileSystem from 'expo-file-system';
 
+import i18n from '@/i18n';
 import { supabase } from '@/lib/supabase';
 
 export interface ChatMessage {
@@ -71,11 +72,11 @@ export const accountantChatService = {
 
     if (attachment) {
       if (!ALLOWED_MIME.has(attachment.mimeType)) {
-        return { ok: false, error: 'That file type is not supported.' };
+        return { ok: false, error: i18n.t('errors.fileTypeUnsupported') };
       }
       const info = await FileSystem.getInfoAsync(attachment.uri);
-      if (!info.exists) return { ok: false, error: 'Could not read the selected file.' };
-      if ((info.size ?? 0) > MAX_ATTACHMENT_BYTES) return { ok: false, error: 'Attachments must be under 10MB.' };
+      if (!info.exists) return { ok: false, error: i18n.t('errors.fileUnreadable') };
+      if ((info.size ?? 0) > MAX_ATTACHMENT_BYTES) return { ok: false, error: i18n.t('errors.attachmentTooLarge') };
 
       const ext = attachment.fileName?.split('.').pop() ?? attachment.mimeType.split('/')[1] ?? 'bin';
       const path = `${firmId}/${clientId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -83,7 +84,7 @@ export const accountantChatService = {
       const { error: uploadError } = await supabase.storage.from('chat-attachments').upload(path, bytes, {
         contentType: attachment.mimeType,
       });
-      if (uploadError) return { ok: false, error: 'Could not upload the attachment.' };
+      if (uploadError) return { ok: false, error: i18n.t('errors.attachmentUploadFailed') };
       attachmentPath = path;
       attachmentMime = attachment.mimeType;
     }

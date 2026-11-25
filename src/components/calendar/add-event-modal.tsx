@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { Modal, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { Button, Card, Input, Text } from '@/components/ui';
 import type { CalendarEventKind, NewCalendarEvent } from '@/services/types';
 import { radius, spacing, useTheme } from '@/theme';
 
-const KINDS: { key: CalendarEventKind; label: string }[] = [
-  { key: 'meeting', label: 'Meeting' },
-  { key: 'task', label: 'Task' },
-  { key: 'deadline', label: 'Deadline' },
+const KINDS: { key: CalendarEventKind; labelKey: string }[] = [
+  { key: 'meeting', labelKey: 'calendar.kindMeeting' },
+  { key: 'task', labelKey: 'calendar.kindTask' },
+  { key: 'deadline', labelKey: 'calendar.kindDeadline' },
 ];
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -24,6 +25,7 @@ interface AddEventModalProps {
 }
 
 export function AddEventModal({ visible, dateLabel, onCancel, onCreate }: AddEventModalProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [kind, setKind] = useState<CalendarEventKind>('meeting');
@@ -43,11 +45,11 @@ export function AddEventModal({ visible, dateLabel, onCancel, onCreate }: AddEve
 
   async function submit() {
     if (!title.trim()) {
-      setError('Give the event a title.');
+      setError(t('calendar.titleRequired'));
       return;
     }
     if (time.trim() && !TIME_PATTERN.test(time.trim())) {
-      setError('Time must be in 24-hour HH:MM format, e.g. 14:30.');
+      setError(t('calendar.timeFormat'));
       return;
     }
     setError(null);
@@ -73,7 +75,7 @@ export function AddEventModal({ visible, dateLabel, onCancel, onCreate }: AddEve
             paddingBottom: insets.bottom + spacing.lg,
             gap: spacing.md,
           }}>
-          <Text variant="title">New event</Text>
+          <Text variant="title">{t('calendar.newEvent')}</Text>
           <Text variant="footnote" color="mutedForeground">
             {dateLabel}
           </Text>
@@ -95,16 +97,16 @@ export function AddEventModal({ visible, dateLabel, onCancel, onCreate }: AddEve
                     backgroundColor: active ? theme.colors.primary : theme.colors.secondary,
                   }}>
                   <Text variant="caption" weight="semibold" style={{ color: active ? theme.colors.primaryForeground : theme.colors.foreground }}>
-                    {k.label}
+                    {t(k.labelKey)}
                   </Text>
                 </Pressable>
               );
             })}
           </View>
 
-          <Input label="Title" value={title} onChangeText={setTitle} placeholder="e.g. Call with accountant" />
-          <Input label="Time (optional)" value={time} onChangeText={setTime} placeholder="14:30" keyboardType="numbers-and-punctuation" />
-          <Input label="Notes (optional)" value={description} onChangeText={setDescription} placeholder="Anything to remember" />
+          <Input label={t('calendar.titleLabel')} value={title} onChangeText={setTitle} placeholder={t('calendar.titlePlaceholder')} />
+          <Input label={t('calendar.timeLabel')} value={time} onChangeText={setTime} placeholder="14:30" keyboardType="numbers-and-punctuation" />
+          <Input label={t('calendar.notesLabel')} value={description} onChangeText={setDescription} placeholder={t('calendar.notesPlaceholder')} />
 
           {error ? (
             <Text variant="footnote" color="danger">
@@ -112,7 +114,7 @@ export function AddEventModal({ visible, dateLabel, onCancel, onCreate }: AddEve
             </Text>
           ) : null}
 
-          <Button title="Add event" onPress={submit} loading={busy} fullWidth />
+          <Button title={t('calendar.addEvent')} onPress={submit} loading={busy} fullWidth />
           <Pressable
             accessibilityRole="button"
             onPress={() => {
@@ -121,7 +123,7 @@ export function AddEventModal({ visible, dateLabel, onCancel, onCreate }: AddEve
             }}
             style={{ alignItems: 'center', paddingTop: spacing.xs }}>
             <Text variant="footnote" color="mutedForeground">
-              Cancel
+              {t('common.cancel')}
             </Text>
           </Pressable>
         </Card>

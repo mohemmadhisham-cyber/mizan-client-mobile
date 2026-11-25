@@ -1,5 +1,6 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
 
+import i18n from '@/i18n';
 import { assertSupabaseConfigured } from '@/lib/env';
 import { supabase } from '@/lib/supabase';
 
@@ -24,17 +25,16 @@ export interface AskAiResult {
 // Known server error codes mapped to user-safe messages. Anything not listed
 // here (or unparseable) falls back to a single generic message — raw codes
 // like "forbidden" must never reach the chat UI verbatim.
-const FRIENDLY_ERROR: Record<string, string> = {
-  forbidden: "You don't have access to ask AI questions for this company. Contact your accountant.",
-  rate_limited: "You're sending messages too quickly. Wait a moment and try again.",
-  invalid_request: 'That message could not be sent. Try rephrasing it.',
+const FRIENDLY_ERROR_KEY: Record<string, string> = {
+  forbidden: 'errors.aiForbidden',
+  rate_limited: 'errors.aiRateLimited',
+  invalid_request: 'errors.aiInvalid',
 };
 
-const GENERIC_ERROR = 'Mizan could not respond right now. Please try again.';
+const GENERIC_ERROR_KEY = 'errors.aiGeneric';
 
 function friendlyMessage(code: string | undefined): string {
-  if (!code) return GENERIC_ERROR;
-  return FRIENDLY_ERROR[code] ?? GENERIC_ERROR;
+  return i18n.t((code && FRIENDLY_ERROR_KEY[code]) || GENERIC_ERROR_KEY);
 }
 
 export async function askAi(prompt: string, clientId: string | null): Promise<AskAiResult> {
@@ -55,10 +55,10 @@ export async function askAi(prompt: string, clientId: string | null): Promise<As
         const body = await error.context.json();
         return { ok: false, error: friendlyMessage(body?.error) };
       } catch {
-        return { ok: false, error: GENERIC_ERROR };
+        return { ok: false, error: i18n.t(GENERIC_ERROR_KEY) };
       }
     }
-    return { ok: false, error: GENERIC_ERROR };
+    return { ok: false, error: i18n.t(GENERIC_ERROR_KEY) };
   }
   if (!data?.ok) {
     return {

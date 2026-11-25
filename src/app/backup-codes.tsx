@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { DetailHeader } from '@/components/navigation/detail-header';
 import { Button, Card, Skeleton, Text } from '@/components/ui';
@@ -13,6 +14,7 @@ import {
 import { radius, spacing, useTheme } from '@/theme';
 
 export default function BackupCodesScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [status, setStatus] = useState<BackupCodesStatus | null>(null);
@@ -28,11 +30,11 @@ export default function BackupCodesScreen() {
       new Promise<boolean>((resolve) => {
         if (!status?.enabled) return resolve(true);
         Alert.alert(
-          'Replace existing codes?',
-          'Generating new codes immediately invalidates any codes you already have.',
+          t('backupCodes.replaceTitle'),
+          t('backupCodes.replaceBody'),
           [
-            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-            { text: 'Replace', style: 'destructive', onPress: () => resolve(true) },
+            { text: t('common.cancel'), style: 'cancel', onPress: () => resolve(false) },
+            { text: t('backupCodes.replace'), style: 'destructive', onPress: () => resolve(true) },
           ],
         );
       });
@@ -42,7 +44,7 @@ export default function BackupCodesScreen() {
     const res = await generateBackupCodes();
     setBusy(false);
     if (!res.ok || !res.codes) {
-      Alert.alert('Could not generate codes', res.error ?? 'Try again.');
+      Alert.alert(t('backupCodes.generateFailed'), res.error ?? t('common.tryAgainShort'));
       return;
     }
     setFreshCodes(res.codes);
@@ -50,17 +52,17 @@ export default function BackupCodesScreen() {
   }
 
   function handleDisable() {
-    Alert.alert('Turn off backup codes?', 'Your existing codes will stop working.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('backupCodes.turnOffTitle'), t('backupCodes.turnOffBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Turn off',
+        text: t('backupCodes.turnOff'),
         style: 'destructive',
         onPress: async () => {
           setBusy(true);
           const res = await disableBackupCodes();
           setBusy(false);
           if (!res.ok) {
-            Alert.alert('Could not turn off backup codes', res.error ?? 'Try again.');
+            Alert.alert(t('backupCodes.turnOffFailed'), res.error ?? t('common.tryAgainShort'));
             return;
           }
           setStatus({ enabled: false, remaining: 0 });
@@ -72,19 +74,19 @@ export default function BackupCodesScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
-      <DetailHeader title="Backup Codes" />
+      <DetailHeader title={t('backupCodes.title')} />
       <ScrollView contentContainerStyle={{ padding: spacing.gutter, gap: spacing.lg, paddingBottom: insets.bottom + spacing.xl }}>
         <Text variant="callout" color="mutedForeground">
-          {"Backup codes let you prove it's you if you ever lose access to your email. They are not a second login step — keep them somewhere safe, like a password manager."}
+          {t('backupCodes.intro')}
         </Text>
 
         {!status ? (
           <Skeleton height={100} radius={radius.lg} />
         ) : freshCodes ? (
           <Card elevated style={{ gap: spacing.md }}>
-            <Text variant="title">Save these codes now</Text>
+            <Text variant="title">{t('backupCodes.saveNowTitle')}</Text>
             <Text variant="footnote" color="mutedForeground">
-              {"Each code works once. This is the only time they'll be shown."}
+              {t('backupCodes.saveNowBody')}
             </Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
               {freshCodes.map((code) => (
@@ -102,24 +104,24 @@ export default function BackupCodesScreen() {
                 </View>
               ))}
             </View>
-            <Button title="Done — I've saved these" onPress={() => setFreshCodes(null)} fullWidth />
+            <Button title={t('backupCodes.doneSaved')} onPress={() => setFreshCodes(null)} fullWidth />
           </Card>
         ) : (
           <Card elevated style={{ gap: spacing.md }}>
-            <Text variant="title">{status.enabled ? `${status.remaining} codes remaining` : 'Not set up'}</Text>
+            <Text variant="title">{status.enabled ? t('backupCodes.remaining', { count: status.remaining }) : t('backupCodes.notSetUp')}</Text>
             <Text variant="footnote" color="mutedForeground">
               {status.enabled
-                ? 'Generating new codes replaces these.'
-                : 'Generate a set of one-time codes to protect account recovery.'}
+                ? t('backupCodes.replaceHint')
+                : t('backupCodes.setupHint')}
             </Text>
             <Button
-              title={status.enabled ? 'Regenerate codes' : 'Generate backup codes'}
+              title={status.enabled ? t('backupCodes.regenerate') : t('backupCodes.generate')}
               onPress={handleGenerate}
               loading={busy}
               fullWidth
             />
             {status.enabled ? (
-              <Button title="Turn off" variant="secondary" onPress={handleDisable} disabled={busy} fullWidth />
+              <Button title={t('backupCodes.turnOff')} variant="secondary" onPress={handleDisable} disabled={busy} fullWidth />
             ) : null}
           </Card>
         )}

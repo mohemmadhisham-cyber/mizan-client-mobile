@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { cameraChrome } from '@/theme';
 
@@ -29,6 +30,7 @@ export function CaptureControls({
   onUploadFromLibrary,
   shutterDisabled,
 }: CaptureControlsProps) {
+  const { t } = useTranslation();
   return (
     <View style={styles.container}>
       <View style={styles.modeRow}>
@@ -37,25 +39,25 @@ export function CaptureControls({
           accessibilityState={{ selected: mode === 'single' }}
           onPress={() => onModeChange('single')}
           style={styles.modePill}>
-          <Text style={[styles.modeText, mode === 'single' && styles.modeTextActive]}>Single</Text>
+          <Text style={[styles.modeText, mode === 'single' && styles.modeTextActive]}>{t('capture.modeSingle')}</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ selected: mode === 'batch' }}
           onPress={() => onModeChange('batch')}
           style={[styles.modePill, mode === 'batch' && styles.modePillActive]}>
-          <Text style={[styles.modeText, mode === 'batch' && styles.modeTextActive]}>Batch</Text>
+          <Text style={[styles.modeText, mode === 'batch' && styles.modeTextActive]}>{t('capture.modeBatch')}</Text>
         </Pressable>
       </View>
 
       <View style={styles.actionRow}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Choose from gallery" onPress={onGallery} style={styles.squareButton}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t('capture.chooseFromGallery')} onPress={onGallery} style={styles.squareButton}>
           <Ionicons name="images-outline" size={22} color={cameraChrome.foreground} />
         </Pressable>
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Take photo"
+          accessibilityLabel={t('capture.takePhoto')}
           disabled={shutterDisabled}
           onPress={() => {
             haptic();
@@ -65,13 +67,13 @@ export function CaptureControls({
           <View style={styles.shutterInner} />
         </Pressable>
 
-        <Pressable accessibilityRole="button" accessibilityLabel="Enter manually" onPress={onManualEntry} style={styles.squareButton}>
+        <Pressable accessibilityRole="button" accessibilityLabel={t('capture.enterManually')} onPress={onManualEntry} style={styles.squareButton}>
           <Ionicons name="keypad-outline" size={22} color={cameraChrome.foreground} />
         </Pressable>
       </View>
 
       <Pressable accessibilityRole="button" onPress={onUploadFromLibrary}>
-        <Text style={styles.libraryLink}>Upload from Library</Text>
+        <Text style={styles.libraryLink}>{t('capture.uploadFromLibrary')}</Text>
       </Pressable>
     </View>
   );

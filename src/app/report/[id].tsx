@@ -4,15 +4,17 @@ import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Linking, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { TrendChart } from '@/components/charts/trend-chart';
 import { DetailHeader } from '@/components/navigation/detail-header';
 import { Button, Card, EmptyState, Skeleton, Text } from '@/components/ui';
-import { CATEGORY_ICON, CATEGORY_LABEL, CATEGORY_TONE } from '@/services/report-presentation';
+import { CATEGORY_ICON, CATEGORY_LABEL_KEY, CATEGORY_TONE } from '@/services/report-presentation';
 import { reportsService } from '@/services/reports';
 import { radius, softTone, spacing, useTheme } from '@/theme';
 
 export default function ReportDetailScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -29,12 +31,12 @@ export default function ReportDetailScreen() {
     try {
       const url = await reportsService.getReportPdfUrl(id as string);
       if (!url) {
-        Alert.alert('No PDF yet', 'This report doesn’t have a downloadable PDF attached.');
+        Alert.alert(t('reportDetail.noPdfTitle'), t('reportDetail.noPdfBody'));
         return;
       }
       await Linking.openURL(url);
     } catch {
-      Alert.alert('Download failed', 'Could not open the report PDF. Please try again.');
+      Alert.alert(t('reportDetail.downloadFailedTitle'), t('reportDetail.downloadFailedBody'));
     } finally {
       setDownloading(false);
     }
@@ -50,7 +52,7 @@ export default function ReportDetailScreen() {
           <Skeleton height={140} radius={radius.lg} />
         </View>
       ) : !report.data ? (
-        <EmptyState icon="alert-circle-outline" title="Report not found" message="This report may have been removed." />
+        <EmptyState icon="alert-circle-outline" title={t('reportDetail.notFoundTitle')} message={t('reportDetail.notFoundBody')} />
       ) : (
         <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.gutter, paddingBottom: insets.bottom + spacing.xl, gap: spacing.lg }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
@@ -66,7 +68,7 @@ export default function ReportDetailScreen() {
               <Ionicons name={CATEGORY_ICON[report.data.category]} size={16} color={theme.colors.primary} />
             </View>
             <Text variant="footnote" color="mutedForeground">
-              {CATEGORY_LABEL[report.data.category]} · {report.data.publishedAt} · {report.data.sizeLabel}
+              {t(CATEGORY_LABEL_KEY[report.data.category])} · {report.data.publishedAt} · {report.data.sizeLabel}
             </Text>
           </View>
 
@@ -76,7 +78,7 @@ export default function ReportDetailScreen() {
 
           {report.data.highlights.length > 0 ? (
             <Card elevated style={{ gap: spacing.sm }}>
-              <Text variant="title">Highlights</Text>
+              <Text variant="title">{t('reportDetail.highlights')}</Text>
               {report.data.highlights.map((h) => (
                 <View key={h} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
                   <Ionicons name="checkmark-circle" size={16} color={theme.colors.success} style={{ marginTop: 2 }} />
@@ -88,10 +90,10 @@ export default function ReportDetailScreen() {
             </Card>
           ) : null}
 
-          {report.data.series.length > 0 ? <TrendChart question="Trend" data={report.data.series} type="line" /> : null}
+          {report.data.series.length > 0 ? <TrendChart question={t('reportDetail.trend')} data={report.data.series} type="line" /> : null}
 
           <Button
-            title={downloading ? 'Opening…' : 'Download PDF'}
+            title={downloading ? t('common.opening') : t('reportDetail.downloadPdf')}
             icon="download-outline"
             variant="secondary"
             fullWidth

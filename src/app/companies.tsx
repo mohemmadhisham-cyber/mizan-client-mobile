@@ -4,22 +4,26 @@ import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { DetailHeader } from '@/components/navigation/detail-header';
 import { Badge, Card, Skeleton, Text } from '@/components/ui';
+import i18n from '@/i18n';
 import { useAuth } from '@/lib/auth-context';
+import { localeTag } from '@/lib/format';
 import { companiesService } from '@/services/companies';
 import type { CompanyInfo, TeamMemberInfo } from '@/services/types';
 import { radius, spacing, useTheme } from '@/theme';
 
 function explainAddCompany() {
   Alert.alert(
-    'Add a company',
-    'Companies are linked to your account by your accountant. Ask them to send an invite to your email — it appears here automatically once you accept.',
+    i18n.t('companies.addTitle'),
+    i18n.t('companies.addBody'),
   );
 }
 
 export default function CompaniesScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ tab?: string }>();
@@ -31,10 +35,10 @@ export default function CompaniesScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
-      <DetailHeader title="Management" />
+      <DetailHeader title={t('companies.title')} />
       <View style={{ flexDirection: 'row', gap: spacing.lg, paddingHorizontal: spacing.gutter, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-        <TabButton label="Companies" active={tab === 'companies'} onPress={() => setTab('companies')} />
-        <TabButton label="Team" active={tab === 'team'} onPress={() => setTab('team')} />
+        <TabButton label={t('more.companies')} active={tab === 'companies'} onPress={() => setTab('companies')} />
+        <TabButton label={t('more.team')} active={tab === 'team'} onPress={() => setTab('team')} />
       </View>
 
       <ScrollView contentContainerStyle={{ padding: spacing.gutter, paddingBottom: insets.bottom + spacing.xl, gap: spacing.md }}>
@@ -63,7 +67,7 @@ export default function CompaniesScreen() {
                 }}>
                 <Ionicons name="add-circle-outline" size={28} color={theme.colors.mutedForeground} />
                 <Text variant="title" color="mutedForeground">
-                  Add Company
+                  {t('companies.addCompany')}
                 </Text>
               </Pressable>
             </>
@@ -73,7 +77,7 @@ export default function CompaniesScreen() {
         ) : team.data.length === 0 ? (
           <Card>
             <Text variant="callout" color="mutedForeground">
-              No teammates yet.
+              {t('companies.noTeammates')}
             </Text>
           </Card>
         ) : (
@@ -104,6 +108,7 @@ function TabButton({ label, active, onPress }: { label: string; active: boolean;
 }
 
 function CompanyCard({ company }: { company: CompanyInfo }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   return (
     <Card elevated style={{ gap: spacing.md }}>
@@ -111,18 +116,21 @@ function CompanyCard({ company }: { company: CompanyInfo }) {
         <View style={{ gap: spacing.sm }}>
           <Text variant="title">{company.name}</Text>
           <Badge
-            label={company.status === 'active' ? 'Active' : 'Inactive'}
+            label={company.status === 'active' ? t('companies.active') : t('companies.inactive')}
             bg={theme.colors.secondary}
             fg={theme.colors.mutedForeground}
           />
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Company options"
+          accessibilityLabel={t('companies.options')}
           onPress={() =>
             Alert.alert(
               company.name,
-              `Status: ${company.status === 'active' ? 'Active' : 'Inactive'}\n${company.lastSyncedLabel}\n\nThis company is managed by your accountant.`,
+              t('companies.detail', {
+                status: company.status === 'active' ? t('companies.active') : t('companies.inactive'),
+                synced: company.lastSyncedLabel,
+              }),
             )
           }
           hitSlop={8}>
@@ -137,11 +145,12 @@ function CompanyCard({ company }: { company: CompanyInfo }) {
 }
 
 function TeamRow({ member, isSelf, isLast }: { member: TeamMemberInfo; isSelf: boolean; isLast: boolean }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const joined = new Date(member.joinedAt);
   const joinedLabel = Number.isNaN(joined.getTime())
     ? ''
-    : `Joined ${joined.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}`;
+    : t('companies.joined', { date: joined.toLocaleDateString(localeTag(), { month: 'short', year: 'numeric' }) });
   return (
     <View
       style={{
@@ -167,7 +176,7 @@ function TeamRow({ member, isSelf, isLast }: { member: TeamMemberInfo; isSelf: b
       </View>
       <View style={{ flex: 1 }}>
         <Text variant="callout" weight="semibold">
-          {isSelf ? 'You' : member.email}
+          {isSelf ? t('common.you') : member.email}
         </Text>
         <Text variant="footnote" color="mutedForeground">
           {isSelf ? member.email : joinedLabel}

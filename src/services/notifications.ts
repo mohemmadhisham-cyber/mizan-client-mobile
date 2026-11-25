@@ -1,3 +1,4 @@
+import i18n from '@/i18n';
 import { supabase } from '@/lib/supabase';
 
 import type { NotificationCategory, NotificationItem, NotificationSeverity } from './types';
@@ -36,13 +37,13 @@ function severityFor(type: string): NotificationSeverity {
 function relativeTime(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(ms / 60_000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins} min${mins === 1 ? '' : 's'} ago`;
+  if (mins < 1) return i18n.t('notificationsScreen.justNow');
+  if (mins < 60) return i18n.t('notificationsScreen.minutesAgo', { count: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  if (hours < 24) return i18n.t('notificationsScreen.hoursAgo', { count: hours });
   const days = Math.floor(hours / 24);
-  if (days === 1) return 'Yesterday';
-  return `${days} days ago`;
+  if (days === 1) return i18n.t('notificationsScreen.yesterday');
+  return i18n.t('notificationsScreen.daysAgo', { count: days });
 }
 
 function toItem(r: Row): NotificationItem {
@@ -54,7 +55,7 @@ function toItem(r: Row): NotificationItem {
     body: r.body ?? '',
     timeLabel: relativeTime(r.created_at),
     read: r.read,
-    actionLabel: r.link ? 'View' : undefined,
+    actionLabel: r.link ? i18n.t('common.view') : undefined,
   };
 }
 

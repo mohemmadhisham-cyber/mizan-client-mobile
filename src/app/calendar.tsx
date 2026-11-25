@@ -3,11 +3,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { AddEventModal } from '@/components/calendar/add-event-modal';
 import { DetailHeader } from '@/components/navigation/detail-header';
 import { Badge, Card, Skeleton, Text } from '@/components/ui';
+import i18n from '@/i18n';
 import { useAuth } from '@/lib/auth-context';
+import { localeTag } from '@/lib/format';
 import { calendarService } from '@/services/calendar';
 import type { CalendarEvent, CalendarEventKind, NewCalendarEvent } from '@/services/types';
 import { radius, softTone, spacing, useTheme, type SoftTone } from '@/theme';
@@ -25,18 +28,18 @@ const KIND_TONE: Record<CalendarEventKind, SoftTone> = {
 };
 
 function formatTimeLabel(time?: string | null): string {
-  if (!time) return 'All day';
+  if (!time) return i18n.t('calendar.allDay');
   const [h, m] = time.split(':').map(Number);
-  const period = h >= 12 ? 'PM' : 'AM';
-  const hour12 = h % 12 === 0 ? 12 : h % 12;
-  return `${hour12}:${String(m).padStart(2, '0')} ${period}`;
+  // A fixed date: only the clock time is shown, in the app language.
+  return new Date(2000, 0, 1, h, m).toLocaleTimeString(localeTag(), { hour12: true, hour: 'numeric', minute: '2-digit' });
 }
 
 function monthYearLabel(dateKey: string): string {
-  return new Date(`${dateKey}T00:00:00`).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  return new Date(`${dateKey}T00:00:00`).toLocaleDateString(localeTag(), { month: 'long', year: 'numeric' });
 }
 
 export default function CalendarScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const qc = useQueryClient();
@@ -52,12 +55,12 @@ export default function CalendarScreen() {
 
   async function handleCreate(draft: Omit<NewCalendarEvent, 'eventDate'>) {
     if (!clientId || !user) {
-      Alert.alert('Not linked yet', 'Your account is not linked to a company yet.');
+      Alert.alert(t('common.notLinkedTitle'), t('chat.notLinkedShort'));
       return;
     }
     const res = await calendarService.createEvent({ ...draft, eventDate: selectedDate }, clientId, user.id);
     if (!res.ok) {
-      Alert.alert('Could not add event', res.error ?? 'Try again.');
+      Alert.alert(t('calendar.addFailed'), res.error ?? t('common.tryAgainShort'));
       return;
     }
     setAddingEvent(false);
@@ -68,7 +71,7 @@ export default function CalendarScreen() {
   async function handleDelete(id: string) {
     const res = await calendarService.deleteEvent(id);
     if (!res.ok) {
-      Alert.alert('Could not delete event', res.error ?? 'Try again.');
+      Alert.alert(t('calendar.deleteFailed'), res.error ?? t('common.tryAgainShort'));
       return;
     }
     void qc.invalidateQueries({ queryKey: ['calendar-events', selectedDate] });
@@ -82,11 +85,11 @@ export default function CalendarScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.gutter, marginBottom: spacing.md }}>
           <Text variant="footnote" color="mutedForeground">
-            {events.data?.length ?? 0} events this day
+            {t('calendar.eventsThisDay', { count: events.data?.length ?? 0 })}
           </Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Add event"
+            accessibilityLabel={t('calendar.addEvent')}
             onPress={() => setAddingEvent(true)}
             style={{ width: 40, height: 40, borderRadius: radius.full, backgroundColor: theme.colors.primary, alignItems: 'center', justifyContent: 'center' }}>
             <Ionicons name="add" size={18} color={theme.colors.primaryForeground} />
@@ -139,7 +142,7 @@ export default function CalendarScreen() {
 
         <View style={{ paddingHorizontal: spacing.gutter }}>
           <Text variant="title" style={{ marginBottom: spacing.md }}>
-            Schedule
+            {t('calendar.schedule')}
           </Text>
 
           {!events.data ? (
@@ -147,7 +150,7 @@ export default function CalendarScreen() {
           ) : events.data.length === 0 ? (
             <Card>
               <Text variant="callout" color="mutedForeground">
-                Nothing scheduled for this day.
+                {t('calendar.nothingScheduled')}
               </Text>
             </Card>
           ) : (
@@ -162,7 +165,7 @@ export default function CalendarScreen() {
 
       <AddEventModal
         visible={addingEvent}
-        dateLabel={new Date(`${selectedDate}T00:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+        dateLabel={new Date(`${selectedDate}T00:00:00`).toLocaleDateString(localeTag(), { weekday: 'long', month: 'long', day: 'numeric' })}
         onCancel={() => setAddingEvent(false)}
         onCreate={handleCreate}
       />
@@ -171,6 +174,7 @@ export default function CalendarScreen() {
 }
 
 function EventCard({ event, onDelete }: { event: CalendarEvent; onDelete: () => void }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const colors = softTone(theme.colors, KIND_TONE[event.kind]);
   return (
@@ -202,7 +206,7 @@ function EventCard({ event, onDelete }: { event: CalendarEvent; onDelete: () => 
         ) : null}
         <Pressable accessibilityRole="button" onPress={onDelete} style={{ alignSelf: 'flex-end' }}>
           <Text variant="caption" weight="semibold" color="danger">
-            Delete
+            {t('common.delete')}
           </Text>
         </Pressable>
       </Card>
