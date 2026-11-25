@@ -64,6 +64,7 @@ export default function MoreScreen() {
       small
       lines={[{ text: t('more.titleA') }, { text: t('more.titleB'), soft: true }]}
       sub={user?.email ?? undefined}
+      subLines={1}
       top={<FieldMark />}
       // Nothing on this screen is waiting for the person.
       bridge={null}

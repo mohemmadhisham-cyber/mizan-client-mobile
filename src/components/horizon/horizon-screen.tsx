@@ -59,6 +59,11 @@ interface HorizonScreenProps {
   lines: HeadlineLine[];
   /** One quiet line under the headline. */
   sub?: string;
+  /**
+   * Cap the quiet line, for a value that can be long, such as an email
+   * address: it is then cut in the middle instead of pushing the headline up.
+   */
+  subLines?: number;
   /** The row at the top of the field: the mark, a back control, a switch. */
   top?: ReactNode;
   /** A large, faint figure in the field, cropped by the screen edge. Decoration only. */
@@ -92,6 +97,7 @@ export function HorizonScreen({
   field,
   lines,
   sub,
+  subLines,
   top,
   art,
   bridge,
@@ -208,7 +214,11 @@ export function HorizonScreen({
             <Headline lines={lines} small={small} colors={colors} motion={motion} />
             {sub ? (
               <Animated.View style={subStyle}>
-                <Text variant="callout" style={{ color: colors.fieldMuted }}>
+                <Text
+                  variant="callout"
+                  numberOfLines={subLines}
+                  ellipsizeMode="middle"
+                  style={{ color: colors.fieldMuted }}>
                   {sub}
                 </Text>
               </Animated.View>

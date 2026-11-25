@@ -96,6 +96,7 @@ export default function SettingsScreen() {
       small
       lines={[{ text: t('settings.title') }]}
       sub={user?.email ?? t('settings.signedIn')}
+      subLines={1}
       top={<FieldBack colors={colors} />}
       // Nothing on this screen is waiting for the person.
       bridge={null}>
