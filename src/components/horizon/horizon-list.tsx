@@ -67,6 +67,8 @@ export function HorizonList<T>({
       }
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
+      // Dragging the list puts the keyboard away, so the rows behind it can be reached.
+      keyboardDismissMode="on-drag"
       contentContainerStyle={{ paddingBottom: (safeBottom ? insets.bottom : 0) + HORIZON_GUTTER }}
       onEndReached={onEndReached}
       onEndReachedThreshold={0.5}

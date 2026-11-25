@@ -27,7 +27,9 @@ export const companiesService = {
   async getCompanies(clientId: string | null): Promise<CompanyInfo[]> {
     if (!clientId) return [];
     const { data, error } = await supabase.from('clients').select('id, name, status, updated_at').eq('id', clientId).maybeSingle();
-    if (error || !data) return [];
+    // Thrown, so the screen can say it could not be read: an empty answer would read as "none".
+    if (error) throw new Error(error.message);
+    if (!data) return [];
     return [
       {
         id: data.id,
@@ -39,7 +41,9 @@ export const companiesService = {
   },
   async getTeam(): Promise<TeamMemberInfo[]> {
     const { data, error } = await supabase.rpc('get_client_team_members');
-    if (error || !data) return [];
+    // Thrown, so the screen can say it could not be read: an empty answer would read as "none".
+    if (error) throw new Error(error.message);
+    if (!data) return [];
     return (data as { user_id: string; email: string; joined_at: string }[]).map((r) => ({
       userId: r.user_id,
       email: r.email,

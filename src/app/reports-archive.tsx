@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { View } from 'react-native';
@@ -46,6 +46,9 @@ export default function ReportsArchiveScreen() {
   const results = useQuery({
     queryKey: ['reports-archive', query, category],
     queryFn: () => reportsService.searchArchive(query, category),
+    // Each letter typed is a new search. The last results stay until the new ones arrive,
+    // so the year line and the list do not blink out and back with every letter.
+    placeholderData: keepPreviousData,
   });
 
   // The years offered are the years that have reports, newest first. A fixed

@@ -53,7 +53,9 @@ export default function BillingScreen() {
         </Text>
       </View>
 
-      {plan.isLoading ? (
+      {plan.isError && !plan.data ? (
+        <RuledRow title={t('common.listLoadFailed')} action={t('common.retry')} onPress={() => void plan.refetch()} />
+      ) : plan.isLoading ? (
         <RuledRow title={t('common.loading')} />
       ) : !plan.data ? (
         <RuledRow title={t('billing.noInfo')} plain />
