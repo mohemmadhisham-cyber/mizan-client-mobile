@@ -37,7 +37,7 @@ describe('readServerConsent', () => {
 
     await readServerConsent('user-a');
 
-    expect(mockInvoke).toHaveBeenCalledWith('ai-consent', { body: { action: 'status' } });
+    expect(mockInvoke).toHaveBeenCalledWith('connect', { body: { action: 'consent_status' } });
   });
 
   test('reports an agreement with its wording', async () => {
@@ -98,14 +98,14 @@ describe('writeServerConsent', () => {
     answer({ ok: true, granted: true, version: 'v1' });
 
     expect(await writeServerConsent(true, 'v1', 'user-a')).toBe('saved');
-    expect(mockInvoke).toHaveBeenCalledWith('ai-consent', { body: { action: 'grant', version: 'v1' } });
+    expect(mockInvoke).toHaveBeenCalledWith('connect', { body: { action: 'consent_grant', version: 'v1' } });
   });
 
   test('sends a withdrawal with nothing else', async () => {
     answer({ ok: true, granted: false });
 
     expect(await writeServerConsent(false, 'v1', 'user-a')).toBe('saved');
-    expect(mockInvoke).toHaveBeenCalledWith('ai-consent', { body: { action: 'withdraw' } });
+    expect(mockInvoke).toHaveBeenCalledWith('connect', { body: { action: 'consent_withdraw' } });
   });
 
   test('is "not offered" when the server keeps no such record yet', async () => {

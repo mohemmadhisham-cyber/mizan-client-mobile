@@ -12,15 +12,15 @@ import { supabase } from '@/lib/supabase';
  * removed, and what must be kept because the law requires accounting records
  * to be kept. The app sends no user id and no client id.
  *
- * On 2026-11-26 the server has no such function. The app calls the one it has
- * asked the backend for (`account-deletion`, `{ action: "request" }`). Until it
- * exists the answer is "not offered" (404, no such function) and the screen
+ * The app calls the server's `connect` function with `{ action:
+ * "deletion_request" }`. Until the server offers that, the answer is "not
+ * offered" (404: no such function, no such action, or no table yet) and the screen
  * tells the person to write to support instead. Any other failure, a refusal
  * included, is thrown: the screen says it failed and offers the email route
  * beside it. The contract is in the shared notes.
  */
 
-const FUNCTION = 'account-deletion';
+const FUNCTION = 'connect';
 
 export type DeletionOutcome =
   /** The server has recorded the request. */
@@ -34,7 +34,7 @@ const NOT_OFFERED_STATUS = 404;
 /** Throws when the request could not be sent or the answer cannot be trusted: the screen then says it failed. */
 export async function requestAccountDeletion(): Promise<DeletionOutcome> {
   assertSupabaseConfigured();
-  const { data, error } = await supabase.functions.invoke<unknown>(FUNCTION, { body: { action: 'request' } });
+  const { data, error } = await supabase.functions.invoke<unknown>(FUNCTION, { body: { action: 'deletion_request' } });
   if (error) {
     if (error instanceof FunctionsHttpError && (error.context as Response).status === NOT_OFFERED_STATUS) {
       return { status: 'not_offered' };

@@ -6,15 +6,15 @@ import { supabase } from '@/lib/supabase';
 
 /**
  * The server's record of this person's agreement to AI (edge function
- * `ai-consent`). The server takes the person from the session: the app sends
- * no user id.
+ * `connect`, the `consent_*` actions). The server takes the person from the
+ * session: the app sends no user id.
  *
  * The record may not exist yet on the server the app is talking to. That is
  * an answer ("not offered"), not a failure: the app then keeps the agreement
  * on the phone only, as it did before.
  */
 
-const FUNCTION = 'ai-consent';
+const FUNCTION = 'connect';
 /** No such function, or its table is not there yet. */
 const NOT_OFFERED_STATUS = 404;
 
@@ -66,7 +66,7 @@ export async function readServerConsent(forUserId: string): Promise<ServerConsen
   try {
     assertSupabaseConfigured();
     if (!(await sessionIs(forUserId))) return { known: false };
-    const { data, error } = await supabase.functions.invoke<unknown>(FUNCTION, { body: { action: 'status' } });
+    const { data, error } = await supabase.functions.invoke<unknown>(FUNCTION, { body: { action: 'consent_status' } });
     if (error) return { known: false };
     const parsed = statusSchema.safeParse(data);
     if (!parsed.success) return { known: false };
@@ -86,7 +86,7 @@ export async function writeServerConsent(granted: boolean, version: string, forU
   try {
     assertSupabaseConfigured();
     if (!(await sessionIs(forUserId))) return 'failed';
-    const body = granted ? { action: 'grant', version } : { action: 'withdraw' };
+    const body = granted ? { action: 'consent_grant', version } : { action: 'consent_withdraw' };
     const { data, error } = await supabase.functions.invoke<unknown>(FUNCTION, { body });
     if (error) return notOffered(error) ? 'not_offered' : 'failed';
     const parsed = writeSchema.safeParse(data);
