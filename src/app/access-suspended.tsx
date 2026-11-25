@@ -31,20 +31,29 @@ export default function AccessSuspendedScreen() {
 
   async function checkAgain() {
     setChecking(true);
-    await refresh();
-    setChecking(false);
+    try {
+      await refresh();
+    } finally {
+      setChecking(false);
+    }
   }
 
   async function renewNow() {
     setRenewing(true);
     setRenewError(null);
-    const res = await createRenewalLink();
-    setRenewing(false);
-    if (!res.ok || !res.token) {
-      setRenewError(res.error ?? t('gates.noInvoice'));
-      return;
+    try {
+      const res = await createRenewalLink();
+      if (!res.ok || !res.token) {
+        setRenewError(res.error ?? t('gates.noInvoice'));
+        return;
+      }
+      setRenewing(false);
+      await openBrowserAsync(`${EXPO_PUBLIC_WEB_APP_URL}/pay/${res.token}`);
+    } catch {
+      setRenewError(t('auth.genericError'));
+    } finally {
+      setRenewing(false);
     }
-    await openBrowserAsync(`${EXPO_PUBLIC_WEB_APP_URL}/pay/${res.token}`);
   }
 
   return (

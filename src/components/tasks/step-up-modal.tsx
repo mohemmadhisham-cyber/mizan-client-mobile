@@ -93,6 +93,7 @@ export function StepUpModal({ visible, scope, title, actionLabel, note, onCancel
           </Text>
 
           <OtpBoxInput
+            accessibilityLabel={t('horizonAuth.codeLabel')}
             value={code}
             onChangeText={(v) => {
               setError(null);

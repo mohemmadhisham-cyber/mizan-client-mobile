@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
+import { AccessibilityInfo, KeyboardAvoidingView, Platform, View } from 'react-native';
 
 import { OtpBoxInput } from '@/components/auth/otp-box-input';
 import { Cta } from '@/components/horizon/cta';
@@ -38,6 +38,11 @@ export default function VerifyScreen() {
     return () => clearInterval(id);
   }, [cooldown]);
 
+  // The countdown is silent, so say once when Resend can be pressed.
+  useEffect(() => {
+    if (cooldown === 0) AccessibilityInfo.announceForAccessibility(t('horizonAuth.resendReady'));
+  }, [cooldown, t]);
+
   const submit = async () => {
     if (code.length < 6 || busy) return;
     setError(null);
@@ -72,10 +77,14 @@ export default function VerifyScreen() {
   // Back to the email step, to correct the address.
   function leave() {
     if (router.canGoBack()) router.back();
-    else router.replace('/email');
+    else router.replace({ pathname: '/email', params: token ? { token } : {} });
   }
 
   return (
+    // The keyboard is handled as these screens always handled it, so the button stays in reach.
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: colors.ground }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
     <HorizonScreen
       field={VERIFY_FIELD}
       small
@@ -124,5 +133,6 @@ export default function VerifyScreen() {
         )}
       </View>
     </HorizonScreen>
+    </KeyboardAvoidingView>
   );
 }

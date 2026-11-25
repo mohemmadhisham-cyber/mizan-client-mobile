@@ -1,10 +1,16 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
+import { KeyboardAvoidingView, Platform, View } from 'react-native';
 
 import { Cta } from '@/components/horizon/cta';
-import { BRIDGE_WIDTH, FieldBack, HORIZON_GUTTER, HorizonScreen } from '@/components/horizon/horizon-screen';
+import {
+  BRIDGE_WIDTH,
+  FieldBack,
+  FieldMark,
+  HORIZON_GUTTER,
+  HorizonScreen,
+} from '@/components/horizon/horizon-screen';
 import { Input, Text } from '@/components/ui';
 import { emailSchema, peekInvite, sendEmailOtp } from '@/services/auth';
 import { useTheme } from '@/theme';
@@ -65,19 +71,21 @@ export default function EmailScreen() {
     });
   };
 
-  // Opened from an invite link there is no welcome screen behind this one.
-  function leave() {
-    if (router.canGoBack()) router.back();
-    else router.replace('/welcome');
-  }
+  // Opened from an invite link there is nothing behind this screen. Going
+  // elsewhere would drop the invite, so then there is no Back, only the mark.
+  const canLeave = router.canGoBack();
 
   return (
+    // The keyboard is handled as these screens always handled it, so the button stays in reach.
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: colors.ground }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
     <HorizonScreen
       field={EMAIL_FIELD}
       small
       lines={[{ text: t('horizonAuth.emailA') }, { text: t('horizonAuth.emailB'), soft: true }]}
       sub={t('horizonAuth.emailSub')}
-      top={<FieldBack colors={colors} onPress={leave} />}
+      top={canLeave ? <FieldBack colors={colors} /> : <FieldMark />}
       // The one thing to do here.
       bridge={{ start: HORIZON_GUTTER, width: BRIDGE_WIDTH }}>
       <View style={{ paddingHorizontal: HORIZON_GUTTER, paddingTop: GROUND_TOP, gap: GROUND_GAP }}>
@@ -112,5 +120,6 @@ export default function EmailScreen() {
         </Text>
       </View>
     </HorizonScreen>
+    </KeyboardAvoidingView>
   );
 }

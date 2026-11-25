@@ -30,9 +30,12 @@ export default function PendingApprovalScreen() {
   async function checkAgain() {
     setChecking(true);
     setStillPending(false);
-    await refresh();
-    setChecking(false);
-    setStillPending(true);
+    try {
+      await refresh();
+    } finally {
+      setChecking(false);
+      setStillPending(true);
+    }
   }
 
   return (
