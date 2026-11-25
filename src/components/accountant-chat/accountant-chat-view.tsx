@@ -16,9 +16,11 @@ interface AccountantChatViewProps {
   clientId: string | null;
   firmId: string | null;
   userId: string | undefined;
+  /** Keep the composer clear of the home indicator (default true). False inside a tab: the tab bar already does. */
+  safeBottom?: boolean;
 }
 
-export function AccountantChatView({ clientId, firmId, userId }: AccountantChatViewProps) {
+export function AccountantChatView({ clientId, firmId, userId, safeBottom = true }: AccountantChatViewProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -119,7 +121,7 @@ export function AccountantChatView({ clientId, firmId, userId }: AccountantChatV
         )}
       </ScrollView>
 
-      <View style={{ paddingHorizontal: spacing.gutter, paddingBottom: insets.bottom + spacing.sm, gap: spacing.sm }}>
+      <View style={{ paddingHorizontal: spacing.gutter, paddingBottom: (safeBottom ? insets.bottom : 0) + spacing.sm, gap: spacing.sm }}>
         {pending ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
             <Image source={{ uri: pending.uri }} style={{ width: 40, height: 40, borderRadius: radius.sm }} />

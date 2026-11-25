@@ -138,7 +138,7 @@ export default function AiAdvisorScreen() {
       </View>
 
       {tab === 'queries' ? (
-        <AccountantChatView clientId={clientId} firmId={firmId} userId={user?.id} />
+        <AccountantChatView clientId={clientId} firmId={firmId} userId={user?.id} safeBottom={false} />
       ) : (
         <KeyboardAvoidingView
           style={{ flex: 1 }}

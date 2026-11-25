@@ -37,7 +37,10 @@
     "reports": "التقارير",
     "documents": "المستندات",
     "tasks": "المهام",
-    "more": "المزيد"
+    "more": "المزيد",
+    "requests": "الطلبات",
+    "calendar": "التقويم",
+    "messages": "الرسائل"
   },
   "home": {
     "greeting": "صباح الخير، {{name}}",
@@ -596,5 +599,20 @@
     "skip": "تخطٍّ",
     "signIn": "تسجيل الدخول",
     "invitedOnly": "يُفتح Mizan Connect بدعوة من محاسبك."
+  },
+  "horizonHome": {
+    "made": "ربحت",
+    "lost": "خسرت",
+    "thisMonth": "هذا الشهر.",
+    "loadingA": "نجلب",
+    "loadingB": "أرقامك.",
+    "errorA": "أرقامك",
+    "errorB": "لم تُحمَّل.",
+    "cash": "النقد في البنك",
+    "needsYou": "بانتظارك",
+    "open": "فتح",
+    "vatOverdue": "متأخر {{days}} يومًا",
+    "vatToday": "يستحق اليوم",
+    "waitingError": "تعذّر التحقق مما ينتظرك."
   }
 }

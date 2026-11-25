@@ -6,6 +6,7 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from '
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/ui';
+import { AppRefreshControl } from '@/components/ui/refresh';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { useTheme } from '@/theme';
 import { horizonColors, type HorizonColors } from '@/theme/horizon';
@@ -61,8 +62,13 @@ interface HorizonScreenProps {
   children: ReactNode;
   /** Scroll the ground (default true). */
   scroll?: boolean;
-  /** Extra space under the ground content, for example to clear the tab bar. */
+  /** Extra space under the ground content. */
   bottomInset?: number;
+  /** Keep clear of the home indicator (default true). False on tab screens: the tab bar already does. */
+  safeBottom?: boolean;
+  /** Pull to refresh, for scrolling grounds. Pass both to enable it. */
+  refreshing?: boolean;
+  onRefresh?: () => void;
   /** Pass a motion from `useHorizonMotion` to drive `leave()` from the screen. */
   motion?: HorizonMotion;
   /** The entrance plays again whenever this changes. */
@@ -85,6 +91,9 @@ export function HorizonScreen({
   children,
   scroll = true,
   bottomInset = 0,
+  safeBottom = true,
+  refreshing = false,
+  onRefresh,
   motion: givenMotion,
   animateKey,
 }: HorizonScreenProps) {
@@ -97,6 +106,7 @@ export function HorizonScreen({
   const colors = horizonColors(theme.colors);
   const rtl = I18nManager.isRTL;
   const fieldHeight = insets.top + field;
+  const bottomSpace = (safeBottom ? insets.bottom : 0) + bottomInset;
 
   useEffect(() => {
     reportHorizonLine(fieldHeight);
@@ -206,12 +216,15 @@ export function HorizonScreen({
         {scroll ? (
           <ScrollView
             showsVerticalScrollIndicator={false}
-            alwaysBounceVertical={false}
-            contentContainerStyle={{ paddingBottom: insets.bottom + bottomInset + HORIZON_GUTTER }}>
+            alwaysBounceVertical={onRefresh !== undefined}
+            refreshControl={
+              onRefresh ? <AppRefreshControl refreshing={refreshing} onRefresh={onRefresh} /> : undefined
+            }
+            contentContainerStyle={{ paddingBottom: bottomSpace + HORIZON_GUTTER }}>
             {children}
           </ScrollView>
         ) : (
-          <View style={{ flex: 1, paddingBottom: insets.bottom + bottomInset }}>{children}</View>
+          <View style={{ flex: 1, paddingBottom: bottomSpace }}>{children}</View>
         )}
       </Animated.View>
     </View>

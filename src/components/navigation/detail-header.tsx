@@ -13,18 +13,22 @@ const MARK_DARK = require('../../../assets/images/mizan-mark-light.png');
 interface DetailHeaderProps {
   title: string;
   onBack?: () => void;
+  /** False on a tab's own screen, where there is nothing to go back to. */
+  showBack?: boolean;
 }
 
 /** Back button + title + a small brand mark, for pushed (non-tab) screens. */
-export function DetailHeader({ title, onBack }: DetailHeaderProps) {
+export function DetailHeader({ title, onBack, showBack = true }: DetailHeaderProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const router = useRouter();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: spacing.gutter, paddingBottom: spacing.md }}>
-      <PressableScale accessibilityRole="button" accessibilityLabel={t('common.back')} onPress={onBack ?? (() => router.back())} hitSlop={8}>
-        <Ionicons name={chevronBack()} size={22} color={theme.colors.foreground} />
-      </PressableScale>
+      {showBack ? (
+        <PressableScale accessibilityRole="button" accessibilityLabel={t('common.back')} onPress={onBack ?? (() => router.back())} hitSlop={8}>
+          <Ionicons name={chevronBack()} size={22} color={theme.colors.foreground} />
+        </PressableScale>
+      ) : null}
       <Text variant="h2" weight="semibold" numberOfLines={1} style={{ flex: 1 }}>
         {title}
       </Text>
