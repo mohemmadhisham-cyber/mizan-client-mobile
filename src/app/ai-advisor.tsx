@@ -14,11 +14,14 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { DetailHeader } from '@/components/navigation/detail-header';
+import { FieldBack, HORIZON_GUTTER, horizonFieldHeight, HorizonScreen } from '@/components/horizon/horizon-screen';
+import { RuledRow, SectionLabel } from '@/components/horizon/ruled';
+import { WORD_TABS_HEIGHT, WordTabs } from '@/components/horizon/word-tabs';
 import { TypingIndicator } from '@/components/ai-advisor/typing-indicator';
 import { AccountantChatView } from '@/components/accountant-chat/accountant-chat-view';
 import { AiConsent } from '@/components/ai-advisor/ai-consent';
 import { Text } from '@/components/ui';
+import { useKeyboardShown } from '@/hooks/use-keyboard-shown';
 import { useVoiceRecorder } from '@/hooks/use-voice-recorder';
 import { hasAiConsent } from '@/lib/ai-consent';
 import { useAuth } from '@/lib/auth-context';
@@ -26,6 +29,18 @@ import { askAi } from '@/services/ai-advisor';
 import { uploadReceipt } from '@/services/receipts';
 import { transcribeRecording } from '@/services/transcription';
 import { radius, spacing, useTheme } from '@/theme';
+import { horizonColors } from '@/theme/horizon';
+
+/** Height of the field: a one-line title and one quiet line. Kept short so the conversation has the room. */
+const ADVISOR_FIELD = 148;
+/** While typing, the field gives up its quiet line: on a small phone the keyboard leaves little room. */
+const ADVISOR_FIELD_TYPING = 112;
+const BUBBLE_RADIUS = 14;
+const BUBBLE_TAIL = 3;
+const SEND_SIZE = 40;
+const COMPOSER_MIN_HEIGHT = 52;
+
+type AdvisorTab = 'advisor' | 'queries';
 
 type Role = 'user' | 'assistant' | 'system';
 
@@ -49,7 +64,7 @@ export default function AiAdvisorScreen() {
   const insets = useSafeAreaInsets();
   const { clientId, firmId, user } = useAuth();
   const params = useLocalSearchParams<{ tab?: string }>();
-  const [tab, setTab] = useState<'advisor' | 'queries'>(params.tab === 'queries' ? 'queries' : 'advisor');
+  const [tab, setTab] = useState<AdvisorTab>(params.tab === 'queries' ? 'queries' : 'advisor');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -57,6 +72,11 @@ export default function AiAdvisorScreen() {
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const voice = useVoiceRecorder();
   const router = useRouter();
+  const colors = horizonColors(theme.colors);
+  const typing = useKeyboardShown();
+  const field = typing ? ADVISOR_FIELD_TYPING : ADVISOR_FIELD;
+  // Both conversations start below the field and the tab line, so the keyboard must clear that much.
+  const chatOffset = horizonFieldHeight(insets.top, field) + WORD_TABS_HEIGHT;
   const userId = user?.id;
   const [consented, setConsented] = useState(() => hasAiConsent(userId));
 
@@ -166,62 +186,62 @@ export default function AiAdvisorScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
-      <DetailHeader title={t('nav.aiAdvisor')} />
-      <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-        <TabButton label={t('aiAdvisorScreen.tabAdvisor')} active={tab === 'advisor'} onPress={() => setTab('advisor')} />
-        <TabButton label={t('aiAdvisorScreen.tabQueries')} active={tab === 'queries'} onPress={() => setTab('queries')} />
-      </View>
+    <HorizonScreen
+      field={field}
+      small
+      scroll={false}
+      safeBottom={false}
+      lines={[{ text: t('nav.aiAdvisor') }]}
+      // What the answers are worth, said where it is always in view.
+      sub={typing ? undefined : t('horizonAdvisor.sub')}
+      top={<FieldBack colors={colors} />}
+      // A conversation: nothing here is waiting for a decision.
+      bridge={null}>
+      <WordTabs
+        options={[
+          { key: 'advisor', label: t('aiAdvisorScreen.tabAdvisor') },
+          { key: 'queries', label: t('aiAdvisorScreen.tabQueries') },
+        ]}
+        value={tab}
+        onChange={setTab}
+      />
 
       {tab === 'queries' ? (
-        <AccountantChatView clientId={clientId} firmId={firmId} userId={user?.id} />
+        <AccountantChatView clientId={clientId} firmId={firmId} userId={user?.id} keyboardOffset={chatOffset} />
       ) : (
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={insets.top}>
+          keyboardVerticalOffset={chatOffset}>
           <ScrollView
             ref={scrollRef}
-            contentContainerStyle={{ padding: spacing.gutter, gap: spacing.md, flexGrow: 1 }}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingVertical: spacing.base, flexGrow: 1 }}
             onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
             {messages.length === 0 ? (
-              <View style={{ alignItems: 'center', paddingVertical: spacing['2xl'], gap: spacing.sm }}>
-                <Ionicons name="sparkles" size={32} color={theme.colors.primary} />
-                <Text variant="footnote" color="mutedForeground" center style={{ maxWidth: 240 }}>
-                  {t('aiAdvisorScreen.greeting')}
-                </Text>
+              // Before the first question: a greeting, and three questions to start from.
+              <>
+                <View style={{ paddingHorizontal: HORIZON_GUTTER }}>
+                  <Text variant="callout" color="mutedForeground">
+                    {t('aiAdvisorScreen.greeting')}
+                  </Text>
+                </View>
+                <SectionLabel>{t('horizonAdvisor.tryAsking')}</SectionLabel>
+                {PROMPT_PILL_KEYS.map((key) => (
+                  <RuledRow key={key} title={t(key)} onPress={() => void send(t(key))} />
+                ))}
+              </>
+            ) : (
+              <View style={{ paddingHorizontal: HORIZON_GUTTER, gap: spacing.md }}>
+                {messages.map((m) => (
+                  <ChatBubble key={m.id} message={m} />
+                ))}
+                {busy ? <TypingIndicator label={t('horizonAdvisor.writing')} /> : null}
               </View>
-            ) : null}
-
-            {messages.map((m) => (
-              <ChatBubble key={m.id} message={m} />
-            ))}
-
-            {busy ? <TypingIndicator /> : null}
+            )}
           </ScrollView>
 
-          <View style={{ paddingHorizontal: spacing.gutter, paddingBottom: insets.bottom + spacing.sm, gap: spacing.md }}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
-              {PROMPT_PILL_KEYS.map((key) => t(key)).map((p) => (
-                <Pressable
-                  key={p}
-                  accessibilityRole="button"
-                  onPress={() => send(p)}
-                  style={{
-                    backgroundColor: theme.colors.secondary,
-                    borderWidth: 1,
-                    borderColor: theme.colors.border,
-                    borderRadius: radius.full,
-                    paddingHorizontal: spacing.base,
-                    paddingVertical: spacing.sm,
-                  }}>
-                  <Text variant="caption" weight="semibold">
-                    {p}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-
+          <View style={{ paddingHorizontal: HORIZON_GUTTER, paddingBottom: insets.bottom + spacing.sm, gap: spacing.sm }}>
             {voice.isRecording ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.danger }} />
@@ -242,15 +262,16 @@ export default function AiAdvisorScreen() {
                 backgroundColor: theme.colors.card,
                 borderWidth: 1,
                 borderColor: theme.colors.border,
-                borderRadius: radius.full,
-                paddingLeft: spacing.base,
-                paddingRight: spacing.xs,
-                minHeight: 56,
+                borderRadius: radius.md,
+                paddingStart: spacing.base,
+                paddingEnd: spacing.xs,
+                minHeight: COMPOSER_MIN_HEIGHT,
               }}>
               <TextInput
                 value={input}
                 onChangeText={setInput}
                 placeholder={t('aiAdvisorScreen.placeholder')}
+                accessibilityLabel={t('aiAdvisorScreen.placeholder')}
                 placeholderTextColor={theme.colors.mutedForeground}
                 style={{ flex: 1, color: theme.colors.foreground, fontSize: 16, paddingVertical: spacing.sm }}
                 multiline
@@ -262,6 +283,7 @@ export default function AiAdvisorScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={t('common.attach')}
                 onPress={attachDocument}
+                hitSlop={4}
                 style={{ padding: spacing.sm }}
                 disabled={voice.isRecording}>
                 <Ionicons name="attach-outline" size={20} color={theme.colors.mutedForeground} />
@@ -271,6 +293,7 @@ export default function AiAdvisorScreen() {
                 accessibilityLabel={voice.isRecording ? t('aiAdvisorScreen.stopAndTranscribe') : t('aiAdvisorScreen.recordQuestion')}
                 onPress={handleMicPress}
                 disabled={transcribing}
+                hitSlop={4}
                 style={{ padding: spacing.sm }}>
                 <Ionicons
                   name={voice.isRecording ? 'stop-circle' : 'mic-outline'}
@@ -284,9 +307,9 @@ export default function AiAdvisorScreen() {
                 disabled={!input.trim() || busy}
                 onPress={() => send(input)}
                 style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: radius.full,
+                  width: SEND_SIZE,
+                  height: SEND_SIZE,
+                  borderRadius: radius.sm,
                   backgroundColor: theme.colors.primary,
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -298,98 +321,48 @@ export default function AiAdvisorScreen() {
           </View>
         </KeyboardAvoidingView>
       )}
-    </View>
+    </HorizonScreen>
   );
 }
 
-function TabButton({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  const theme = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="tab"
-      accessibilityState={{ selected: active }}
-      onPress={onPress}
-      style={{
-        flex: 1,
-        alignItems: 'center',
-        paddingVertical: spacing.md,
-        borderBottomWidth: 2,
-        borderBottomColor: active ? theme.colors.primary : 'transparent',
-      }}>
-      <Text variant="caption" weight={active ? 'bold' : 'semibold'} color={active ? 'primary' : 'mutedForeground'} style={{ letterSpacing: 0.6 }}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
+/** One turn of the conversation, in the same shapes as the chat with the accountant. */
 function ChatBubble({ message }: { message: ChatMessage }) {
   const theme = useTheme();
 
+  // A notice from the app (a document was sent, credits ran out): a quiet line, not a speaker.
   if (message.role === 'system') {
     return (
-      <View
-        style={{
-          alignSelf: 'center',
-          backgroundColor: theme.colors.accent,
-          borderRadius: radius.md,
-          paddingHorizontal: spacing.base,
-          paddingVertical: spacing.sm,
-          maxWidth: '90%',
-        }}>
-        <Text variant="footnote" center>
-          {message.text}
-        </Text>
-      </View>
+      <Text variant="footnote" color="mutedForeground" center accessibilityLiveRegion="polite">
+        {message.text}
+      </Text>
     );
   }
 
-  if (message.role === 'user') {
-    return (
-      <View style={{ alignSelf: 'flex-end', maxWidth: '80%' }}>
-        <View
-          style={{
-            backgroundColor: theme.colors.infoSoft,
-            borderRadius: radius.xl,
-            borderBottomRightRadius: 4,
-            paddingHorizontal: spacing.base,
-            paddingVertical: spacing.md,
-          }}>
-          <Text variant="body" style={{ color: theme.colors.infoSoftForeground }}>
-            {message.text}
-          </Text>
-        </View>
-      </View>
-    );
-  }
+  const isSelf = message.role === 'user';
+  // My questions: the field's colour in light. In dark that colour is almost the
+  // ground's, so a raised surface is used instead, to keep the shape visible.
+  const mine = theme.dark
+    ? { bg: theme.colors.surface, fg: theme.colors.surfaceForeground }
+    : { bg: theme.colors.brand, fg: theme.colors.brandForeground };
 
   return (
-    <View style={{ flexDirection: 'row', gap: spacing.sm, alignSelf: 'flex-start', maxWidth: '85%' }}>
-      <View
-        style={{
-          width: 32,
-          height: 32,
-          borderRadius: radius.full,
-          backgroundColor: theme.colors.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-        <Ionicons name="sparkles" size={14} color={theme.colors.primaryForeground} />
-      </View>
-      <View
-        style={[
-          {
-            backgroundColor: theme.colors.card,
-            borderRadius: radius.xl,
-            borderTopLeftRadius: 4,
-            paddingHorizontal: spacing.base,
-            paddingVertical: spacing.md,
-            flexShrink: 1,
-          },
-          theme.elevation.xs,
-        ]}>
-        <Text variant="body">{message.text}</Text>
-      </View>
+    <View
+      style={{
+        alignSelf: isSelf ? 'flex-end' : 'flex-start',
+        maxWidth: '85%',
+        backgroundColor: isSelf ? mine.bg : 'transparent',
+        borderWidth: 1,
+        borderColor: isSelf ? mine.bg : theme.colors.border,
+        borderRadius: BUBBLE_RADIUS,
+        // The tight corner points at the speaker; logical, so it mirrors in Arabic.
+        borderBottomEndRadius: isSelf ? BUBBLE_TAIL : BUBBLE_RADIUS,
+        borderBottomStartRadius: isSelf ? BUBBLE_RADIUS : BUBBLE_TAIL,
+        paddingHorizontal: spacing.base,
+        paddingVertical: spacing.md,
+      }}>
+      <Text variant="body" style={{ color: isSelf ? mine.fg : theme.colors.foreground }}>
+        {message.text}
+      </Text>
     </View>
   );
 }
