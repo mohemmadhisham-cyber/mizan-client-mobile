@@ -3,6 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { Button, Card, Text } from '@/components/ui';
+import { useAppLocked } from '@/hooks/use-app-lock';
 import { DASHBOARD_SECTION_LABEL_KEY, type DashboardSection, type DashboardVisibility } from '@/lib/dashboard-prefs';
 import { spacing, useTheme } from '@/theme';
 
@@ -18,10 +19,12 @@ interface EditDashboardModalProps {
 export function EditDashboardModal({ visible, sectionVisibility, onToggle, onDone }: EditDashboardModalProps) {
   const { t } = useTranslation();
   const theme = useTheme();
+  const appLocked = useAppLocked();
   const insets = useSafeAreaInsets();
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onDone}>
+    // Closed while the app is locked: a sheet is drawn above the lock. It comes back as it was.
+    <Modal visible={visible && !appLocked} animationType="slide" transparent onRequestClose={onDone}>
       <View style={{ flex: 1, backgroundColor: theme.colors.scrim, justifyContent: 'flex-end' }}>
         <Card
           elevated
