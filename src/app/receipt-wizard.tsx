@@ -1,12 +1,12 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { AiConsent } from '@/components/ai-advisor/ai-consent';
 import { Cta } from '@/components/horizon/cta';
 import { BRIDGE_WIDTH, FieldBack, HORIZON_GUTTER, HorizonScreen } from '@/components/horizon/horizon-screen';
-import { ChoiceRow, RuledRow, SectionLabel } from '@/components/horizon/ruled';
+import { ChoiceRow, SectionLabel } from '@/components/horizon/ruled';
 import { Input, Text } from '@/components/ui';
 import { aiDeclinedThisRun, hasAiConsent, noteAiDeclined } from '@/lib/ai-consent';
 import { useAuth } from '@/lib/auth-context';
@@ -16,7 +16,7 @@ import { horizonColors } from '@/theme/horizon';
 
 /** Height of the field: the title and a quiet line that takes two lines. */
 const WIZARD_FIELD = 200;
-const CURRENCY_WIDTH = 80;
+const CURRENCY_MIN_WIDTH = 92;
 // On the ground a field is a line to write on, not a box.
 const FIELD_STYLE = { backgroundColor: 'transparent', paddingHorizontal: 0 } as const;
 
@@ -96,7 +96,7 @@ export default function ReceiptWizardScreen() {
   }
 
   async function submit() {
-    if (!id || !category) return;
+    if (!id || !category || saving) return;
     setSaving(true);
     setError(null);
     const res = await submitReceiptReview({
@@ -151,7 +151,9 @@ export default function ReceiptWizardScreen() {
         // Checking the details and sending them is the person's to do.
         bridge={loading ? null : { start: HORIZON_GUTTER, width: BRIDGE_WIDTH }}>
         {loading ? (
-          <RuledRow title={t('receiptWizard.reading')} />
+          <View style={styles.reading} accessibilityLabel={t('receiptWizard.reading')} accessibilityRole="progressbar">
+            <ActivityIndicator color={theme.colors.foreground} />
+          </View>
         ) : (
           <>
             <SectionLabel>{t('receiptWizard.details')}</SectionLabel>
@@ -199,7 +201,7 @@ export default function ReceiptWizardScreen() {
                     keyboardType="decimal-pad"
                   />
                 </View>
-                <View style={{ width: CURRENCY_WIDTH }}>
+                <View style={{ minWidth: CURRENCY_MIN_WIDTH }}>
                   <Input
                     label={t('receiptWizard.currency')}
                     accessibilityLabel={t('receiptWizard.currency')}
@@ -240,6 +242,12 @@ export default function ReceiptWizardScreen() {
                   {error}
                 </Text>
               ) : null}
+              {!category ? (
+                // The list above is long and this button sits below it: say what it is waiting for.
+                <Text variant="footnote" weight="semibold">
+                  {t('receiptWizard.chooseFirst')}
+                </Text>
+              ) : null}
               <Cta title={t('receiptWizard.send')} busy={saving} disabled={!category} onPress={() => void submit()} />
             </View>
           </>
@@ -250,12 +258,17 @@ export default function ReceiptWizardScreen() {
 }
 
 const styles = StyleSheet.create({
+  reading: {
+    paddingTop: 36,
+    alignItems: 'center',
+  },
   fields: {
     paddingHorizontal: HORIZON_GUTTER,
     gap: 16,
   },
   amounts: {
     flexDirection: 'row',
+    alignItems: 'flex-end',
     gap: 14,
   },
   hint: {

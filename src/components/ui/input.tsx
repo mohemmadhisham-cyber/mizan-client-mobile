@@ -88,7 +88,8 @@ export const Input = forwardRef<ComponentRef<typeof TextInput>, AppInputProps>(f
         variant="caption"
         weight="semibold"
         color="mutedForeground"
-        style={{ letterSpacing: 0.6, textTransform: 'uppercase' }}>
+        // Spacing letters apart breaks the joins between Arabic letters, so it is for Latin text only.
+        style={I18nManager.isRTL ? undefined : { letterSpacing: 0.6, textTransform: 'uppercase' }}>
         {label}
       </Text>
       {field}
