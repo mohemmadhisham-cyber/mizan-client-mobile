@@ -4,7 +4,7 @@ import { fetchDashboardAnswer } from '@/services/client-data';
 
 /**
  * What a Home figure is made of: the last months, the biggest customers, the
- * newest customer invoices, and how long money takes to come in and go out.
+ * newest customer invoices, and how much is owed each way.
  *
  * Nothing new is asked of the server. The `client-dashboard` function already
  * sends all of it with the summary; this module reads the parts the Home
@@ -19,9 +19,10 @@ const MAX_MONTHS = 24;
 const MAX_CUSTOMERS = 20;
 const MAX_INVOICES = 50;
 const NAME_MAX = 200;
-/** Days beyond which a collection or payment figure is a fault in the books, not a figure to show. */
+/** Days beyond which the figure is a fault in the books, not a figure to show. */
 const MAX_DAYS = 3650;
-const REVENUE_KPI = 'client.dash.kpi.revenueMtd';
+/** The short month names the server labels its months with, in calendar order. */
+const SERVER_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** Characters that can reorder the text around them: removed from anything the server sends for display. */
 const DIRECTION_OVERRIDES = /[‪-‮⁦-⁩]/g;
@@ -35,7 +36,8 @@ const text = (max: number) =>
 const major = z
   .number()
   .finite()
-  .transform((value) => Math.round(value * 100))
+  // `+ 0` turns a negative zero (a tiny negative that rounds to nothing) into plain zero.
+  .transform((value) => Math.round(value * 100) + 0)
   .refine((minor) => Number.isSafeInteger(minor));
 
 /** A real calendar date as YYYY-MM-DD. */
@@ -47,7 +49,7 @@ const day = z
     return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
   });
 
-const monthSchema = z.object({ revenue: major, expenses: major, profit: major });
+const monthSchema = z.object({ month: z.string().max(12), revenue: major, expenses: major, profit: major });
 const customerSchema = z.object({ name: text(NAME_MAX), amount: major });
 const invoiceSchema = z.object({
   id: z.string().min(1).max(40),
@@ -56,9 +58,10 @@ const invoiceSchema = z.object({
   date: day,
   due: day,
   amount: major,
-  status: z.enum(['paid', 'open', 'overdue']),
+  /** What is still to be paid, when the server says. Older servers do not send it. */
+  residual: major.nullish(),
+  status: z.enum(['paid', 'partial', 'open', 'overdue']),
 });
-const kpiSchema = z.object({ labelKey: z.string().max(80), delta: z.number().finite() });
 
 const answerSchema = z.object({
   ok: z.literal(true),
@@ -66,9 +69,9 @@ const answerSchema = z.object({
   trend: z.array(z.unknown()).max(MAX_MONTHS).default([]),
   topCustomers: z.array(z.unknown()).max(MAX_CUSTOMERS).default([]),
   recentInvoices: z.array(z.unknown()).max(MAX_INVOICES).default([]),
-  kpis: z.array(z.unknown()).max(20).default([]),
-  arDays: z.number().int().min(0).max(MAX_DAYS).nullish(),
-  apDays: z.number().int().min(0).max(MAX_DAYS).nullish(),
+  // Read loosely: a figure out of range is left out, it does not spoil the rest of the answer.
+  arDays: z.unknown().optional(),
+  apDays: z.unknown().optional(),
 });
 
 export interface FigureMonth {
@@ -77,6 +80,8 @@ export interface FigureMonth {
   moneyIn: number;
   moneyOut: number;
   profit: number;
+  /** The month is not over: the figures are so far. */
+  soFar: boolean;
 }
 
 export interface CustomerInvoice {
@@ -86,23 +91,23 @@ export interface CustomerInvoice {
   date: string;
   due: string;
   amountMinor: number;
-  status: 'paid' | 'open' | 'overdue';
+  /** What is still to be paid, when known. */
+  residualMinor: number | null;
+  status: 'paid' | 'partial' | 'open' | 'overdue';
 }
 
 export interface FigureDetail {
   currency: string;
-  /** Oldest first, ending with the current month. */
+  /** Oldest first, ending with the current month. Empty when the server's months cannot be trusted. */
   months: FigureMonth[];
   topCustomers: { name: string; amountMinor: number }[];
   /** Newest first. The server sends only the latest few. */
   invoices: CustomerInvoice[];
-  /** Days customers take to pay, or null when it cannot be worked out. */
-  collectionDays: number | null;
-  /** Days this business takes to pay suppliers, or null when it cannot be worked out. */
-  paymentDays: number | null;
-  /** Sales this month against last month, in whole percent, or null when there is nothing to compare. */
-  moneyInChangePct: number | null;
-  /** Lines the server sent that this version of the app could not read. Shown as a notice, never dropped silently. */
+  /** What customers owe, as days of sales. Null when it cannot be worked out. */
+  receivableDays: number | null;
+  /** What is owed to suppliers, as days of costs. Null when it cannot be worked out. */
+  payableDays: number | null;
+  /** Lines the server sent that this version of the app could not show. Said on screen, never dropped silently. */
   unreadable: number;
 }
 
@@ -114,9 +119,8 @@ export class FigureDetailError extends Error {
 }
 
 /** The first day of the month `back` months before `now`, in UTC as the server counts months. */
-function monthStart(now: Date, back: number): string {
-  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - back, 1));
-  return d.toISOString().slice(0, 10);
+function monthStart(now: Date, back: number): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - back, 1));
 }
 
 /** Reads each row on its own: one bad row is counted, and the rest are still shown. */
@@ -131,34 +135,45 @@ function readRows<T>(rows: unknown[], schema: z.ZodType<T>): { read: T[]; unread
   return { read, unreadable };
 }
 
+/**
+ * A whole number of days the app is willing to show. The server sends 0 when
+ * it has nothing to work the figure out from, and can send a negative or a
+ * huge number from unusual books: none of those is a figure, so none is shown.
+ */
+function days(value: unknown): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0 && value <= MAX_DAYS ? value : null;
+}
+
 /** Pure: the server's answer in, what the detail screens show out. Throws when the answer cannot be read at all. */
 export function parseFigureDetail(answer: unknown, now: Date): FigureDetail {
   const parsed = answerSchema.safeParse(answer);
   if (!parsed.success) throw new FigureDetailError();
   const data = parsed.data;
 
-  const months = readRows(data.trend, monthSchema);
+  const monthRows = readRows(data.trend, monthSchema);
   const customers = readRows(data.topCustomers, customerSchema);
   const invoices = readRows(data.recentInvoices, invoiceSchema);
-  const kpis = readRows(data.kpis, kpiSchema);
 
-  // The server names each month by a short English word. Its place in the list is what
-  // says which month it is: the last is the current month, each one before is a month earlier.
-  const count = months.read.length;
-  const change = kpis.read.find((kpi) => kpi.labelKey === REVENUE_KPI)?.delta;
+  // The months are shown in the app's language, so each is named by its place: the last is the
+  // current month, each one before is a month earlier. The server's own label is the check. If
+  // one row cannot be read, or one label is not the month its place says, the places cannot be
+  // trusted and no month is shown. (A server fault at the end of long months did exactly this.)
+  const count = monthRows.read.length;
+  const expected = monthRows.read.map((_, index) => monthStart(now, count - 1 - index));
+  const monthsTrusted =
+    monthRows.unreadable === 0 && monthRows.read.every((row, index) => row.month === SERVER_MONTHS[expected[index].getUTCMonth()]);
 
   return {
     currency: data.currency,
-    // If any month cannot be read, the places of the others cannot be trusted, so none is shown.
-    months:
-      months.unreadable > 0
-        ? []
-        : months.read.map((row, index) => ({
-            month: monthStart(now, count - 1 - index),
-            moneyIn: row.revenue,
-            moneyOut: row.expenses,
-            profit: row.profit,
-          })),
+    months: monthsTrusted
+      ? monthRows.read.map((row, index) => ({
+          month: expected[index].toISOString().slice(0, 10),
+          moneyIn: row.revenue,
+          moneyOut: row.expenses,
+          profit: row.profit,
+          soFar: index === count - 1,
+        }))
+      : [],
     topCustomers: customers.read
       .filter((customer) => customer.name.length > 0)
       .map((customer) => ({ name: customer.name, amountMinor: customer.amount })),
@@ -170,15 +185,13 @@ export function parseFigureDetail(answer: unknown, now: Date): FigureDetail {
         date: invoice.date,
         due: invoice.due,
         amountMinor: invoice.amount,
+        residualMinor: invoice.residual ?? null,
         status: invoice.status,
       }))
       .sort((a, b) => b.date.localeCompare(a.date)),
-    // The server sends 0 when there is nothing to work it out from: that is "not known", not "no days".
-    collectionDays: data.arDays ? data.arDays : null,
-    paymentDays: data.apDays ? data.apDays : null,
-    // The same for the change: 0 is what it sends when last month had no sales to compare with.
-    moneyInChangePct: change ? Math.round(change) : null,
-    unreadable: months.unreadable + customers.unreadable + invoices.unreadable,
+    receivableDays: days(data.arDays),
+    payableDays: days(data.apDays),
+    unreadable: (monthsTrusted ? 0 : count + monthRows.unreadable) + customers.unreadable + invoices.unreadable,
   };
 }
 

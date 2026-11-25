@@ -115,6 +115,8 @@ function Months({ detail, pick }: { detail: FigureDetail; pick: 'moneyIn' | 'mon
         <RuledRow
           key={month.month}
           title={formatDate(`${month.month}T00:00:00Z`, MONTH)}
+          // This month is not over: its figure is not to be read against a whole month.
+          meta={month.soFar ? t('figures.soFar') : undefined}
           plain
           end={<Figure>{formatMinorUnits(month[pick], detail.currency)}</Figure>}
         />
@@ -125,22 +127,16 @@ function Months({ detail, pick }: { detail: FigureDetail; pick: 'moneyIn' | 'mon
 
 function MoneyIn({ detail, onInvoices }: { detail: FigureDetail; onInvoices: () => void }) {
   const { t } = useTranslation();
-  const change = detail.moneyInChangePct;
   return (
     <>
-      {change !== null ? (
-        <RuledRow
-          title={t(change > 0 ? 'figures.upOnLastMonth' : 'figures.downOnLastMonth', { pct: Math.abs(change) })}
-          plain
-        />
-      ) : null}
       <Months detail={detail} pick="moneyIn" />
       {detail.topCustomers.length > 0 ? (
         <>
           <SectionLabel>{t('figures.topCustomers')}</SectionLabel>
-          {detail.topCustomers.map((customer) => (
+          {detail.topCustomers.map((customer, index) => (
             <RuledRow
-              key={customer.name}
+              // Two customers can share a name, and the server sends no id: the place in the list is the key.
+              key={index}
               title={customer.name}
               plain
               end={<Figure>{formatMinorUnits(customer.amountMinor, detail.currency)}</Figure>}
@@ -161,18 +157,18 @@ function MoneyIn({ detail, onInvoices }: { detail: FigureDetail; onInvoices: () 
 
 function Cash({ detail }: { detail: FigureDetail }) {
   const { t } = useTranslation();
-  const { collectionDays, paymentDays } = detail;
-  if (collectionDays === null && paymentDays === null) {
+  const { receivableDays, payableDays } = detail;
+  if (receivableDays === null && payableDays === null) {
     return <RuledRow title={t('figures.cashNothing')} plain />;
   }
   return (
     <>
       <SectionLabel>{t('figures.cashFlowSection')}</SectionLabel>
-      {collectionDays !== null ? (
-        <RuledRow title={t('figures.collectionDays', { count: collectionDays })} meta={t('figures.daysNote')} plain />
+      {receivableDays !== null ? (
+        <RuledRow title={t('figures.receivableDays', { count: receivableDays })} meta={t('figures.daysNote')} plain />
       ) : null}
-      {paymentDays !== null ? (
-        <RuledRow title={t('figures.paymentDays', { count: paymentDays })} meta={t('figures.daysNote')} plain />
+      {payableDays !== null ? (
+        <RuledRow title={t('figures.payableDays', { count: payableDays })} meta={t('figures.daysNote')} plain />
       ) : null}
     </>
   );

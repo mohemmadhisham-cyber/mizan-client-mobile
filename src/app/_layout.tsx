@@ -21,6 +21,7 @@ import { IntroOverlay } from '@/components/horizon/intro-overlay';
 import { AppError } from '@/components/support/app-error';
 import { useAuthGate } from '@/hooks/use-auth-gate';
 import { syncAiConsent } from '@/lib/ai-consent';
+import { clearDashboardCache } from '@/services/client-data';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { navigationTheme, ThemeProvider, useTheme } from '@/theme';
 
@@ -48,6 +49,8 @@ function RootNav() {
     if (cachedFor.current === userId) return;
     cachedFor.current = userId;
     queryClient.clear();
+    // The dashboard keeps its own short cache outside the query cache: that goes too.
+    clearDashboardCache();
   }, [userId]);
 
   // The agreement to AI is kept on the server and on this device. After sign-in

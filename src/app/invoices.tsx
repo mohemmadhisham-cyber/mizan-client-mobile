@@ -18,10 +18,11 @@ const NOTE_SPACE = 14;
 /** A date-only value is formatted in UTC, so it never shows as the day before in another time zone. */
 const DAY = { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' } as const;
 
-const STATUS_KEY: Record<CustomerInvoice['status'], string> = {
-  paid: 'invoicesScreen.statusPaid',
-  open: 'invoicesScreen.statusOpen',
-  overdue: 'invoicesScreen.statusOverdue',
+/** The words for an invoice not yet paid in full. Each takes the due date. */
+const UNPAID_KEY: Record<Exclude<CustomerInvoice['status'], 'paid'>, string> = {
+  open: 'invoicesScreen.statusOpenDue',
+  partial: 'invoicesScreen.statusPartialDue',
+  overdue: 'invoicesScreen.statusOverdueSince',
 };
 
 const day = (value: string) => formatDate(`${value}T00:00:00Z`, DAY);
@@ -72,8 +73,12 @@ export default function InvoicesScreen() {
                 invoice.number,
                 day(invoice.date),
                 invoice.status === 'paid'
-                  ? t(STATUS_KEY.paid)
-                  : t('invoicesScreen.statusWithDue', { status: t(STATUS_KEY[invoice.status]), date: day(invoice.due) }),
+                  ? t('invoicesScreen.statusPaid')
+                  : t(UNPAID_KEY[invoice.status], { date: day(invoice.due) }),
+                // Part of it has been paid: say how much is left, when the server says.
+                invoice.status !== 'paid' && invoice.residualMinor !== null && invoice.residualMinor !== invoice.amountMinor
+                  ? t('invoicesScreen.stillToPay', { amount: formatMinorUnits(invoice.residualMinor, d.currency, 2, true) })
+                  : null,
               ]
                 .filter(Boolean)
                 .join(' · ')}
@@ -81,10 +86,15 @@ export default function InvoicesScreen() {
               end={<Figure>{formatMinorUnits(invoice.amountMinor, d.currency, 2, true)}</Figure>}
             />
           ))}
-          <View style={{ paddingHorizontal: HORIZON_GUTTER, paddingTop: NOTE_SPACE }}>
+          <View style={{ paddingHorizontal: HORIZON_GUTTER, paddingTop: NOTE_SPACE, gap: 6 }}>
             <Text variant="footnote" color="mutedForeground">
               {t('invoicesScreen.latestOnly', { count: d.invoices.length })}
             </Text>
+            {d.unreadable > 0 ? (
+              <Text variant="footnote" color="mutedForeground">
+                {t('figures.unreadable')}
+              </Text>
+            ) : null}
           </View>
         </>
       )}

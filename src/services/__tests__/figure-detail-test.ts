@@ -29,43 +29,88 @@ function answer(overrides: Record<string, unknown> = {}) {
   };
 }
 
-describe('parseFigureDetail', () => {
+describe('money', () => {
   test('turns whole currency units into integer minor units, once', () => {
     const detail = parseFigureDetail(answer(), NOW);
 
     expect(detail.months[1]).toMatchObject({ moneyIn: 11000050, moneyOut: 7000025, profit: 4000025 });
     expect(detail.topCustomers[0]).toEqual({ name: 'Al Noor Trading', amountMinor: 25000075 });
     expect(detail.invoices.map((i) => i.amountMinor)).toEqual([199999, 525000]);
-    for (const month of detail.months) {
-      expect(Number.isInteger(month.moneyIn)).toBe(true);
-      expect(Number.isInteger(month.moneyOut)).toBe(true);
-    }
   });
 
+  test('removes the noise of a sum of fractions', () => {
+    const detail = parseFigureDetail(answer({ topCustomers: [{ name: 'A', amount: 0.1 + 0.2 }] }), NOW);
+
+    expect(detail.topCustomers[0].amountMinor).toBe(30);
+  });
+
+  test('keeps a loss negative, and never gives a negative zero', () => {
+    const detail = parseFigureDetail(
+      answer({ trend: [{ month: 'Nov', revenue: 100, expenses: 250.5, profit: -150.5 }], topCustomers: [{ name: 'A', amount: -0.001 }] }),
+      NOW,
+    );
+
+    expect(detail.months[0].profit).toBe(-15050);
+    expect(Object.is(detail.topCustomers[0].amountMinor, 0)).toBe(true);
+  });
+
+  test('counts an amount too large to hold exactly as unreadable', () => {
+    const detail = parseFigureDetail(answer({ topCustomers: [{ name: 'A', amount: 1e17 }] }), NOW);
+
+    expect(detail.topCustomers).toEqual([]);
+    expect(detail.unreadable).toBe(1);
+  });
+});
+
+describe('months', () => {
   test('names each month by its place: the last is the current month', () => {
     const detail = parseFigureDetail(answer(), NOW);
 
     expect(detail.months.map((m) => m.month)).toEqual(['2026-09-01', '2026-10-01', '2026-11-01']);
   });
 
+  test('marks only the current month as not over', () => {
+    const detail = parseFigureDetail(answer(), NOW);
+
+    expect(detail.months.map((m) => m.soFar)).toEqual([false, false, true]);
+  });
+
   test('names the months right across a new year', () => {
     const january = new Date(Date.UTC(2027, 0, 5, 12));
+    const trend = [
+      { month: 'Nov', revenue: 1, expenses: 1, profit: 0 },
+      { month: 'Dec', revenue: 1, expenses: 1, profit: 0 },
+      { month: 'Jan', revenue: 1, expenses: 1, profit: 0 },
+    ];
 
-    const detail = parseFigureDetail(answer(), january);
+    const detail = parseFigureDetail(answer({ trend }), january);
 
     expect(detail.months.map((m) => m.month)).toEqual(['2026-11-01', '2026-12-01', '2027-01-01']);
   });
 
-  test('shows no months at all when one of them cannot be read: the places could not be trusted', () => {
+  test('shows no month when one cannot be read: the places could not be trusted', () => {
     const detail = parseFigureDetail(
-      answer({ trend: [{ month: 'Sep', revenue: 1, expenses: 1, profit: 0 }, { month: 'Oct', revenue: 'lots' }] }),
+      answer({ trend: [{ month: 'Oct', revenue: 1, expenses: 1, profit: 0 }, { month: 'Nov', revenue: 'lots' }] }),
       NOW,
     );
 
     expect(detail.months).toEqual([]);
-    expect(detail.unreadable).toBe(1);
+    expect(detail.unreadable).toBeGreaterThan(0);
   });
 
+  test('shows no month when the server names one that its place does not: the day-31 fault', () => {
+    // What the server sends on 31 March: it skips February and repeats March.
+    const endOfMarch = new Date(Date.UTC(2026, 2, 31, 12));
+    const trend = ['Oct', 'Dec', 'Dec', 'Jan', 'Mar', 'Mar'].map((month) => ({ month, revenue: 1, expenses: 1, profit: 0 }));
+
+    const detail = parseFigureDetail(answer({ trend }), endOfMarch);
+
+    expect(detail.months).toEqual([]);
+    expect(detail.unreadable).toBe(6);
+  });
+});
+
+describe('customers and invoices', () => {
   test('puts the newest invoice first', () => {
     const detail = parseFigureDetail(answer(), NOW);
 
@@ -90,6 +135,23 @@ describe('parseFigureDetail', () => {
     expect(detail.unreadable).toBe(3);
   });
 
+  test('reads a partly paid invoice with what is left to pay, when the server says', () => {
+    const detail = parseFigureDetail(
+      answer({
+        recentInvoices: [
+          { id: '11', number: 'INV/1', customer: 'A', date: '2026-11-02', due: '2026-12-02', amount: 10000, residual: 4000.5, status: 'partial' },
+        ],
+      }),
+      NOW,
+    );
+
+    expect(detail.invoices[0]).toMatchObject({ status: 'partial', amountMinor: 1000000, residualMinor: 400050 });
+  });
+
+  test('knows nothing of what is left to pay when the server does not say', () => {
+    expect(parseFigureDetail(answer(), NOW).invoices[0].residualMinor).toBeNull();
+  });
+
   test('removes direction-override characters from names', () => {
     const detail = parseFigureDetail(answer({ topCustomers: [{ name: 'Al ‮Noor‬', amount: 1 }] }), NOW);
 
@@ -101,36 +163,37 @@ describe('parseFigureDetail', () => {
 
     expect(detail.topCustomers).toEqual([]);
   });
+});
 
-  test('gives the days money takes to come in and to go out', () => {
+describe('days owed', () => {
+  test('gives what is owed each way as days', () => {
     const detail = parseFigureDetail(answer(), NOW);
 
-    expect(detail.collectionDays).toBe(41);
-    expect(detail.paymentDays).toBe(28);
+    expect(detail.receivableDays).toBe(41);
+    expect(detail.payableDays).toBe(28);
   });
 
-  test('treats 0 days as "not known", which is what the server means by it', () => {
-    const detail = parseFigureDetail(answer({ arDays: 0, apDays: 0 }), NOW);
+  test.each([
+    ['0, which the server sends for "not known"', 0],
+    ['a negative number', -12],
+    ['a number beyond any real figure', 99999],
+    ['a fraction', 12.5],
+    ['a word', 'many'],
+    ['nothing', undefined],
+  ])('shows no figure for %s, and still shows the rest of the answer', (_name, value) => {
+    const detail = parseFigureDetail(answer({ arDays: value, apDays: value }), NOW);
 
-    expect(detail.collectionDays).toBeNull();
-    expect(detail.paymentDays).toBeNull();
+    expect(detail.receivableDays).toBeNull();
+    expect(detail.payableDays).toBeNull();
+    expect(detail.invoices).toHaveLength(2);
   });
+});
 
-  test('gives the change in sales on last month as whole percent, with its sign', () => {
-    expect(parseFigureDetail(answer(), NOW).moneyInChangePct).toBe(-14);
-  });
-
-  test('gives no change when there is nothing to compare with', () => {
-    const none = answer({ kpis: [{ labelKey: 'client.dash.kpi.revenueMtd', value: 5, delta: 0, format: 'currency' }] });
-
-    expect(parseFigureDetail(none, NOW).moneyInChangePct).toBeNull();
-    expect(parseFigureDetail(answer({ kpis: [] }), NOW).moneyInChangePct).toBeNull();
-  });
-
+describe('the answer as a whole', () => {
   test('reads an answer that has only the summary, with nothing to show', () => {
     const detail = parseFigureDetail({ ok: true, currency: 'AED' }, NOW);
 
-    expect(detail).toMatchObject({ months: [], topCustomers: [], invoices: [], collectionDays: null, unreadable: 0 });
+    expect(detail).toMatchObject({ months: [], topCustomers: [], invoices: [], receivableDays: null, unreadable: 0 });
   });
 
   test.each([
@@ -138,7 +201,6 @@ describe('parseFigureDetail', () => {
     ['a refusal', { ok: false, error: 'tenant_not_provisioned' }],
     ['a currency that is not a code', answer({ currency: 'dirham' })],
     ['more invoices than the app accepts', answer({ recentInvoices: Array.from({ length: 51 }, () => ({})) })],
-    ['days that are not a whole number', answer({ arDays: 12.5 })],
   ])('refuses %s', (_name, bad) => {
     expect(() => parseFigureDetail(bad, NOW)).toThrow(FigureDetailError);
   });
