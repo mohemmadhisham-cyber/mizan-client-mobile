@@ -20,6 +20,7 @@ import { useEffect, useRef } from 'react';
 import { IntroOverlay } from '@/components/horizon/intro-overlay';
 import { AppError } from '@/components/support/app-error';
 import { useAuthGate } from '@/hooks/use-auth-gate';
+import { syncAiConsent } from '@/lib/ai-consent';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { navigationTheme, ThemeProvider, useTheme } from '@/theme';
 
@@ -47,6 +48,13 @@ function RootNav() {
     if (cachedFor.current === userId) return;
     cachedFor.current = userId;
     queryClient.clear();
+  }, [userId]);
+
+  // The agreement to AI is kept on the server and on this device. After sign-in
+  // the two are brought into line: a withdrawal made on another phone applies
+  // here, and an agreement made here before the server kept a record is sent up.
+  useEffect(() => {
+    if (userId) void syncAiConsent(userId);
   }, [userId]);
 
   useEffect(() => {

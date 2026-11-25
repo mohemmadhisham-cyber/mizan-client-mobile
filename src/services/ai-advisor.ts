@@ -20,7 +20,12 @@ export interface AskAiResult {
   error?: string;
   accountLocked?: boolean;
   insufficientTokens?: boolean;
+  /** The server has no agreement on record for this person: ask before trying again. */
+  consentRequired?: boolean;
 }
+
+/** The server's answer when a client has not agreed to their data going to an AI provider. */
+const CONSENT_REQUIRED = 'ai_consent_required';
 
 // Known server error codes mapped to user-safe messages. Anything not listed
 // here (or unparseable) falls back to a single generic message — raw codes
@@ -53,7 +58,7 @@ export async function askAi(prompt: string, clientId: string | null): Promise<As
     if (error instanceof FunctionsHttpError) {
       try {
         const body = await error.context.json();
-        return { ok: false, error: friendlyMessage(body?.error) };
+        return { ok: false, error: friendlyMessage(body?.error), consentRequired: body?.error === CONSENT_REQUIRED };
       } catch {
         return { ok: false, error: i18n.t(GENERIC_ERROR_KEY) };
       }
@@ -64,6 +69,7 @@ export async function askAi(prompt: string, clientId: string | null): Promise<As
     return {
       ok: false,
       error: friendlyMessage(data?.error),
+      consentRequired: data?.error === CONSENT_REQUIRED,
       accountLocked: data?.account_locked,
       insufficientTokens: data?.insufficient_tokens,
     };

@@ -1,5 +1,6 @@
 // The classic file functions live under /legacy. Imported from the package root they
 // are stubs that throw when called, so every upload and recording failed.
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import * as FileSystem from 'expo-file-system/legacy';
 
 import i18n from '@/i18n';
@@ -10,6 +11,23 @@ export interface TranscribeResult {
   ok: boolean;
   text?: string;
   error?: string;
+  /** The server has no agreement on record for this person: ask before trying again. */
+  consentRequired?: boolean;
+}
+
+/** The server's answer when a client has not agreed to their recording going to an AI provider. */
+const CONSENT_REQUIRED = 'ai_consent_required';
+
+/** The error code in the body of a refusal, when there is one. */
+async function refusalCode(error: unknown): Promise<string | null> {
+  if (!(error instanceof FunctionsHttpError)) return null;
+  try {
+    const body: unknown = await error.context.json();
+    const code = (body as { error?: unknown } | null)?.error;
+    return typeof code === 'string' ? code : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Reads a local voice recording and sends it to the transcribe-audio edge
@@ -29,7 +47,12 @@ export async function transcribeRecording(uri: string, mimeType = 'audio/m4a'): 
     'transcribe-audio',
     { body: { audioBase64, mimeType } },
   );
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    if ((await refusalCode(error)) === CONSENT_REQUIRED) {
+      return { ok: false, error: i18n.t('errors.transcribeFailed'), consentRequired: true };
+    }
+    return { ok: false, error: error.message };
+  }
   if (!data?.ok) return { ok: false, error: data?.error ?? i18n.t('errors.transcribeFailed') };
   return { ok: true, text: data.text };
 }

@@ -6,7 +6,7 @@ import { Cta } from '@/components/horizon/cta';
 import { BRIDGE_WIDTH, FieldBack, HORIZON_GUTTER, HorizonScreen } from '@/components/horizon/horizon-screen';
 import { RuledRow } from '@/components/horizon/ruled';
 import { Text } from '@/components/ui';
-import { setAiConsent } from '@/lib/ai-consent';
+import { recordAiConsent } from '@/lib/ai-consent';
 import { useTheme } from '@/theme';
 import { horizonColors } from '@/theme/horizon';
 
@@ -33,7 +33,7 @@ export function AiConsent({ userId, onAgreed, onDeclined }: AiConsentProps) {
   async function agree() {
     setSaving(true);
     setFailed(false);
-    const saved = await setAiConsent(userId, true);
+    const saved = await recordAiConsent(userId, true);
     setSaving(false);
     if (saved) onAgreed();
     else setFailed(true);

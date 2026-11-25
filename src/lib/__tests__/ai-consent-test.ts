@@ -1,4 +1,12 @@
-import { aiDeclinedThisRun, hasAiConsent, noteAiDeclined, setAiConsent } from '@/lib/ai-consent';
+import {
+  aiDeclinedThisRun,
+  hasAiConsent,
+  noteAiDeclined,
+  recordAiConsent,
+  setAiConsent,
+  syncAiConsent,
+} from '@/lib/ai-consent';
+import { readServerConsent, writeServerConsent } from '@/services/ai-consent-server';
 
 const mockStore = new Map<string, string>();
 const mockDevice = { failWrites: false };
@@ -12,9 +20,129 @@ jest.mock('@/lib/device-prefs', () => ({
   },
 }));
 
+jest.mock('@/services/ai-consent-server', () => ({
+  readServerConsent: jest.fn(),
+  writeServerConsent: jest.fn(),
+}));
+
+const mockRead = readServerConsent as jest.MockedFunction<typeof readServerConsent>;
+const mockWrite = writeServerConsent as jest.MockedFunction<typeof writeServerConsent>;
+
 beforeEach(() => {
   mockStore.clear();
   mockDevice.failWrites = false;
+  mockRead.mockReset();
+  mockWrite.mockReset();
+});
+
+describe('recording a choice', () => {
+  test('tells the server the wording, then keeps the agreement on the device', async () => {
+    mockWrite.mockResolvedValue('saved');
+
+    expect(await recordAiConsent('user-a', true)).toBe(true);
+
+    expect(mockWrite).toHaveBeenCalledWith(true, 'v1');
+    expect(hasAiConsent('user-a')).toBe(true);
+  });
+
+  test('keeps the agreement on the device alone when the server keeps no record yet', async () => {
+    mockWrite.mockResolvedValue('not_offered');
+
+    expect(await recordAiConsent('user-a', true)).toBe(true);
+    expect(hasAiConsent('user-a')).toBe(true);
+  });
+
+  test('changes nothing on the device when the server failed to record an agreement', async () => {
+    mockWrite.mockResolvedValue('failed');
+
+    expect(await recordAiConsent('user-a', true)).toBe(false);
+    expect(hasAiConsent('user-a')).toBe(false);
+  });
+
+  test('keeps the agreement standing when the server failed to record a withdrawal, and says so', async () => {
+    await setAiConsent('user-a', true);
+    mockWrite.mockResolvedValue('failed');
+
+    expect(await recordAiConsent('user-a', false)).toBe(false);
+    expect(hasAiConsent('user-a')).toBe(true);
+  });
+
+  test('withdraws on the server and on the device', async () => {
+    await setAiConsent('user-a', true);
+    mockWrite.mockResolvedValue('saved');
+
+    expect(await recordAiConsent('user-a', false)).toBe(true);
+
+    expect(mockWrite).toHaveBeenCalledWith(false, 'v1');
+    expect(hasAiConsent('user-a')).toBe(false);
+  });
+
+  test('reports a failure when the device could not save, even though the server did', async () => {
+    mockWrite.mockResolvedValue('saved');
+    mockDevice.failWrites = true;
+
+    expect(await recordAiConsent('user-a', true)).toBe(false);
+  });
+});
+
+describe('bringing the device and the server into line after sign-in', () => {
+  test('changes nothing when the server is not known', async () => {
+    await setAiConsent('user-a', true);
+    mockRead.mockResolvedValue({ known: false });
+
+    await syncAiConsent('user-a');
+
+    expect(hasAiConsent('user-a')).toBe(true);
+    expect(mockWrite).not.toHaveBeenCalled();
+  });
+
+  test('applies a withdrawal made on another phone', async () => {
+    await setAiConsent('user-a', true);
+    mockRead.mockResolvedValue({ known: true, granted: false, version: null, withdrawn: true });
+
+    await syncAiConsent('user-a');
+
+    expect(hasAiConsent('user-a')).toBe(false);
+    // A withdrawal is never undone by sending the old agreement back up.
+    expect(mockWrite).not.toHaveBeenCalled();
+  });
+
+  test('brings an agreement to a new phone', async () => {
+    mockRead.mockResolvedValue({ known: true, granted: true, version: 'v1', withdrawn: false });
+
+    await syncAiConsent('user-a');
+
+    expect(hasAiConsent('user-a')).toBe(true);
+    expect(mockWrite).not.toHaveBeenCalled();
+  });
+
+  test('does not carry over an agreement to another wording: the person is asked again', async () => {
+    mockRead.mockResolvedValue({ known: true, granted: true, version: 'v0', withdrawn: false });
+
+    await syncAiConsent('user-a');
+
+    expect(hasAiConsent('user-a')).toBe(false);
+  });
+
+  test('sends up an agreement made before the server kept a record', async () => {
+    await setAiConsent('user-a', true);
+    mockRead.mockResolvedValue({ known: true, granted: false, version: null, withdrawn: false });
+    mockWrite.mockResolvedValue('saved');
+
+    await syncAiConsent('user-a');
+
+    expect(mockWrite).toHaveBeenCalledWith(true, 'v1');
+    expect(hasAiConsent('user-a')).toBe(true);
+  });
+
+  test('sends nothing up for a person who has not agreed anywhere', async () => {
+    mockRead.mockResolvedValue({ known: true, granted: false, version: null, withdrawn: false });
+
+    await syncAiConsent('user-a');
+
+    expect(mockWrite).not.toHaveBeenCalled();
+    expect(hasAiConsent('user-a')).toBe(false);
+  });
 });
 
 describe('AI consent', () => {

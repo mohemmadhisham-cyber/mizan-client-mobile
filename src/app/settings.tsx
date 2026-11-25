@@ -7,7 +7,7 @@ import { Cta } from '@/components/horizon/cta';
 import { FieldBack, HORIZON_GUTTER, HorizonScreen } from '@/components/horizon/horizon-screen';
 import { ChoiceRow, RuledRow, SectionLabel } from '@/components/horizon/ruled';
 import i18n, { setAppLocale, type AppLocale } from '@/i18n';
-import { hasAiConsent, setAiConsent } from '@/lib/ai-consent';
+import { hasAiConsent, recordAiConsent } from '@/lib/ai-consent';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import { useTheme, useThemeControls, type ThemeMode } from '@/theme';
@@ -53,7 +53,7 @@ export default function SettingsScreen() {
         text: t('support.aiWithdrawYes'),
         style: 'destructive',
         onPress: () => {
-          void setAiConsent(userId, false).then((saved) => {
+          void recordAiConsent(userId, false).then((saved) => {
             if (saved) setAiConsented(false);
             else Alert.alert(t('support.aiWithdraw'), t('support.aiSaveFailed'));
           });

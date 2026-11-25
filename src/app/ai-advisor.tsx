@@ -23,7 +23,7 @@ import { AiConsent } from '@/components/ai-advisor/ai-consent';
 import { Text } from '@/components/ui';
 import { useKeyboardShown } from '@/hooks/use-keyboard-shown';
 import { useVoiceRecorder } from '@/hooks/use-voice-recorder';
-import { hasAiConsent } from '@/lib/ai-consent';
+import { hasAiConsent, setAiConsent } from '@/lib/ai-consent';
 import { useAuth } from '@/lib/auth-context';
 import { askAi } from '@/services/ai-advisor';
 import { uploadReceipt } from '@/services/receipts';
@@ -90,6 +90,13 @@ export default function AiAdvisorScreen() {
     }, [userId]),
   );
 
+  // The server has no agreement on record (withdrawn elsewhere, or never sent up). The
+  // copy on this device is wrong, so it is dropped and the person is asked.
+  function askForConsentAgain() {
+    if (userId) void setAiConsent(userId, false);
+    setConsented(false);
+  }
+
   /** Checked at the moment of sending, not only when the screen opened. */
   function stillConsented(): boolean {
     if (hasAiConsent(userId)) return true;
@@ -113,6 +120,10 @@ export default function AiAdvisorScreen() {
 
     const res = await askAi(prompt, clientId);
     setBusy(false);
+    if (res.consentRequired) {
+      askForConsentAgain();
+      return;
+    }
 
     if (!res.ok) {
       const notice = res.insufficientTokens
@@ -165,6 +176,10 @@ export default function AiAdvisorScreen() {
       setTranscribing(true);
       const res = await transcribeRecording(recording.uri);
       setTranscribing(false);
+      if (res.consentRequired) {
+        askForConsentAgain();
+        return;
+      }
       if (!res.ok) {
         Alert.alert(t('aiAdvisorScreen.transcribeFailedTitle'), res.error ?? t('aiAdvisorScreen.transcribeFailedBody'));
         return;
