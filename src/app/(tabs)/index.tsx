@@ -13,12 +13,14 @@ import { Cta } from '@/components/horizon/cta';
 import type { HeadlineLine } from '@/components/horizon/headline';
 import { BRIDGE_WIDTH, FieldMark, HORIZON_GUTTER, HorizonScreen } from '@/components/horizon/horizon-screen';
 import { Ledger, type LedgerCell, RuledRow, SectionLabel } from '@/components/horizon/ruled';
+import { PlanRow } from '@/components/plan/plan-row';
 import { Text } from '@/components/ui';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useAuth } from '@/lib/auth-context';
 import { useDashboardPrefs } from '@/lib/dashboard-prefs';
 import { daysUntil, formatMoneyMinor } from '@/lib/format';
 import { clearDashboardCache, clientDataService } from '@/services/client-data';
+import { targetsQuery } from '@/services/month-plan';
 import { useTheme } from '@/theme';
 import { horizonColors } from '@/theme/horizon';
 
@@ -48,7 +50,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const theme = useTheme();
   const colors = horizonColors(theme.colors);
-  const { user, firmId } = useAuth();
+  const { user, firmId, clientId } = useAuth();
   const companyKey = firmId ?? 'none';
   const { visible, toggle } = useDashboardPrefs();
   const [editingDashboard, setEditingDashboard] = useState(false);
@@ -58,11 +60,17 @@ export default function HomeScreen() {
   const exp = useQuery({ queryKey: ['exp', companyKey], queryFn: clientDataService.getExpenseSeries });
   const ins = useQuery({ queryKey: ['ins', companyKey], queryFn: clientDataService.getInsights });
   const acts = useQuery({ queryKey: ['acts', companyKey], queryFn: clientDataService.getActions });
+  // The agreed targets. Shown only when the server offers them and there is at least one.
+  const plan = useQuery(targetsQuery(clientId));
+  const targets = plan.data?.available ? plan.data.targets : [];
+  const unreadableTargets = plan.data?.available ? plan.data.unreadable : 0;
   const refetchAll = () =>
     Promise.all([kpis.refetch(), rev.refetch(), exp.refetch(), ins.refetch(), acts.refetch()]);
   const { refreshing, onRefresh } = usePullToRefresh(() => {
     // The summary is cached for 30 s; a pull must reach the server.
     clearDashboardCache();
+    // The plan is asked again too, but the pull does not wait for it: it is an extra, not the page.
+    void plan.refetch();
     return refetchAll();
   });
 
@@ -153,6 +161,20 @@ export default function HomeScreen() {
             </View>
 
             {visible.thisMonth ? <Ledger cells={cells} /> : null}
+
+            {targets.length > 0 || unreadableTargets > 0 ? (
+              <>
+                <SectionLabel>{t('horizonPlan.title')}</SectionLabel>
+                {targets.map((target) => (
+                  <PlanRow
+                    key={target.id}
+                    target={target}
+                    onPress={() => router.push({ pathname: '/plan/[id]', params: { id: target.id } })}
+                  />
+                ))}
+                {unreadableTargets > 0 ? <RuledRow title={t('horizonPlan.unreadable')} plain /> : null}
+              </>
+            ) : null}
 
             {visible.criticalTasks ? (
               <>
