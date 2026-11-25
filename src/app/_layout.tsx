@@ -54,7 +54,12 @@ function RootNav() {
   // the two are brought into line: a withdrawal made on another phone applies
   // here, and an agreement made here before the server kept a record is sent up.
   useEffect(() => {
-    if (userId) void syncAiConsent(userId);
+    if (!userId) return;
+    let current = true;
+    void syncAiConsent(userId, () => current);
+    return () => {
+      current = false;
+    };
   }, [userId]);
 
   useEffect(() => {

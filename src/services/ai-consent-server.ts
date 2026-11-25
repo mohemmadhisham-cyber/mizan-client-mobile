@@ -47,14 +47,25 @@ const statusSchema = z.object({
 });
 const writeSchema = z.object({ ok: z.literal(true), granted: z.boolean() });
 
+/**
+ * True when the signed-in session is this person's. The server takes the
+ * person from the session, so a call that started for one person must not
+ * run after another has signed in on the same phone.
+ */
+async function sessionIs(userId: string): Promise<boolean> {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user.id === userId;
+}
+
 function notOffered(error: unknown): boolean {
   return error instanceof FunctionsHttpError && (error.context as Response).status === NOT_OFFERED_STATUS;
 }
 
-/** What the server has on record for the signed-in person. Never throws: an unreachable server is "not known". */
-export async function readServerConsent(): Promise<ServerConsent> {
+/** What the server has on record for this person. Never throws: an unreachable server is "not known". */
+export async function readServerConsent(forUserId: string): Promise<ServerConsent> {
   try {
     assertSupabaseConfigured();
+    if (!(await sessionIs(forUserId))) return { known: false };
     const { data, error } = await supabase.functions.invoke<unknown>(FUNCTION, { body: { action: 'status' } });
     if (error) return { known: false };
     const parsed = statusSchema.safeParse(data);
@@ -70,10 +81,11 @@ export async function readServerConsent(): Promise<ServerConsent> {
   }
 }
 
-/** Records the person's choice on the server. Never throws. */
-export async function writeServerConsent(granted: boolean, version: string): Promise<ConsentWrite> {
+/** Records this person's choice on the server. Never throws. */
+export async function writeServerConsent(granted: boolean, version: string, forUserId: string): Promise<ConsentWrite> {
   try {
     assertSupabaseConfigured();
+    if (!(await sessionIs(forUserId))) return 'failed';
     const body = granted ? { action: 'grant', version } : { action: 'withdraw' };
     const { data, error } = await supabase.functions.invoke<unknown>(FUNCTION, { body });
     if (error) return notOffered(error) ? 'not_offered' : 'failed';

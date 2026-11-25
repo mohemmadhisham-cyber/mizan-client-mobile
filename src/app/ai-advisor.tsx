@@ -115,12 +115,16 @@ export default function AiAdvisorScreen() {
     if (!prompt || busy) return;
     if (!stillConsented()) return;
     setInput('');
-    setMessages((m) => [...m, { id: nextId(), role: 'user', text: prompt }]);
+    const questionId = nextId();
+    setMessages((m) => [...m, { id: questionId, role: 'user', text: prompt }]);
     setBusy(true);
 
     const res = await askAi(prompt, clientId);
     setBusy(false);
     if (res.consentRequired) {
+      // Nothing was answered. The question goes back into the box, so it is not lost while the person is asked.
+      setMessages((m) => m.filter((message) => message.id !== questionId));
+      setInput(prompt);
       askForConsentAgain();
       return;
     }

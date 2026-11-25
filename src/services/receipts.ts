@@ -186,9 +186,11 @@ export interface ExtractedReceipt {
  * when the OCR service isn't wired yet (the wizard then starts blank). */
 export async function extractReceipt(
   receiptId: string,
-): Promise<{ extracted: ExtractedReceipt | null; ocrConfigured: boolean }> {
+): Promise<{ extracted: ExtractedReceipt | null; ocrConfigured: boolean; consentRequired?: boolean }> {
   const { data, error } = await supabase.functions.invoke('receipt-ocr', { body: { action: 'extract', receiptId } });
   if (error || !data?.ok) return { extracted: null, ocrConfigured: false };
+  // The server has no agreement on record for this person: the photo was not read.
+  if (data.error === 'ai_consent_required') return { extracted: null, ocrConfigured: false, consentRequired: true };
   return { extracted: (data.extracted as ExtractedReceipt | null) ?? null, ocrConfigured: Boolean(data.ocrConfigured) };
 }
 

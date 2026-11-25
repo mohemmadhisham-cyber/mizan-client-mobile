@@ -53,6 +53,9 @@ export async function transcribeRecording(uri: string, mimeType = 'audio/m4a'): 
     }
     return { ok: false, error: error.message };
   }
+  if (data?.error === CONSENT_REQUIRED) {
+    return { ok: false, error: i18n.t('errors.transcribeFailed'), consentRequired: true };
+  }
   if (!data?.ok) return { ok: false, error: data?.error ?? i18n.t('errors.transcribeFailed') };
   return { ok: true, text: data.text };
 }
