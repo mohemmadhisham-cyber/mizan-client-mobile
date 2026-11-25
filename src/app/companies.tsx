@@ -1,19 +1,23 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Alert } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { DetailHeader } from '@/components/navigation/detail-header';
-import { Badge, Card, Skeleton, Text } from '@/components/ui';
+import { FieldBack, HorizonScreen } from '@/components/horizon/horizon-screen';
+import { RuledRow } from '@/components/horizon/ruled';
+import { WordTabs } from '@/components/horizon/word-tabs';
 import i18n from '@/i18n';
 import { useAuth } from '@/lib/auth-context';
 import { localeTag } from '@/lib/format';
 import { companiesService } from '@/services/companies';
 import type { CompanyInfo, TeamMemberInfo } from '@/services/types';
-import { radius, spacing, useTheme } from '@/theme';
+import { useTheme } from '@/theme';
+import { horizonColors } from '@/theme/horizon';
+
+const COMPANIES_FIELD = 150;
+
+type Tab = 'companies' | 'team';
 
 function explainAddCompany() {
   Alert.alert(
@@ -25,163 +29,74 @@ function explainAddCompany() {
 export default function CompaniesScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
+  const colors = horizonColors(theme.colors);
   const params = useLocalSearchParams<{ tab?: string }>();
-  const [tab, setTab] = useState<'companies' | 'team'>(params.tab === 'team' ? 'team' : 'companies');
+  const [tab, setTab] = useState<Tab>(params.tab === 'team' ? 'team' : 'companies');
   const { user, clientId } = useAuth();
 
   const companies = useQuery({ queryKey: ['companies', clientId], queryFn: () => companiesService.getCompanies(clientId) });
   const team = useQuery({ queryKey: ['team', clientId], queryFn: companiesService.getTeam });
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
-      <DetailHeader title={t('companies.title')} />
-      <View style={{ flexDirection: 'row', gap: spacing.lg, paddingHorizontal: spacing.gutter, borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-        <TabButton label={t('more.companies')} active={tab === 'companies'} onPress={() => setTab('companies')} />
-        <TabButton label={t('more.team')} active={tab === 'team'} onPress={() => setTab('team')} />
-      </View>
+    <HorizonScreen
+      field={COMPANIES_FIELD}
+      small
+      lines={[{ text: t('companies.title') }]}
+      top={<FieldBack colors={colors} />}
+      // Who and what is on the account: nothing here is waiting for the person.
+      bridge={null}>
+      <WordTabs
+        options={[
+          { key: 'companies', label: t('more.companies') },
+          { key: 'team', label: t('more.team') },
+        ]}
+        value={tab}
+        onChange={setTab}
+      />
 
-      <ScrollView contentContainerStyle={{ padding: spacing.gutter, paddingBottom: insets.bottom + spacing.xl, gap: spacing.md }}>
-        {tab === 'companies' ? (
-          !companies.data ? (
-            <>
-              <Skeleton height={100} radius={radius.lg} />
-              <Skeleton height={100} radius={radius.lg} />
-            </>
-          ) : (
-            <>
-              {companies.data.map((c) => (
-                <CompanyCard key={c.id} company={c} />
-              ))}
-              <Pressable
-                accessibilityRole="button"
-                onPress={explainAddCompany}
-                style={{
-                  borderWidth: 2,
-                  borderStyle: 'dashed',
-                  borderColor: theme.colors.input,
-                  borderRadius: radius.lg,
-                  paddingVertical: spacing['2xl'],
-                  alignItems: 'center',
-                  gap: spacing.sm,
-                }}>
-                <Ionicons name="add-circle-outline" size={28} color={theme.colors.mutedForeground} />
-                <Text variant="title" color="mutedForeground">
-                  {t('companies.addCompany')}
-                </Text>
-              </Pressable>
-            </>
-          )
-        ) : !team.data ? (
-          <Skeleton height={200} radius={radius.lg} />
-        ) : team.data.length === 0 ? (
-          <Card>
-            <Text variant="callout" color="mutedForeground">
-              {t('companies.noTeammates')}
-            </Text>
-          </Card>
+      {tab === 'companies' ? (
+        companies.isError && !companies.data ? (
+          <RuledRow title={t('common.listLoadFailed')} action={t('common.retry')} onPress={() => void companies.refetch()} />
+        ) : !companies.data ? (
+          <RuledRow title={t('common.loading')} />
         ) : (
-          <Card padded={false} elevated style={{ overflow: 'hidden' }}>
-            {team.data.map((m, i) => (
-              <TeamRow key={m.userId} member={m} isSelf={m.userId === user?.id} isLast={i === team.data.length - 1} />
+          <>
+            {companies.data.map((c) => (
+              <CompanyRow key={c.id} company={c} />
             ))}
-          </Card>
-        )}
-      </ScrollView>
-    </View>
+            <RuledRow title={t('companies.addCompany')} onPress={explainAddCompany} />
+          </>
+        )
+      ) : team.isError && !team.data ? (
+        <RuledRow title={t('common.listLoadFailed')} action={t('common.retry')} onPress={() => void team.refetch()} />
+      ) : !team.data ? (
+        <RuledRow title={t('common.loading')} />
+      ) : team.data.length === 0 ? (
+        <RuledRow title={t('companies.noTeammates')} plain />
+      ) : (
+        team.data.map((m) => <TeamRow key={m.userId} member={m} isSelf={m.userId === user?.id} />)
+      )}
+    </HorizonScreen>
   );
 }
 
-function TabButton({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  const theme = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="tab"
-      accessibilityState={{ selected: active }}
-      onPress={onPress}
-      style={{ paddingVertical: spacing.sm, borderBottomWidth: 2, borderBottomColor: active ? theme.colors.primary : 'transparent' }}>
-      <Text variant="title" color={active ? 'primary' : 'mutedForeground'}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
-function CompanyCard({ company }: { company: CompanyInfo }) {
+/** A company: its name, whether it is active, and when it was last brought up to date. */
+function CompanyRow({ company }: { company: CompanyInfo }) {
   const { t } = useTranslation();
-  const theme = useTheme();
-  return (
-    <Card elevated style={{ gap: spacing.md }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <View style={{ gap: spacing.sm }}>
-          <Text variant="title">{company.name}</Text>
-          <Badge
-            label={company.status === 'active' ? t('companies.active') : t('companies.inactive')}
-            bg={theme.colors.secondary}
-            fg={theme.colors.mutedForeground}
-          />
-        </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('companies.options')}
-          onPress={() =>
-            Alert.alert(
-              company.name,
-              t('companies.detail', {
-                status: company.status === 'active' ? t('companies.active') : t('companies.inactive'),
-                synced: company.lastSyncedLabel,
-              }),
-            )
-          }
-          hitSlop={8}>
-          <Ionicons name="ellipsis-vertical" size={18} color={theme.colors.mutedForeground} />
-        </Pressable>
-      </View>
-      <Text variant="footnote" color="mutedForeground">
-        {company.lastSyncedLabel}
-      </Text>
-    </Card>
-  );
+  const status = company.status === 'active' ? t('companies.active') : t('companies.inactive');
+  return <RuledRow title={company.name} meta={`${status} · ${company.lastSyncedLabel}`} />;
 }
 
-function TeamRow({ member, isSelf, isLast }: { member: TeamMemberInfo; isSelf: boolean; isLast: boolean }) {
+function TeamRow({ member, isSelf }: { member: TeamMemberInfo; isSelf: boolean }) {
   const { t } = useTranslation();
-  const theme = useTheme();
   const joined = new Date(member.joinedAt);
   const joinedLabel = Number.isNaN(joined.getTime())
     ? ''
     : t('companies.joined', { date: joined.toLocaleDateString(localeTag(), { month: 'short', year: 'numeric' }) });
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.md,
-        padding: spacing.base,
-        borderBottomWidth: isLast ? 0 : 1,
-        borderBottomColor: theme.colors.border,
-      }}>
-      <View
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: radius.full,
-          backgroundColor: theme.colors.accent,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-        <Text variant="callout" weight="bold" color="primary">
-          {member.email[0]?.toUpperCase()}
-        </Text>
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text variant="callout" weight="semibold">
-          {isSelf ? t('common.you') : member.email}
-        </Text>
-        <Text variant="footnote" color="mutedForeground">
-          {isSelf ? member.email : joinedLabel}
-        </Text>
-      </View>
-    </View>
+    <RuledRow
+      title={isSelf ? t('common.you') : member.email}
+      meta={(isSelf ? member.email : joinedLabel) || undefined}
+    />
   );
 }
