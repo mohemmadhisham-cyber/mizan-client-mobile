@@ -1,10 +1,14 @@
 /**
  * Runs before every test file. Stands in for the parts of the phone a test
- * cannot have: the safe area, haptics, and the translator. Animation runs in
+ * cannot have: the safe area, the network status, haptics, and the translator. Animation runs in
  * plain JavaScript through the resolver named in package.json.
  */
 
 jest.mock('react-native-safe-area-context', () => jest.requireActual('react-native-safe-area-context/jest/mock').default);
+
+jest.mock('@react-native-community/netinfo', () =>
+  jest.requireActual('@react-native-community/netinfo/jest/netinfo-mock.js'),
+);
 
 jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn(() => Promise.resolve()),

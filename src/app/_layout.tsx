@@ -22,6 +22,7 @@ import { AppError } from '@/components/support/app-error';
 import { useAuthGate } from '@/hooks/use-auth-gate';
 import { syncAiConsent } from '@/lib/ai-consent';
 import { clearDashboardCache } from '@/services/client-data';
+import { wireOnlineManager } from '@/lib/online';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { navigationTheme, ThemeProvider, useTheme } from '@/theme';
 
@@ -34,6 +35,9 @@ const queryClient = new QueryClient({
     queries: { staleTime: 60_000, retry: 1, refetchOnWindowFocus: false },
   },
 });
+
+// Once, when the app starts: requests wait while the phone is offline and are made again when it is back.
+wireOnlineManager();
 
 function RootNav() {
   const theme = useTheme();

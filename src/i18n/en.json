@@ -655,6 +655,7 @@
     "unreadable": "Some targets could not be shown. Update the app or ask your accountant."
   },
   "support": {
+    "offline": "No connection. You are seeing what was last loaded.",
     "helpAndPrivacy": "Help and privacy",
     "helpTitle": "Help",
     "helpSub": "Who to ask, and how to reach us.",
