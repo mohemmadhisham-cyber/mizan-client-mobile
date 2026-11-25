@@ -1,13 +1,16 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { type ReactNode, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { I18nManager, ScrollView, StyleSheet, Text as RNText, useWindowDimensions, View } from 'react-native';
+import { I18nManager, Pressable, ScrollView, StyleSheet, Text as RNText, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text } from '@/components/ui';
 import { AppRefreshControl } from '@/components/ui/refresh';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
+import { chevronBack } from '@/lib/direction';
 import { useTheme } from '@/theme';
 import { horizonColors, type HorizonColors } from '@/theme/horizon';
 
@@ -244,6 +247,22 @@ export function FieldMark() {
       contentFit="contain"
       style={{ width: MARK_SIZE, height: MARK_SIZE, marginStart: -6 }}
     />
+  );
+}
+
+/** Back, at the top of the field, on a screen that was opened from another. */
+export function FieldBack({ colors, onPress }: { colors: HorizonColors; onPress?: () => void }) {
+  const { t } = useTranslation();
+  const router = useRouter();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t('common.back')}
+      onPress={onPress ?? (() => router.back())}
+      hitSlop={11}
+      style={({ pressed }) => ({ marginStart: -4, opacity: pressed ? 0.6 : 1 })}>
+      <Ionicons name={chevronBack()} size={24} color={colors.onField} />
+    </Pressable>
   );
 }
 

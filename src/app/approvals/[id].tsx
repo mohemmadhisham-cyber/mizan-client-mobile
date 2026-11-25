@@ -1,18 +1,24 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollView, useWindowDimensions, View } from 'react-native';
 
-import { DetailHeader } from '@/components/navigation/detail-header';
+import { Cta } from '@/components/horizon/cta';
+import type { HeadlineLine } from '@/components/horizon/headline';
+import {
+  type Bridge,
+  BRIDGE_WIDTH,
+  FieldBack,
+  HORIZON_GUTTER,
+  HorizonScreen,
+} from '@/components/horizon/horizon-screen';
 import { DeclineSheet } from '@/components/requests/decline-sheet';
 import { RequestDetails } from '@/components/requests/request-details';
 import { requestConsequence, requestSentLine, requestTitle } from '@/components/requests/request-text';
 import { StepUpModal } from '@/components/tasks/step-up-modal';
-import { Button, EmptyState, Skeleton, Text } from '@/components/ui';
+import { EmptyState, Text } from '@/components/ui';
 import {
   decideRequest,
   type DecideOutcome,
@@ -21,10 +27,17 @@ import {
   requestErrorKey,
   REQUESTS_QUERY_KEY,
 } from '@/services/accountant-requests';
-import { radius, spacing, useTheme } from '@/theme';
+import { spacing, useTheme } from '@/theme';
+import { horizonColors } from '@/theme/horizon';
 
 type Decision = 'approve' | 'decline';
 type Outcome = 'applied' | 'declined';
+
+/** Height of the field: a one-line title and one quiet line under it. */
+const APPROVE_FIELD = 176;
+/** A title longer than this is cut in the field, so it is repeated in full below the line. */
+const TITLE_FITS = 26;
+const REST_BRIDGE: Bridge = { start: HORIZON_GUTTER, width: BRIDGE_WIDTH };
 
 function successHaptic() {
   if (process.env.EXPO_OS !== 'web') {
@@ -40,7 +53,8 @@ function successHaptic() {
 export default function AccountantRequestScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
+  const colors = horizonColors(theme.colors);
+  const { width } = useWindowDimensions();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -95,52 +109,55 @@ export default function AccountantRequestScreen() {
       return;
     }
     setDeclining(false);
+    // Shown at once: the request is about to leave the list, and nothing may be tapped in between.
     setOutcome(result.status);
     successHaptic();
     void queryClient.invalidateQueries({ queryKey: REQUESTS_QUERY_KEY });
   }
 
-  const shell = (title: string, body: ReactNode) => (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
-      <DetailHeader title={title} />
+  const shell = (
+    key: string,
+    lines: HeadlineLine[],
+    body: ReactNode,
+    options: { sub?: string; bridge?: Bridge | null } = {},
+  ) => (
+    <HorizonScreen
+      field={APPROVE_FIELD}
+      small
+      scroll={false}
+      animateKey={key}
+      lines={lines}
+      sub={options.sub}
+      top={<FieldBack colors={colors} />}
+      bridge={options.bridge ?? null}>
       {body}
-    </View>
+    </HorizonScreen>
   );
 
   // The answer is in: show it even though the request has now left the list.
   if (outcome) {
     return shell(
-      t(outcome === 'applied' ? 'requests.appliedTitle' : 'requests.declinedTitle'),
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, paddingHorizontal: spacing.gutter }}>
-        <Ionicons
-          name={outcome === 'applied' ? 'checkmark-circle' : 'close-circle-outline'}
-          size={56}
-          color={outcome === 'applied' ? theme.colors.success : theme.colors.mutedForeground}
-        />
-        <Text variant="title" center>
-          {t(outcome === 'applied' ? 'requests.appliedTitle' : 'requests.declinedTitle')}
-        </Text>
-        <Text variant="body" color="mutedForeground" center>
+      outcome,
+      [{ text: t(outcome === 'applied' ? 'requests.appliedTitle' : 'requests.declinedTitle') }],
+      <View style={{ padding: HORIZON_GUTTER, gap: spacing.lg }}>
+        <Text variant="body" color="mutedForeground">
           {t(outcome === 'applied' ? 'requests.appliedBody' : 'requests.declinedBody')}
         </Text>
-        <Button title={t('common.done')} onPress={() => router.back()} fullWidth />
+        <Cta title={t('common.done')} onPress={() => router.back()} />
       </View>,
+      // Approved: the gold crosses the whole line. Declined: nothing is left to act on.
+      { bridge: outcome === 'applied' ? { start: 0, width } : null },
     );
   }
 
   if (pending.isLoading || (!request && pending.isFetching)) {
-    return shell(
-      t('requests.sectionTitle'),
-      <View style={{ paddingHorizontal: spacing.gutter, gap: spacing.md }}>
-        <Skeleton height={160} radius={radius.lg} />
-        <Skeleton height={110} radius={radius.lg} />
-      </View>,
-    );
+    return shell('loading', [{ text: t('common.loading'), soft: true }], null);
   }
 
   if (pending.isError) {
     return shell(
-      t('requests.sectionTitle'),
+      'error',
+      [{ text: t('requests.sectionTitle') }],
       <EmptyState
         icon="cloud-offline-outline"
         title={t('common.listLoadFailed')}
@@ -153,7 +170,8 @@ export default function AccountantRequestScreen() {
 
   if (!request) {
     return shell(
-      t('requests.sectionTitle'),
+      'gone',
+      [{ text: t('requests.sectionTitle') }],
       <EmptyState
         icon="time-outline"
         title={t('requests.goneTitle')}
@@ -168,12 +186,22 @@ export default function AccountantRequestScreen() {
   const sentLine = requestSentLine(request, t);
 
   return shell(
-    title,
+    'request',
+    [{ text: title }],
     <>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.gutter, paddingBottom: spacing.xl, gap: spacing.lg }}>
-        {sentLine ? (
-          <Text variant="footnote" color="mutedForeground">
-            {sentLine}
+      <ScrollView
+        style={{ flex: 1 }}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingHorizontal: HORIZON_GUTTER,
+          paddingTop: spacing.lg,
+          paddingBottom: spacing.xl,
+          gap: spacing.lg,
+        }}>
+        {title.length > TITLE_FITS ? (
+          // Read once: the field already speaks the title in full.
+          <Text variant="title" accessibilityElementsHidden importantForAccessibility="no">
+            {title}
           </Text>
         ) : null}
         <RequestDetails request={request} />
@@ -181,10 +209,10 @@ export default function AccountantRequestScreen() {
 
       <View
         style={{
-          paddingHorizontal: spacing.gutter,
+          paddingHorizontal: HORIZON_GUTTER,
           paddingTop: spacing.md,
-          paddingBottom: insets.bottom + spacing.md,
-          gap: spacing.sm,
+          paddingBottom: spacing.md,
+          gap: 10,
           borderTopWidth: 1,
           borderTopColor: theme.colors.border,
           backgroundColor: theme.colors.background,
@@ -194,20 +222,18 @@ export default function AccountantRequestScreen() {
             {t(errorKey)}
           </Text>
         ) : null}
-        <Button
+        <Cta
           title={t('requests.approve')}
           onPress={() => void decide('approve')}
-          loading={busy === 'approve'}
+          busy={busy === 'approve'}
           // Not while the list is being read again: the figures may be about to change.
-          disabled={busy !== null || pending.isFetching}
-          fullWidth
+          disabled={busy === 'decline' || pending.isFetching}
         />
-        <Button
+        <Cta
+          kind="outline"
           title={t('requests.decline')}
-          variant="secondary"
           onPress={() => setDeclining(true)}
           disabled={busy !== null || pending.isFetching}
-          fullWidth
         />
       </View>
 
@@ -230,5 +256,6 @@ export default function AccountantRequestScreen() {
         onDecline={(reason) => void decide('decline', { reason })}
       />
     </>,
+    { sub: sentLine || undefined, bridge: REST_BRIDGE },
   );
 }
