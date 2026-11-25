@@ -144,4 +144,6 @@ export interface NotificationItem {
   timeLabel: string;
   read: boolean;
   actionLabel?: string;
+  /** In-app path the server attached, e.g. `/approvals/<id>`. Server data: validate before following. */
+  link?: string;
 }
