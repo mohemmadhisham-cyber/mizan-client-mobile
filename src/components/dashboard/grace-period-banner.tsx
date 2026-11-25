@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { openBrowserAsync } from 'expo-web-browser';
 import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { Text } from '@/components/ui';
 import { createRenewalLink } from '@/services/client-billing';
@@ -20,6 +21,7 @@ function daysUntil(dateStr: string): number {
  * grace period ends. Not shown once actually locked (that's the full-screen
  * access-suspended gate instead). */
 export function GracePeriodBanner() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const [status, setStatus] = useState<FirmLockStatus | null>(null);
   const [renewing, setRenewing] = useState(false);
@@ -64,10 +66,11 @@ export function GracePeriodBanner() {
       <Ionicons name="alert-circle" size={22} color={theme.colors.warningSoftForeground} />
       <View style={{ flex: 1 }}>
         <Text variant="callout" weight="semibold" style={{ color: theme.colors.warningSoftForeground }}>
-          {days !== null ? `Subscription overdue — ${days} day${days === 1 ? '' : 's'} until access is suspended` : 'Subscription payment overdue'}
+          {days !== null ? t('dashboard.overdueDays', { count: days }) : t('dashboard.overdue')}
         </Text>
         <Text variant="footnote" style={{ color: theme.colors.warningSoftForeground }}>
-          {formatMoneyMinor(status.amountDueMinor, status.currency as Currency)} due. {renewing ? 'Opening…' : 'Tap to renew now.'}
+          {t('dashboard.amountDue', { amount: formatMoneyMinor(status.amountDueMinor, status.currency as Currency) })}{' '}
+          {renewing ? t('common.opening') : t('dashboard.tapToRenew')}
         </Text>
       </View>
     </Pressable>

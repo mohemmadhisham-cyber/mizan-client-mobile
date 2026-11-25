@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { Tabs } from 'expo-router';
 import { type ComponentProps, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { type LayoutRectangle, Pressable, StyleSheet, View } from 'react-native';
+import { I18nManager, type LayoutRectangle, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -56,6 +56,7 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
   const reduced = useReducedMotion();
   const { t } = useTranslation();
   const [layouts, setLayouts] = useState<Record<string, LayoutRectangle>>({});
+  const [rowWidth, setRowWidth] = useState(0);
 
   const indicatorX = useSharedValue(0);
   const indicatorW = useSharedValue(0);
@@ -69,12 +70,23 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
   const activeLayout = activeKey ? layouts[activeKey] : undefined;
   const activeX = activeLayout?.x;
   const activeW = activeLayout?.width;
+  // The indicator is anchored at the start edge (left in English, right in
+  // Arabic) while onLayout reports x from the physical left. In right-to-left
+  // the offset is therefore measured back from the right edge of the row.
+  const activeOffset =
+    activeX == null || activeW == null
+      ? undefined
+      : I18nManager.isRTL
+        ? rowWidth > 0
+          ? -(rowWidth - activeX - activeW)
+          : undefined
+        : activeX;
 
   useEffect(() => {
-    if (activeX == null || activeW == null) return;
-    indicatorX.value = withTiming(activeX, timingConfig(reduced));
+    if (activeOffset == null || activeW == null) return;
+    indicatorX.value = withTiming(activeOffset, timingConfig(reduced));
     indicatorW.value = withTiming(activeW, timingConfig(reduced));
-  }, [activeX, activeW, reduced, indicatorX, indicatorW]);
+  }, [activeOffset, activeW, reduced, indicatorX, indicatorW]);
 
   const indicatorStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: indicatorX.value }],
@@ -93,7 +105,7 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
           shadowColor: theme.colors.shadow,
         },
       ]}>
-      <View style={styles.row}>
+      <View style={styles.row} onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)}>
         <Animated.View
           pointerEvents="none"
           style={[styles.indicator, { backgroundColor: theme.colors.accent }, indicatorStyle]}
@@ -162,7 +174,7 @@ const styles = StyleSheet.create({
   },
   indicator: {
     position: 'absolute',
-    left: 0,
+    start: 0,
     top: 10,
     height: TAB_BAR_HEIGHT - 20,
     borderRadius: radius.md,

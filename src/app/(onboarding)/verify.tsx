@@ -7,6 +7,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'rea
 import { AmbientBackdrop } from '@/components/auth/ambient-backdrop';
 import { OtpBoxInput } from '@/components/auth/otp-box-input';
 import { Button, Card, Text } from '@/components/ui';
+import { chevronBack } from '@/lib/direction';
 import { acceptInvite, sendEmailOtp, verifyEmailOtp } from '@/services/auth';
 import { spacing, useTheme } from '@/theme';
 
@@ -112,7 +113,7 @@ export default function VerifyScreen() {
             />
 
             <Pressable onPress={() => router.back()} accessibilityRole="button" style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Ionicons name="chevron-back" size={14} color={theme.colors.mutedForeground} />
+              <Ionicons name={chevronBack()} size={14} color={theme.colors.mutedForeground} />
               <Text variant="footnote" color="mutedForeground">
                 {t('auth.backToEmail')}
               </Text>

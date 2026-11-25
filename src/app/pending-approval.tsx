@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AmbientBackdrop } from '@/components/auth/ambient-backdrop';
 import { EmptyState, Text } from '@/components/ui';
@@ -15,6 +16,7 @@ import { spacing, useTheme } from '@/theme';
  * since acceptInvite() already sets client_id before the gate ever checks.
  */
 export default function PendingApprovalScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const { user, refresh, signOut } = useAuth();
   const [checking, setChecking] = useState(false);
@@ -34,20 +36,20 @@ export default function PendingApprovalScreen() {
       <View style={{ flex: 1 }}>
         <EmptyState
           icon="time-outline"
-          title="Your account is pending approval"
-          message={`${user?.email ?? 'Your account'} isn't linked to a company yet. Ask your accountant to send you an invite, or confirm they've completed it.`}
-          actionLabel={checking ? 'Checking…' : 'Check again'}
+          title={t('gates.pendingTitle')}
+          message={t('gates.pendingBody', { account: user?.email ?? t('gates.yourAccount') })}
+          actionLabel={checking ? t('common.checking') : t('gates.checkAgain')}
           onAction={checkAgain}
         />
       </View>
       {stillPending ? (
         <Text variant="footnote" color="mutedForeground" center style={{ marginBottom: spacing.lg }}>
-          Still not linked. Try again once your accountant confirms.
+          {t('gates.stillPending')}
         </Text>
       ) : null}
       <Pressable accessibilityRole="button" onPress={() => void signOut()} style={{ alignSelf: 'center', paddingBottom: spacing.xl }}>
         <Text variant="footnote" color="mutedForeground">
-          Sign out
+          {t('auth.signOut')}
         </Text>
       </Pressable>
     </View>

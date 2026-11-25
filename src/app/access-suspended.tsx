@@ -1,6 +1,7 @@
 import { openBrowserAsync } from 'expo-web-browser';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AmbientBackdrop } from '@/components/auth/ambient-backdrop';
 import { EmptyState, Text } from '@/components/ui';
@@ -16,6 +17,7 @@ import { spacing, useTheme } from '@/theme';
  * blocks all real data server-side; this is the friendly explanation on top.
  */
 export default function AccessSuspendedScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const { refresh, signOut } = useAuth();
   const [checking, setChecking] = useState(false);
@@ -34,7 +36,7 @@ export default function AccessSuspendedScreen() {
     const res = await createRenewalLink();
     setRenewing(false);
     if (!res.ok || !res.token) {
-      setRenewError(res.error ?? 'No outstanding invoice found — ask your accountant to reactivate your account.');
+      setRenewError(res.error ?? t('gates.noInvoice'));
       return;
     }
     await openBrowserAsync(`${EXPO_PUBLIC_WEB_APP_URL}/pay/${res.token}`);
@@ -46,9 +48,9 @@ export default function AccessSuspendedScreen() {
       <View style={{ flex: 1 }}>
         <EmptyState
           icon="lock-closed-outline"
-          title="Your access has been suspended"
-          message="Your accountant has paused access to this workspace — often due to a subscription renewal. Renew now to restore access, or contact your accountant."
-          actionLabel={renewing ? 'Opening…' : 'Renew now'}
+          title={t('gates.suspendedTitle')}
+          message={t('gates.suspendedBody')}
+          actionLabel={renewing ? t('common.opening') : t('gates.renewNow')}
           onAction={renewNow}
         />
         {renewError ? (
@@ -59,12 +61,12 @@ export default function AccessSuspendedScreen() {
       </View>
       <Pressable accessibilityRole="button" onPress={checkAgain} style={{ alignSelf: 'center', paddingBottom: spacing.md }}>
         <Text variant="footnote" color="primary">
-          {checking ? 'Checking…' : "I've renewed — check again"}
+          {checking ? t('common.checking') : t('gates.renewedCheckAgain')}
         </Text>
       </Pressable>
       <Pressable accessibilityRole="button" onPress={() => void signOut()} style={{ alignSelf: 'center', paddingBottom: spacing.xl }}>
         <Text variant="footnote" color="mutedForeground">
-          Sign out
+          {t('auth.signOut')}
         </Text>
       </Pressable>
     </View>

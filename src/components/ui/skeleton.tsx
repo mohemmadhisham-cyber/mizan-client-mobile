@@ -6,6 +6,7 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
+import { useTranslation } from 'react-i18next';
 
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { radius as radii, useTheme } from '@/theme';
@@ -18,6 +19,7 @@ interface SkeletonProps {
 }
 
 export function Skeleton({ width = '100%', height = 16, radius = radii.md, style }: SkeletonProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const reduced = useReducedMotion();
   const pulse = useSharedValue(reduced ? 0.6 : 0.4);
@@ -34,7 +36,7 @@ export function Skeleton({ width = '100%', height = 16, radius = radii.md, style
 
   return (
     <Animated.View
-      accessibilityLabel="Loading"
+      accessibilityLabel={t('common.loading')}
       style={[
         { width, height, borderRadius: radius, backgroundColor: theme.colors.muted },
         animatedStyle,

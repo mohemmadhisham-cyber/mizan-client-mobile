@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Image, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { PressableScale, Text } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
@@ -15,6 +16,7 @@ const WORDMARK_DARK = require('../../../assets/images/mizan-wordmark-light.png')
  * `header` slot.
  */
 export function AppHeader() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const router = useRouter();
   const { user } = useAuth();
@@ -28,7 +30,7 @@ export function AppHeader() {
       ]}>
       <PressableScale
         accessibilityRole="button"
-        accessibilityLabel="Profile and settings"
+        accessibilityLabel={t('common.profileAndSettings')}
         onPress={() => router.push('/more')}
         style={[styles.avatar, { backgroundColor: theme.colors.primary }]}>
         <Text variant="footnote" weight="bold" style={{ color: theme.colors.primaryForeground }}>
@@ -40,12 +42,12 @@ export function AppHeader() {
         source={theme.dark ? WORDMARK_DARK : WORDMARK_LIGHT}
         style={styles.wordmark}
         resizeMode="contain"
-        accessibilityLabel="Mizan"
+        accessibilityLabel={t('common.appName')}
       />
 
       <PressableScale
         accessibilityRole="button"
-        accessibilityLabel="Notifications"
+        accessibilityLabel={t('common.notifications')}
         onPress={() => router.push('/notifications')}
         hitSlop={8}>
         <Ionicons name="notifications-outline" size={22} color={theme.colors.foreground} />

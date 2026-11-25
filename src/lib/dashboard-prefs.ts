@@ -15,12 +15,13 @@ const DEFAULT_VISIBILITY: DashboardVisibility = {
   expenseTrend: true,
 };
 
-export const DASHBOARD_SECTION_LABEL: Record<DashboardSection, string> = {
-  cashFlow: 'Cash Flow chart',
-  criticalTasks: 'Critical Tasks',
-  thisMonth: 'This Month KPIs',
-  whatChanged: 'What Changed insights',
-  expenseTrend: 'Expense Trend chart',
+/** Translation key of each section's label (see `dashboard.*` in src/i18n). */
+export const DASHBOARD_SECTION_LABEL_KEY: Record<DashboardSection, string> = {
+  cashFlow: 'dashboard.sectionCashFlow',
+  criticalTasks: 'dashboard.sectionCriticalTasks',
+  thisMonth: 'dashboard.sectionThisMonth',
+  whatChanged: 'dashboard.sectionWhatChanged',
+  expenseTrend: 'dashboard.sectionExpenseTrend',
 };
 
 function isDashboardVisibility(value: unknown): value is DashboardVisibility {

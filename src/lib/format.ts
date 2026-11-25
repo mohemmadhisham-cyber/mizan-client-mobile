@@ -1,4 +1,19 @@
+import { currentLocale } from '@/i18n';
+
 export type Currency = 'AED' | 'SAR' | 'USD';
+
+/**
+ * BCP 47 tag for dates and numbers in the app language. Arabic keeps Western
+ * digits and the Gregorian calendar, as GCC banking apps do.
+ */
+export function localeTag(): string {
+  return currentLocale() === 'ar' ? 'ar-AE-u-nu-latn-ca-gregory' : 'en-GB';
+}
+
+function moneyLocale(currency: Currency): string {
+  if (currentLocale() === 'ar') return currency === 'SAR' ? 'ar-SA-u-nu-latn' : 'ar-AE-u-nu-latn';
+  return currency === 'SAR' ? 'en-SA' : 'en-AE';
+}
 
 /**
  * Canonical money formatter. Money is stored as INTEGER MINOR UNITS
@@ -11,7 +26,7 @@ export function formatMoneyMinor(
   currency: Currency = 'AED',
   opts?: { locale?: string; fractionDigits?: number },
 ): string {
-  const locale = opts?.locale ?? (currency === 'SAR' ? 'en-SA' : 'en-AE');
+  const locale = opts?.locale ?? moneyLocale(currency);
   const digits = opts?.fractionDigits ?? 0;
   const value = minor / 100;
   try {
@@ -54,7 +69,7 @@ export function daysUntil(date: Date | string): number {
 export function formatDate(date: Date | string, opts?: Intl.DateTimeFormatOptions): string {
   const d = typeof date === 'string' ? new Date(date) : date;
   try {
-    return new Intl.DateTimeFormat('en-GB', opts ?? { day: 'numeric', month: 'short', year: 'numeric' }).format(d);
+    return new Intl.DateTimeFormat(localeTag(), opts ?? { day: 'numeric', month: 'short', year: 'numeric' }).format(d);
   } catch {
     return d.toISOString().slice(0, 10);
   }

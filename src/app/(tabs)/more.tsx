@@ -1,38 +1,41 @@
 import { Ionicons } from '@expo/vector-icons';
 import { type Href, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Alert, I18nManager, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { Button, Card, Screen, Text } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
+import { chevronForward } from '@/lib/direction';
 import { radius, spacing, useTheme } from '@/theme';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
 interface MoreItem {
   icon: IconName;
-  label: string;
+  /** Translation key of the row label. */
+  labelKey: string;
   href?: Href;
 }
 
 const ITEMS: MoreItem[] = [
-  { icon: 'calendar-outline', label: 'Calendar', href: '/calendar' },
-  { icon: 'chatbubbles-outline', label: 'Messages', href: { pathname: '/ai-advisor', params: { tab: 'queries' } } },
-  { icon: 'sparkles-outline', label: 'Ask AI', href: '/ai-advisor' },
-  { icon: 'card-outline', label: 'Billing', href: '/billing' },
-  { icon: 'people-outline', label: 'Team', href: { pathname: '/companies', params: { tab: 'team' } } },
-  { icon: 'business-outline', label: 'Companies', href: '/companies' },
-  { icon: 'notifications-outline', label: 'Notifications', href: '/notifications' },
-  { icon: 'settings-outline', label: 'Settings', href: '/settings' },
+  { icon: 'calendar-outline', labelKey: 'more.calendar', href: '/calendar' },
+  { icon: 'chatbubbles-outline', labelKey: 'more.messages', href: { pathname: '/ai-advisor', params: { tab: 'queries' } } },
+  { icon: 'sparkles-outline', labelKey: 'more.askAi', href: '/ai-advisor' },
+  { icon: 'card-outline', labelKey: 'more.billing', href: '/billing' },
+  { icon: 'people-outline', labelKey: 'more.team', href: { pathname: '/companies', params: { tab: 'team' } } },
+  { icon: 'business-outline', labelKey: 'more.companies', href: '/companies' },
+  { icon: 'notifications-outline', labelKey: 'more.notifications', href: '/notifications' },
+  { icon: 'settings-outline', labelKey: 'more.settings', href: '/settings' },
 ];
 
 function Row({ item, isLast, onPress }: { item: MoreItem; isLast: boolean; onPress: () => void }) {
+  const { t } = useTranslation();
   const theme = useTheme();
-  const chevron: IconName = I18nManager.isRTL ? 'chevron-back' : 'chevron-forward';
+  const chevron = chevronForward();
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={item.label}
+      accessibilityLabel={t(item.labelKey)}
       onPress={onPress}
       style={({ pressed }) => [
         styles.row,
@@ -46,7 +49,7 @@ function Row({ item, isLast, onPress }: { item: MoreItem; isLast: boolean; onPre
         <Ionicons name={item.icon} size={18} color={theme.colors.primary} />
       </View>
       <Text variant="body" weight="medium" style={{ flex: 1 }}>
-        {item.label}
+        {t(item.labelKey)}
       </Text>
       <Ionicons name={chevron} size={18} color={theme.colors.mutedForeground} />
     </Pressable>
@@ -62,7 +65,7 @@ export default function MoreScreen() {
     if (item.href) {
       router.push(item.href);
     } else {
-      Alert.alert('Coming soon', `${item.label} isn't available yet.`);
+      Alert.alert(t('common.comingSoon'), t('common.notAvailableYet', { name: t(item.labelKey) }));
     }
   }
 
@@ -73,7 +76,7 @@ export default function MoreScreen() {
       </Text>
       <Card padded={false}>
         {ITEMS.map((item, index) => (
-          <Row key={item.label} item={item} isLast={index === ITEMS.length - 1} onPress={() => handlePress(item)} />
+          <Row key={item.labelKey} item={item} isLast={index === ITEMS.length - 1} onPress={() => handlePress(item)} />
         ))}
       </Card>
       <View style={{ marginTop: spacing.xl }}>

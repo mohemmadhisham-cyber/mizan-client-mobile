@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { type Href, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { I18nManager, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { TrendChart } from '@/components/charts/trend-chart';
 import { EditDashboardModal } from '@/components/dashboard/edit-dashboard-modal';
@@ -14,6 +14,7 @@ import { AppHeader } from '@/components/navigation/app-header';
 import { Card, EmptyState, Screen, Skeleton, Text } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
 import { useDashboardPrefs } from '@/lib/dashboard-prefs';
+import { chevronForward } from '@/lib/direction';
 import { daysUntil, formatMoneyMinor, pctChange } from '@/lib/format';
 import { clientDataService } from '@/services/client-data';
 import type { InsightCard, Severity } from '@/services/types';
@@ -93,7 +94,7 @@ export default function HomeScreen() {
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Edit dashboard"
+          accessibilityLabel={t('dashboard.edit')}
           onPress={() => setEditingDashboard(true)}
           hitSlop={8}
           style={{ padding: spacing.xs }}>
@@ -297,7 +298,7 @@ function TaskRow({ label, count, href, urgent }: { label: string; count: number;
   const { t } = useTranslation();
   const theme = useTheme();
   const router = useRouter();
-  const chevron: keyof typeof Ionicons.glyphMap = I18nManager.isRTL ? 'chevron-back' : 'chevron-forward';
+  const chevron = chevronForward();
   const badgeBg = urgent ? theme.colors.dangerSoft : theme.colors.secondary;
   const badgeFg = urgent ? theme.colors.dangerSoftForeground : theme.colors.mutedForeground;
 
