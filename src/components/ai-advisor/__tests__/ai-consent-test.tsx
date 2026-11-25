@@ -12,6 +12,11 @@ jest.mock('@/lib/ai-consent', () => ({ setAiConsent: jest.fn() }));
 
 const mockSave = setAiConsent as jest.MockedFunction<typeof setAiConsent>;
 
+beforeEach(() => {
+  // An answer set in one test must not carry into the next.
+  mockSave.mockReset();
+});
+
 function setup() {
   const onAgreed = jest.fn();
   const onDeclined = jest.fn();

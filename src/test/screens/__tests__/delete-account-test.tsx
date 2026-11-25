@@ -21,6 +21,8 @@ let alertSpy: jest.SpiedFunction<typeof Alert.alert>;
 let openSpy: jest.SpiedFunction<typeof Linking.openURL>;
 
 beforeEach(() => {
+  // An answer set in one test must not carry into the next.
+  mockRequest.mockReset();
   mockNav.canGoBack.mockReturnValue(true);
   alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   openSpy = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
@@ -63,6 +65,8 @@ describe('Delete my account', () => {
     const { cancel, confirm } = await askToDelete();
 
     expect(mockRequest).not.toHaveBeenCalled();
+    expect(alertSpy.mock.calls[0][0]).toBe('support.deleteConfirmTitle');
+    expect(alertSpy.mock.calls[0][1]).toBe('support.deleteConfirmBody');
     expect(cancel.style).toBe('cancel');
     expect(confirm.style).toBe('destructive');
   });
@@ -88,6 +92,55 @@ describe('Delete my account', () => {
     expect(mockRequest).toHaveBeenCalledTimes(1);
     expect(await screen.findByText('support.deleteSentBody')).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: 'support.deleteAction' })).toBeNull();
+  });
+
+  test('shows whose account it is', async () => {
+    await renderInApp(<DeleteAccountScreen />);
+
+    expect(screen.getByText('owner@example.com')).toBeOnTheScreen();
+  });
+
+  test('sends one request when the confirmation is pressed twice', async () => {
+    let finish: (outcome: { status: 'requested' }) => void = () => {};
+    mockRequest.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    await renderInApp(<DeleteAccountScreen />);
+    const { confirm } = await askToDelete();
+
+    await act(async () => {
+      confirm.onPress?.();
+      confirm.onPress?.();
+    });
+
+    expect(mockRequest).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'support.deleteAction' })).toBeBusy();
+
+    await act(async () => {
+      finish({ status: 'requested' });
+    });
+    expect(await screen.findByText('support.deleteSentBody')).toBeOnTheScreen();
+  });
+
+  test('leaves the screen from Done once the request is recorded', async () => {
+    mockRequest.mockResolvedValue({ status: 'requested' });
+    await renderInApp(<DeleteAccountScreen />);
+    await confirmDeletion();
+
+    await fireEvent.press(await screen.findByRole('button', { name: 'common.done' }));
+
+    expect(mockNav.back).toHaveBeenCalledTimes(1);
+  });
+
+  test('clears the failure when a second try succeeds', async () => {
+    mockRequest.mockRejectedValueOnce(new Error('deletion_request_failed')).mockResolvedValueOnce({ status: 'requested' });
+    await renderInApp(<DeleteAccountScreen />);
+    await confirmDeletion();
+    expect(await screen.findByText('support.deleteFailed')).toBeOnTheScreen();
+    alertSpy.mockClear();
+
+    await confirmDeletion();
+
+    expect(await screen.findByText('support.deleteSentBody')).toBeOnTheScreen();
+    expect(screen.queryByText('support.deleteFailed')).toBeNull();
   });
 
   test('shows how to ask by email when the server does not take the request from the app', async () => {
