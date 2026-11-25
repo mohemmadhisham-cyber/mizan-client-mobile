@@ -13,7 +13,13 @@ import {
 } from '@expo-google-fonts/manrope';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
-import { type ErrorBoundaryProps, Stack, ThemeProvider as NavigationThemeProvider } from 'expo-router';
+import {
+  type ErrorBoundaryProps,
+  Stack,
+  ThemeProvider as NavigationThemeProvider,
+  useRouter,
+  useSegments,
+} from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -86,6 +92,14 @@ function RootNav() {
 
   const lock = useAppLock(userId, loading);
   const hidden = lock.locked || lock.covered;
+
+  // The camera opens as a full-screen window, which iOS draws above everything else in the
+  // app, the lock included. It is closed when the app locks, so the lock is what is seen.
+  const router = useRouter();
+  const onCamera = useSegments()[0] === 'capture';
+  useEffect(() => {
+    if (lock.locked && onCamera && router.canGoBack()) router.back();
+  }, [lock.locked, onCamera, router]);
 
   useEffect(() => {
     // Hold the native splash until the session is resolved, so the auth gate

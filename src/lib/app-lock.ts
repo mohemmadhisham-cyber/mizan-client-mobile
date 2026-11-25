@@ -1,6 +1,6 @@
 import * as LocalAuthentication from 'expo-local-authentication';
 
-import { readDevicePref, writeDevicePref } from '@/lib/device-prefs';
+import { readDevicePrefOrThrow, writeDevicePref } from '@/lib/device-prefs';
 
 /**
  * The app lock: when the person turns it on, the app asks the phone to
@@ -14,18 +14,26 @@ import { readDevicePref, writeDevicePref } from '@/lib/device-prefs';
  * signing in, not in place of it: signing in with an emailed code already
  * proves who the person is, so a person who has just done that is not asked
  * again straight away.
+ *
+ * Where the app cannot tell, it stays locked: a choice that cannot be read
+ * counts as "on", and a phone that will not say what it has is still asked.
  */
 
 const ON = 'on';
 const OFF = 'off';
 const keyFor = (userId: string) => `app_lock.${userId}`;
 
-/** How long the app may be out of sight before it locks again. A glance at another app does not lock it. */
+/** How long the app may be out of view before it locks again. A glance at another app does not lock it. */
 export const RELOCK_AFTER_MS = 60_000;
 
 export function isAppLockOn(userId: string | null | undefined): boolean {
   if (!userId) return false;
-  return readDevicePref(keyFor(userId)) === ON;
+  try {
+    return readDevicePrefOrThrow(keyFor(userId)) === ON;
+  } catch {
+    // The choice could not be read. Locked is the safe reading: the person unlocks as usual.
+    return true;
+  }
 }
 
 /** Resolves to false if the choice could not be saved. */
@@ -33,27 +41,42 @@ export function setAppLock(userId: string, on: boolean): Promise<boolean> {
   return writeDevicePref(keyFor(userId), on ? ON : OFF);
 }
 
-/** Whether this phone can lock the app at all: it needs a passcode, a fingerprint or a face set up. */
-export async function phoneCanLock(): Promise<boolean> {
+type PhoneLock =
+  /** A passcode, a fingerprint or a face is set up. */
+  | 'ready'
+  /** The phone says nothing is set up. */
+  | 'none'
+  /** The phone would not say. Not the same as "nothing": the app must not act as if it were. */
+  | 'unknown';
+
+async function phoneLock(): Promise<PhoneLock> {
   try {
-    return (await LocalAuthentication.getEnrolledLevelAsync()) !== LocalAuthentication.SecurityLevel.NONE;
+    const level = await LocalAuthentication.getEnrolledLevelAsync();
+    return level === LocalAuthentication.SecurityLevel.NONE ? 'none' : 'ready';
   } catch {
-    return false;
+    return 'unknown';
   }
+}
+
+/** Whether this phone can lock the app: it needs a passcode, a fingerprint or a face set up. */
+export async function phoneCanLock(): Promise<boolean> {
+  return (await phoneLock()) === 'ready';
 }
 
 export type UnlockResult =
   /** The phone confirmed the person. */
   | 'unlocked'
-  /** The person cancelled, or the phone did not recognise them. */
+  /** The person cancelled, the phone did not recognise them, or the phone could not be asked. */
   | 'refused'
-  /** The phone has nothing to confirm with: no passcode, fingerprint or face is set up. */
+  /** The phone says it has nothing to confirm with: no passcode, fingerprint or face is set up. */
   | 'unavailable';
 
 /** Asks the phone to confirm who is holding it. Never throws. */
 export async function askToUnlock(promptMessage: string): Promise<UnlockResult> {
+  // Only the phone saying "nothing is set up" is 'unavailable'. A phone that fails to answer is
+  // asked anyway, and a failure there is a refusal: an error must never open the app.
+  if ((await phoneLock()) === 'none') return 'unavailable';
   try {
-    if (!(await phoneCanLock())) return 'unavailable';
     // The phone's passcode is allowed as a way in: a wet finger or a mask must not lock a person out of their own app.
     const result = await LocalAuthentication.authenticateAsync({ promptMessage, disableDeviceFallback: false });
     return result.success ? 'unlocked' : 'refused';
@@ -82,7 +105,30 @@ export function startsLocked(sessionWasOnPhone: boolean, lockOn: boolean): boole
   return sessionWasOnPhone && lockOn;
 }
 
-/** Whether the app locks again on coming back into view after `awayMs` out of sight. */
+/** A moment by two clocks: the phone's own, which a person can set, and one that only runs forward. */
+export interface Moment {
+  wall: number;
+  steady: number;
+}
+
+export function momentNow(): Moment {
+  return { wall: Date.now(), steady: globalThis.performance?.now?.() ?? 0 };
+}
+
+/**
+ * The time between two moments, by whichever clock says longer. Negative when
+ * the phone's clock was set back in between.
+ */
+export function awayBetween(left: Moment, back: Moment): number {
+  const wall = back.wall - left.wall;
+  return wall < 0 ? wall : Math.max(wall, back.steady - left.steady);
+}
+
+/**
+ * Whether the app locks again on coming back into view after `awayMs` out of
+ * view. A negative time means the phone's clock was set back while the app
+ * was away: that locks too, so the clock cannot be used to keep the app open.
+ */
 export function locksOnReturn(lockOn: boolean, awayMs: number): boolean {
-  return lockOn && awayMs >= RELOCK_AFTER_MS;
+  return lockOn && (awayMs < 0 || awayMs >= RELOCK_AFTER_MS);
 }

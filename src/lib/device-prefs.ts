@@ -19,10 +19,18 @@ function webStorage(): WebStorageLike | null {
   return ls && typeof ls.getItem === 'function' ? ls : null;
 }
 
+/**
+ * Synchronous read that throws when storage could not be read, for a caller
+ * that must tell "nothing is stored" from "could not look" (the app lock).
+ */
+export function readDevicePrefOrThrow(key: string): string | null {
+  return isWeb ? (webStorage()?.getItem(key) ?? null) : SecureStore.getItem(key);
+}
+
 /** Synchronous read. Returns null when nothing is stored or storage is unavailable. */
 export function readDevicePref(key: string): string | null {
   try {
-    return isWeb ? (webStorage()?.getItem(key) ?? null) : SecureStore.getItem(key);
+    return readDevicePrefOrThrow(key);
   } catch {
     return null;
   }

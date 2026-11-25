@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AppState, BackHandler, Keyboard, View } from 'react-native';
+import { AccessibilityInfo, AppState, BackHandler, Keyboard, Platform, View } from 'react-native';
 
 import { Cta } from '@/components/horizon/cta';
 import { BRIDGE_WIDTH, FieldMark, HORIZON_GUTTER, HorizonScreen } from '@/components/horizon/horizon-screen';
@@ -40,8 +40,9 @@ export function AppLockScreen({ userId, onUnlocked, onSignOut }: AppLockScreenPr
     try {
       const result = await askToUnlock(t('lock.prompt'));
       if (result !== 'unavailable') return result;
-      // The phone no longer has a passcode, fingerprint or face to confirm with, so the lock
-      // cannot be kept. It is turned off, and the person can turn it on again in Settings.
+      // The phone says it no longer has a passcode, fingerprint or face to confirm with, so the
+      // lock cannot be kept. It is turned off, and the person can turn it on again in Settings.
+      // If turning it off could not be saved the app still opens, and this happens again next time.
       await setAppLock(userId, false);
       return 'unlocked';
     } finally {
@@ -55,13 +56,20 @@ export function AppLockScreen({ userId, onUnlocked, onSignOut }: AppLockScreenPr
     } else if (answer === 'refused') {
       setAsking(false);
       setRefused(true);
+      // The line below is read out by Android as it appears. iOS is told.
+      if (Platform.OS === 'ios') AccessibilityInfo.announceForAccessibility(t('lock.refused'));
     }
+  }
+
+  /** Asks the phone and settles the answer. Anything that goes wrong is a refusal: the buttons come back. */
+  function askAndSettle() {
+    ask().then(settle, () => settle('refused'));
   }
 
   function pressUnlock() {
     setAsking(true);
     setRefused(false);
-    void ask().then(settle);
+    askAndSettle();
   }
 
   useEffect(() => {
@@ -73,20 +81,20 @@ export function AppLockScreen({ userId, onUnlocked, onSignOut }: AppLockScreenPr
     // the app is in view, so an app started out of sight waits until it is.
     let waiting: { remove: () => void } | null = null;
     if (AppState.currentState === 'active') {
-      void ask().then(settle);
+      askAndSettle();
     } else {
       waiting = AppState.addEventListener('change', (state) => {
         if (state !== 'active') return;
         waiting?.remove();
         waiting = null;
-        void ask().then(settle);
+        askAndSettle();
       });
     }
     return () => {
       back.remove();
       waiting?.remove();
     };
-    // Once, when the lock appears. `ask` and `settle` are rebuilt each render.
+    // Once, when the lock appears. `askAndSettle` is rebuilt each render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -2,6 +2,7 @@ import * as LocalAuthentication from 'expo-local-authentication';
 
 import {
   askToUnlock,
+  awayBetween,
   isAppLockOn,
   locksOnReturn,
   maySwitchLock,
@@ -13,9 +14,13 @@ import {
 
 const mockPrefs = new Map<string, string>();
 const mockWriteFails = { value: false };
+const mockReadFails = { value: false };
 
 jest.mock('@/lib/device-prefs', () => ({
-  readDevicePref: (key: string) => mockPrefs.get(key) ?? null,
+  readDevicePrefOrThrow: (key: string) => {
+    if (mockReadFails.value) throw new Error('keychain unavailable');
+    return mockPrefs.get(key) ?? null;
+  },
   writeDevicePref: async (key: string, value: string) => {
     if (mockWriteFails.value) return false;
     mockPrefs.set(key, value);
@@ -34,6 +39,7 @@ const mockAuthenticate = LocalAuthentication.authenticateAsync as jest.Mock;
 beforeEach(() => {
   mockPrefs.clear();
   mockWriteFails.value = false;
+  mockReadFails.value = false;
   mockLevel.mockReset().mockResolvedValue(LocalAuthentication.SecurityLevel.BIOMETRIC_STRONG);
   mockAuthenticate.mockReset().mockResolvedValue({ success: true });
 });
@@ -60,6 +66,13 @@ describe('the choice to lock the app', () => {
   test('is off for nobody', () => {
     expect(isAppLockOn(null)).toBe(false);
     expect(isAppLockOn(undefined)).toBe(false);
+  });
+
+  test('counts as on when it cannot be read: where the app cannot tell, it stays locked', () => {
+    mockReadFails.value = true;
+
+    expect(isAppLockOn('user-a')).toBe(true);
+    expect(isAppLockOn(null)).toBe(false);
   });
 
   test('says so when it could not be saved', async () => {
@@ -117,6 +130,24 @@ describe('asking the phone to confirm the person', () => {
     expect(await askToUnlock('Unlock')).toBe('refused');
   });
 
+  test('asks anyway when the phone will not say what it has, and an error there never opens the app', async () => {
+    mockLevel.mockRejectedValue(new Error('not ready'));
+
+    expect(await askToUnlock('Unlock')).toBe('unlocked');
+    expect(mockAuthenticate).toHaveBeenCalledTimes(1);
+
+    mockAuthenticate.mockRejectedValue(new Error('not ready'));
+    expect(await askToUnlock('Unlock')).toBe('refused');
+  });
+
+  test('a phone that will not say what it has is never taken to have nothing', async () => {
+    mockLevel.mockRejectedValue(new Error('not ready'));
+    mockAuthenticate.mockResolvedValue({ success: false, error: 'not_available' });
+
+    // 'unavailable' turns the lock off. Only the phone saying so may do that.
+    expect(await askToUnlock('Unlock')).not.toBe('unavailable');
+  });
+
   test('says the phone has nothing to confirm with, and does not ask', async () => {
     mockLevel.mockResolvedValue(LocalAuthentication.SecurityLevel.NONE);
 
@@ -160,5 +191,27 @@ describe('when the app is locked', () => {
 
   test('it never locks again with the lock off', () => {
     expect(locksOnReturn(false, RELOCK_AFTER_MS * 100)).toBe(false);
+    expect(locksOnReturn(false, -1)).toBe(false);
+  });
+
+  test('it locks when the time away is negative: the phone’s clock was set back', () => {
+    expect(locksOnReturn(true, -1)).toBe(true);
+  });
+});
+
+describe('the time the app was away', () => {
+  test('is what both clocks say when they agree', () => {
+    expect(awayBetween({ wall: 1_000, steady: 50 }, { wall: 4_000, steady: 3_050 })).toBe(3_000);
+  });
+
+  test('is the longer of the two when they differ', () => {
+    // The phone's clock was set back a little: it says 1 s, the forward-only clock says 90 s.
+    expect(awayBetween({ wall: 10_000, steady: 0 }, { wall: 11_000, steady: 90_000 })).toBe(90_000);
+    // The phone slept, and the forward-only clock stopped with it.
+    expect(awayBetween({ wall: 10_000, steady: 0 }, { wall: 100_000, steady: 2_000 })).toBe(90_000);
+  });
+
+  test('is negative when the phone’s clock was set back past the moment the app left', () => {
+    expect(awayBetween({ wall: 10_000, steady: 0 }, { wall: 4_000, steady: 500 })).toBeLessThan(0);
   });
 });

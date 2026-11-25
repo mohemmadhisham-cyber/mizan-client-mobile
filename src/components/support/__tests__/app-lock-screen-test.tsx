@@ -1,5 +1,5 @@
 import { act, fireEvent, screen } from '@testing-library/react-native';
-import { AppState, type AppStateStatus, BackHandler } from 'react-native';
+import { AccessibilityInfo, AppState, type AppStateStatus, BackHandler } from 'react-native';
 
 import { AppLockScreen } from '@/components/support/app-lock-screen';
 import { askToUnlock, setAppLock, type UnlockResult } from '@/lib/app-lock';
@@ -21,6 +21,8 @@ function appIs(state: AppStateStatus) {
 beforeEach(() => {
   mockAsk.mockReset().mockResolvedValue('unlocked');
   mockSetLock.mockClear();
+  onUnlocked.mockClear();
+  onSignOut.mockClear();
   appStateListener = null;
   appIs('active');
   jest.spyOn(AppState, 'addEventListener').mockImplementation((_type, listener) => {
@@ -65,15 +67,40 @@ describe('the lock screen', () => {
     expect(onUnlocked).toHaveBeenCalledTimes(1);
   });
 
-  test('asks the phone once while a question is still open', async () => {
+  test('while a question to the phone is open, neither button does anything', async () => {
     const answer = openQuestion();
     await show();
 
     await fireEvent.press(screen.getByRole('button', { name: 'lock.unlock' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'lock.unlock' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'auth.signOut' }));
 
     expect(mockAsk).toHaveBeenCalledTimes(1);
+    expect(onSignOut).not.toHaveBeenCalled();
+
     await answer('refused');
+    await fireEvent.press(screen.getByRole('button', { name: 'auth.signOut' }));
+    expect(onSignOut).toHaveBeenCalledTimes(1);
+  });
+
+  test('says a refusal aloud', async () => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility').mockImplementation(() => {});
+    mockAsk.mockResolvedValue('refused');
+
+    await show();
+
+    expect(announce).toHaveBeenCalledWith('lock.refused');
+  });
+
+  test('if asking goes wrong the app stays locked and the buttons come back', async () => {
+    mockAsk.mockResolvedValue('unavailable');
+    mockSetLock.mockRejectedValueOnce(new Error('storage'));
+
+    await show();
+
+    expect(onUnlocked).not.toHaveBeenCalled();
+    expect(screen.getByText('lock.refused')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'auth.signOut' }));
+    expect(onSignOut).toHaveBeenCalledTimes(1);
   });
 
   test('turns the lock off and opens the app when the phone has nothing left to confirm with', async () => {

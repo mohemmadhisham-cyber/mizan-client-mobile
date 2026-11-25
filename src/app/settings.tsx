@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -37,30 +37,38 @@ export default function SettingsScreen() {
   const { user, signOut } = useAuth();
   const userId = user?.id;
   const [aiConsented, setAiConsented] = useState(() => hasAiConsent(userId));
+  const [lockOn, setLockOn] = useState(() => isAppLockOn(userId));
+  // Set at once, unlike state: two presses ask the phone once.
+  const switchingLock = useRef(false);
 
   // Read again on return: the agreement may have been given on another screen
   // while this one stayed open underneath.
   useFocusEffect(
     useCallback(() => {
       setAiConsented(hasAiConsent(userId));
+      // The lock screen turns the lock off itself on a phone that can no longer confirm anyone.
+      setLockOn(isAppLockOn(userId));
     }, [userId]),
   );
-
-  const [lockOn, setLockOn] = useState(() => isAppLockOn(userId));
 
   // Turning the lock on or off asks the phone first, either way: a person holding an
   // unlocked phone that is not theirs cannot switch the lock off, and the lock is never
   // switched on for a phone that could not then unlock it.
   async function toggleAppLock() {
-    if (!userId) return;
-    if (!lockOn && !(await phoneCanLock())) {
-      Alert.alert(t('lock.unavailableTitle'), t('lock.unavailableBody'));
-      return;
+    if (!userId || switchingLock.current) return;
+    switchingLock.current = true;
+    try {
+      if (!lockOn && !(await phoneCanLock())) {
+        Alert.alert(t('lock.unavailableTitle'), t('lock.unavailableBody'));
+        return;
+      }
+      if (!maySwitchLock(lockOn, await askToUnlock(t('lock.prompt')))) return;
+      const next = !lockOn;
+      if (await setAppLock(userId, next)) setLockOn(next);
+      else Alert.alert(t('lock.settingsTitle'), t('lock.saveFailed'));
+    } finally {
+      switchingLock.current = false;
     }
-    if (!maySwitchLock(lockOn, await askToUnlock(t('lock.prompt')))) return;
-    const next = !lockOn;
-    if (await setAppLock(userId, next)) setLockOn(next);
-    else Alert.alert(t('lock.settingsTitle'), t('lock.saveFailed'));
   }
 
   function withdrawAiConsent() {
@@ -147,6 +155,7 @@ export default function SettingsScreen() {
         title={t('lock.settingsTitle')}
         meta={t('lock.settingsMeta')}
         action={t(lockOn ? 'lock.on' : 'lock.off')}
+        checked={lockOn}
         onPress={() => void toggleAppLock()}
       />
       <RuledRow title={t('settings.backupCodes')} onPress={() => router.push('/backup-codes')} />
