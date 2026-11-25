@@ -21,6 +21,8 @@ type ActivityItem = {
   subtitle: string;
   at: number;
   reportId?: string;
+  /** Needs a look: a receipt the accountant sent back. */
+  alert?: boolean;
 };
 
 const RECEIPT_TITLE_KEY: Record<MyReceipt['status'], string> = {
@@ -53,6 +55,7 @@ export default function ActivityScreen() {
       title: t(RECEIPT_TITLE_KEY[rec.status]),
       subtitle: rec.vendorName ?? t('common.receipt'),
       at: new Date(rec.createdAt).getTime(),
+      alert: rec.status === 'rejected',
     }));
     const rep: ActivityItem[] = (reports.data ?? []).map((rp) => ({
       id: `report-${rp.id}`,
@@ -89,6 +92,7 @@ export default function ActivityScreen() {
             <RuledRow
               title={item.title}
               meta={`${item.subtitle} · ${dayLabel(item.at)}`}
+              alert={item.alert}
               onPress={reportId ? () => router.push({ pathname: '/report/[id]', params: { id: reportId } }) : undefined}
             />
           );

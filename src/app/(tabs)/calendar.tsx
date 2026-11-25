@@ -25,6 +25,8 @@ const KIND_MARK = 4;
 const ADD_ICON = 26;
 const TIME_COLUMN = 76;
 const PRESSED_OPACITY = 0.6;
+/** A no-break space: a line with nothing to say that still takes its height. */
+const EMPTY_LINE = '\u00A0';
 
 const KIND_LABEL_KEY: Record<CalendarEventKind, string> = {
   deadline: 'calendar.kindDeadline',
@@ -77,6 +79,14 @@ export default function CalendarScreen() {
     void qc.invalidateQueries({ queryKey: ['calendar-days'] });
   }
 
+  // Deleting cannot be undone, and the control sits at the end of every line: ask first.
+  function confirmDelete(event: CalendarEvent) {
+    Alert.alert(t('common.delete'), event.title, [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.delete'), style: 'destructive', onPress: () => void handleDelete(event.id) },
+    ]);
+  }
+
   async function handleDelete(id: string) {
     const res = await calendarService.deleteEvent(id);
     if (!res.ok) {
@@ -94,7 +104,8 @@ export default function CalendarScreen() {
         small
         lines={[{ text: monthYearLabel(selectedDate) }]}
         // Said only once the day's events are known: "0 events" while loading would be a claim.
-        sub={events.data ? t('calendar.eventsThisDay', { count: events.data.length }) : undefined}
+        // Until then the line is held empty, so the headline does not jump from day to day.
+        sub={events.data ? t('calendar.eventsThisDay', { count: events.data.length }) : EMPTY_LINE}
         top={
           <>
             <FieldMark />
@@ -164,7 +175,7 @@ export default function CalendarScreen() {
         ) : events.data.length === 0 ? (
           <RuledRow title={t('calendar.nothingScheduled')} plain />
         ) : (
-          events.data.map((e) => <EventRow key={e.id} event={e} onDelete={() => void handleDelete(e.id)} />)
+          events.data.map((e) => <EventRow key={e.id} event={e} onDelete={() => confirmDelete(e)} />)
         )}
         <RuledRow title={t('calendar.addEvent')} onPress={() => setAddingEvent(true)} />
       </HorizonScreen>
@@ -218,7 +229,7 @@ function EventRow({ event, onDelete }: { event: CalendarEvent; onDelete: () => v
 const styles = StyleSheet.create({
   day: {
     width: DAY_WIDTH,
-    height: DAY_HEIGHT,
+    minHeight: DAY_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,

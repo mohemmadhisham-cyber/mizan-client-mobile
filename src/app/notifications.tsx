@@ -2,12 +2,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { type Href, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { HorizonList } from '@/components/horizon/horizon-list';
-import { FieldBack, HORIZON_GUTTER, HorizonScreen } from '@/components/horizon/horizon-screen';
+import {
+  FieldBack,
+  HORIZON_GUTTER,
+  HorizonScreen,
+  MAX_FIELD_TEXT_SCALE,
+} from '@/components/horizon/horizon-screen';
 import { RuledRow } from '@/components/horizon/ruled';
+import { WordTabs } from '@/components/horizon/word-tabs';
 import { Text } from '@/components/ui';
 import { usePagedList } from '@/hooks/use-paged-list';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
@@ -19,9 +25,6 @@ import { useTheme } from '@/theme';
 import { horizonColors } from '@/theme/horizon';
 
 const NOTIFICATIONS_FIELD = 176;
-const FILTER_HEIGHT = 46;
-const FILTER_GAP = 22;
-const MARKER_HEIGHT = 2;
 const UNREAD_MARK = 8;
 const PRESSED_OPACITY = 0.6;
 
@@ -118,7 +121,12 @@ export default function NotificationsScreen() {
             onPress={markAllRead}
             hitSlop={12}
             style={({ pressed }) => ({ opacity: pressed ? PRESSED_OPACITY : 1 })}>
-            <Text variant="subhead" weight="semibold" style={{ color: colors.onField }}>
+            <Text
+              variant="subhead"
+              weight="semibold"
+              numberOfLines={1}
+              maxFontSizeMultiplier={MAX_FIELD_TEXT_SCALE}
+              style={{ color: colors.onField }}>
               {t('notificationsScreen.markAllRead')}
             </Text>
           </Pressable>
@@ -126,50 +134,11 @@ export default function NotificationsScreen() {
       }
       // What needs the person is on Requests. This is the record of what was said.
       bridge={null}>
-      {/* The filter is a line of words; the chosen one is inked and underlined. */}
-      <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border }}>
-        <ScrollView
-          horizontal
-          accessibilityRole="tablist"
-          showsHorizontalScrollIndicator={false}
-          style={{ flexGrow: 0 }}
-          contentContainerStyle={{ paddingHorizontal: HORIZON_GUTTER, gap: FILTER_GAP }}>
-          {FILTERS.map((f) => {
-            const active = filter === f.key;
-            return (
-              <Pressable
-                key={f.key}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: active }}
-                onPress={() => setFilter(f.key)}
-                style={({ pressed }) => ({
-                  height: FILTER_HEIGHT,
-                  justifyContent: 'center',
-                  opacity: pressed ? PRESSED_OPACITY : 1,
-                })}>
-                <Text
-                  variant="subhead"
-                  weight={active ? 'semibold' : 'regular'}
-                  style={{ color: active ? theme.colors.foreground : theme.colors.mutedForeground }}>
-                  {t(f.labelKey)}
-                </Text>
-                {active ? (
-                  <View
-                    style={{
-                      position: 'absolute',
-                      bottom: 0,
-                      start: 0,
-                      end: 0,
-                      height: MARKER_HEIGHT,
-                      backgroundColor: theme.colors.foreground,
-                    }}
-                  />
-                ) : null}
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      </View>
+      <WordTabs
+        options={FILTERS.map((f) => ({ key: f.key, label: t(f.labelKey) }))}
+        value={filter}
+        onChange={setFilter}
+      />
 
       <HorizonList
         data={items}
