@@ -509,5 +509,24 @@
     "errNetwork": "No connection. Check your internet and try again.",
     "errNotApplied": "The change could not be applied. Please contact your accountant.",
     "errCodeNotAccepted": "Your code was checked but the approval did not go through. Please try again."
+  },
+  "intro": {
+    "product": "Connect",
+    "skip": "Skip the intro"
+  },
+  "welcome": {
+    "s1a": "Your numbers,",
+    "s1b": "in plain words.",
+    "s1sub": "Profit, sales and cash, kept current by your accountant.",
+    "s2a": "Your accountant,",
+    "s2b": "one tap away.",
+    "s2sub": "Requests, messages and meetings in one place.",
+    "s3a": "Nothing moves",
+    "s3b": "without you.",
+    "s3sub": "You approve with a one-time code, every time.",
+    "page": "{{page}} / {{pages}}",
+    "skip": "Skip",
+    "signIn": "Sign in",
+    "invitedOnly": "Mizan Connect opens by invitation from your accountant."
   }
 }
