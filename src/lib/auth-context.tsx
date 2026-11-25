@@ -1,6 +1,7 @@
 import type { Session, User } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
+import { forgetPushOnSignOut } from '@/lib/push';
 import { supabase } from '@/lib/supabase';
 
 export type AppRole = 'hq_ops_admin' | 'hq_finance' | 'agent_owner' | 'agent_staff' | 'client_user';
@@ -129,6 +130,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     rolesLoading,
     signOut: async () => {
+      // First, while there is still a session to say it with: this phone stops being sent
+      // this person's notifications. It waits a few seconds at most.
+      if (user) await forgetPushOnSignOut(user.id);
       await supabase.auth.signOut();
     },
     refresh: async () => {

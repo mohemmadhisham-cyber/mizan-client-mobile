@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { Alert, Linking, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { Cta } from '@/components/horizon/cta';
@@ -10,6 +10,7 @@ import i18n, { setAppLocale, type AppLocale } from '@/i18n';
 import { hasAiConsent, recordAiConsent } from '@/lib/ai-consent';
 import { askToUnlock, isAppLockOn, maySwitchLock, phoneCanLock, setAppLock } from '@/lib/app-lock';
 import { useAuth } from '@/lib/auth-context';
+import { isPushOn, turnPushOff, turnPushOn } from '@/lib/push';
 import { supabase } from '@/lib/supabase';
 import { useTheme, useThemeControls, type ThemeMode } from '@/theme';
 import { horizonColors } from '@/theme/horizon';
@@ -40,6 +41,8 @@ export default function SettingsScreen() {
   const [lockOn, setLockOn] = useState(() => isAppLockOn(userId));
   // Set at once, unlike state: two presses ask the phone once.
   const switchingLock = useRef(false);
+  const [pushOn, setPushOn] = useState(() => isPushOn(userId));
+  const switchingPush = useRef(false);
 
   // Read again on return: the agreement may have been given on another screen
   // while this one stayed open underneath.
@@ -50,6 +53,35 @@ export default function SettingsScreen() {
       setLockOn(isAppLockOn(userId));
     }, [userId]),
   );
+
+  async function togglePush() {
+    if (!userId || switchingPush.current) return;
+    switchingPush.current = true;
+    try {
+      if (pushOn) {
+        // Only the server can stop a notification arriving, so this is "off" once it has heard.
+        if (await turnPushOff(userId)) setPushOn(false);
+        else Alert.alert(t('push.failedTitle'), t('push.failedBody'));
+        return;
+      }
+      const result = await turnPushOn(userId, t('push.channelName'));
+      if (result === 'on') {
+        setPushOn(true);
+      } else if (result === 'denied') {
+        // The phone itself has notifications off for this app. Only its own settings change that.
+        Alert.alert(t('push.deniedTitle'), t('push.deniedBody'), [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('push.openSettings'), onPress: () => void Linking.openSettings().catch(() => {}) },
+        ]);
+      } else if (result === 'unavailable') {
+        Alert.alert(t('push.unavailableTitle'), t('push.unavailableBody'));
+      } else {
+        Alert.alert(t('push.failedTitle'), t('push.failedBody'));
+      }
+    } finally {
+      switchingPush.current = false;
+    }
+  }
 
   // Turning the lock on or off asks the phone first, either way: a person holding an
   // unlocked phone that is not theirs cannot switch the lock off, and the lock is never
@@ -152,9 +184,16 @@ export default function SettingsScreen() {
 
       <SectionLabel>{t('settings.security')}</SectionLabel>
       <RuledRow
+        title={t('push.settingsTitle')}
+        meta={t('push.settingsMeta')}
+        action={t(pushOn ? 'common.on' : 'common.off')}
+        checked={pushOn}
+        onPress={() => void togglePush()}
+      />
+      <RuledRow
         title={t('lock.settingsTitle')}
         meta={t('lock.settingsMeta')}
-        action={t(lockOn ? 'lock.on' : 'lock.off')}
+        action={t(lockOn ? 'common.on' : 'common.off')}
         checked={lockOn}
         onPress={() => void toggleAppLock()}
       />
