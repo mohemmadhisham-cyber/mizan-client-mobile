@@ -34,7 +34,7 @@ export class DashboardUnavailableError extends Error {
   }
 }
 
-let cached: { at: number; data: MobileSummary } | null = null;
+let cached: { at: number; data: MobileSummary; answer: unknown } | null = null;
 
 /** Forget the cached summary so the next read goes to the server (pull to refresh). */
 export function clearDashboardCache(): void {
@@ -61,8 +61,18 @@ async function loadMobile(): Promise<MobileSummary> {
   if (!data.ok) throw new DashboardUnavailableError(data.error ?? 'unavailable');
   const mobile = data.mobile as MobileSummary | undefined;
   if (!mobile) throw new DashboardUnavailableError('unavailable');
-  cached = { at: Date.now(), data: mobile };
+  cached = { at: Date.now(), data: mobile, answer: data };
   return mobile;
+}
+
+/**
+ * The server's whole answer, as sent, for the screens that show what a figure
+ * is made of. It is the same call and the same 30 second cache as the summary:
+ * opening a detail screen from Home asks the server nothing more.
+ */
+export async function fetchDashboardAnswer(): Promise<unknown> {
+  await fetchMobile();
+  return cached?.answer ?? null;
 }
 
 function currencyCode(c: string): 'AED' | 'SAR' {
