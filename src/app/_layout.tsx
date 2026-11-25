@@ -13,11 +13,12 @@ import {
 } from '@expo-google-fonts/manrope';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
-import { Stack, ThemeProvider as NavigationThemeProvider } from 'expo-router';
+import { type ErrorBoundaryProps, Stack, ThemeProvider as NavigationThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef } from 'react';
 
 import { IntroOverlay } from '@/components/horizon/intro-overlay';
+import { AppError } from '@/components/support/app-error';
 import { useAuthGate } from '@/hooks/use-auth-gate';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { navigationTheme, ThemeProvider, useTheme } from '@/theme';
@@ -66,6 +67,11 @@ function RootNav() {
       <IntroOverlay ready={!loading} />
     </NavigationThemeProvider>
   );
+}
+
+/** Expo Router shows this in place of a screen that threw. */
+export function ErrorBoundary(props: ErrorBoundaryProps) {
+  return <AppError {...props} />;
 }
 
 export default function RootLayout() {

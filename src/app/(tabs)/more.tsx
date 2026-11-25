@@ -27,6 +27,7 @@ const ITEMS: MoreItem[] = [
   { icon: 'business-outline', labelKey: 'more.companies', href: '/companies' },
   { icon: 'notifications-outline', labelKey: 'more.notifications', href: '/notifications' },
   { icon: 'settings-outline', labelKey: 'more.settings', href: '/settings' },
+  { icon: 'help-circle-outline', labelKey: 'support.helpTitle', href: '/help' },
 ];
 
 function Row({ item, isLast, onPress }: { item: MoreItem; isLast: boolean; onPress: () => void }) {

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { type ComponentRef, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -17,8 +17,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DetailHeader } from '@/components/navigation/detail-header';
 import { TypingIndicator } from '@/components/ai-advisor/typing-indicator';
 import { AccountantChatView } from '@/components/accountant-chat/accountant-chat-view';
+import { AiConsent } from '@/components/ai-advisor/ai-consent';
 import { Text } from '@/components/ui';
 import { useVoiceRecorder } from '@/hooks/use-voice-recorder';
+import { hasAiConsent } from '@/lib/ai-consent';
 import { useAuth } from '@/lib/auth-context';
 import { askAi } from '@/services/ai-advisor';
 import { uploadReceipt } from '@/services/receipts';
@@ -54,6 +56,8 @@ export default function AiAdvisorScreen() {
   const [transcribing, setTranscribing] = useState(false);
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const voice = useVoiceRecorder();
+  const router = useRouter();
+  const [consented, setConsented] = useState(() => hasAiConsent(user?.id));
 
   useEffect(() => {
     scrollRef.current?.scrollToEnd({ animated: true });
@@ -127,6 +131,13 @@ export default function AiAdvisorScreen() {
       return;
     }
     await voice.start();
+  }
+
+  // Asked once, before first use. Until then no question, file or recording leaves the app for an AI provider.
+  if (tab === 'advisor' && !consented) {
+    return (
+      <AiConsent userId={user?.id ?? 'unknown'} onAgreed={() => setConsented(true)} onDeclined={() => router.back()} />
+    );
   }
 
   return (
