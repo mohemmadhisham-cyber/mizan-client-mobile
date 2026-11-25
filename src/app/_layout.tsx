@@ -32,11 +32,22 @@ SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 60_000, retry: 1, refetchOnWindowFocus: false },
+    queries: {
+      staleTime: 60_000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+      // A request is always made, connection or not, and fails at once without one. The
+      // library's default is to hold it until the connection returns, which leaves a screen
+      // on "loading" for ever when the app is opened offline; failing lets the screen say it
+      // could not load and offer to try again.
+      networkMode: 'always',
+      // When the connection returns, what is on screen and out of date is asked for again.
+      refetchOnReconnect: true,
+    },
   },
 });
 
-// Once, when the app starts: requests wait while the phone is offline and are made again when it is back.
+// Once, when the app starts: the data layer is told when the connection goes and returns.
 wireOnlineManager();
 
 function RootNav() {

@@ -21,8 +21,8 @@ export function useIsOffline(): boolean {
 }
 
 /**
- * Tells the data layer when the phone is offline, so it waits instead of
- * failing every request, and asks again when the connection returns. Call once.
+ * Tells the data layer when the connection goes and returns, so that what is
+ * on screen and out of date is asked for again when it is back. Call once.
  */
 export function wireOnlineManager(): void {
   onlineManager.setEventListener((setOnline) => NetInfo.addEventListener((state) => setOnline(!isOffline(state))));
