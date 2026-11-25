@@ -3,12 +3,13 @@ import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
+import { cameraChrome } from '@/theme';
 
-const MINT = '#6BFE9C';
+const ACCENT = cameraChrome.accent;
 const CORNER = 32;
 
 /**
- * Figma "Capture Receipt" viewfinder reticle: dashed frame, mint corner
+ * Figma "Capture Receipt" viewfinder reticle: dashed frame, gold corner
  * markers, an animated scan line, and an "Auto-detect active" badge. Camera
  * chrome uses fixed colors (not the app theme) — matches how camera UIs in
  * most apps stay dark regardless of the app's light/dark setting.
@@ -49,14 +50,14 @@ const styles = StyleSheet.create({
     maxWidth: 384,
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: 'rgba(255,255,255,0.5)',
+    borderColor: cameraChrome.frame,
     borderRadius: 12,
   },
   corner: {
     position: 'absolute',
     width: CORNER,
     height: CORNER,
-    borderColor: MINT,
+    borderColor: ACCENT,
   },
   topLeft: { top: 0, left: 0, borderTopWidth: 4, borderLeftWidth: 4, borderTopLeftRadius: 12 },
   topRight: { top: 0, right: 0, borderTopWidth: 4, borderRightWidth: 4, borderTopRightRadius: 12 },
@@ -67,8 +68,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 2,
-    backgroundColor: MINT,
-    shadowColor: MINT,
+    backgroundColor: ACCENT,
+    shadowColor: ACCENT,
     shadowRadius: 10,
     shadowOpacity: 1,
     shadowOffset: { width: 0, height: 0 },
@@ -80,9 +81,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(107,254,156,0.2)',
+    backgroundColor: cameraChrome.accentSoft,
     borderWidth: 1,
-    borderColor: 'rgba(107,254,156,0.3)',
+    borderColor: cameraChrome.accentBorder,
     borderRadius: 9999,
     paddingHorizontal: 13,
     paddingVertical: 5,
@@ -91,10 +92,10 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: MINT,
+    backgroundColor: ACCENT,
   },
   badgeText: {
-    color: MINT,
+    color: ACCENT,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.6,

@@ -8,7 +8,7 @@ import { DetailHeader } from '@/components/navigation/detail-header';
 import { Card, EmptyState, Skeleton, Text } from '@/components/ui';
 import { notificationsService } from '@/services/notifications';
 import type { NotificationCategory, NotificationItem } from '@/services/types';
-import { radius, spacing, useTheme } from '@/theme';
+import { radius, softTone, spacing, useTheme } from '@/theme';
 
 type Filter = NotificationCategory | 'all';
 
@@ -129,8 +129,7 @@ export default function NotificationsScreen() {
 
 function NotificationRow({ item, onPress, onAction }: { item: NotificationItem; onPress: () => void; onAction: () => void }) {
   const theme = useTheme();
-  const tone =
-    item.severity === 'alert' ? { bg: '#FFDAD6', fg: '#BA1A1A' } : item.severity === 'good' ? { bg: '#6BFE9C', fg: '#006D37' } : { bg: theme.colors.secondary, fg: theme.colors.primary };
+  const tone = softTone(theme.colors, item.severity === 'alert' ? 'danger' : item.severity === 'good' ? 'success' : 'neutral');
 
   return (
     <Pressable accessibilityRole="button" onPress={onPress}>

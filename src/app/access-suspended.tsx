@@ -42,7 +42,7 @@ export default function AccessSuspendedScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <AmbientBackdrop topColor="#FFD5D5" bottomColor="#FFE9A8" />
+      <AmbientBackdrop tone="warning" />
       <View style={{ flex: 1 }}>
         <EmptyState
           icon="lock-closed-outline"

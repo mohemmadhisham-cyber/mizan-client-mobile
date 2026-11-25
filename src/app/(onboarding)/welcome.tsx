@@ -17,7 +17,7 @@ export default function WelcomeScreen() {
 
   return (
     <Screen clearsTabBar={false} edges={['top', 'bottom']}>
-      <AmbientBackdrop topColor="#D5E3FF" bottomColor="#6BFE9C" />
+      <AmbientBackdrop />
       <View style={{ flex: 1, justifyContent: 'center' }}>
         <Animated.View
           entering={reduced ? undefined : FadeInDown.duration(500)}
@@ -34,7 +34,7 @@ export default function WelcomeScreen() {
             <Ionicons name="wallet" size={30} color={theme.colors.primaryForeground} />
           </View>
           <View style={{ gap: spacing.sm }}>
-            <Text variant="footnote" color="brandAccent" weight="semibold">
+            <Text variant="footnote" color="brandAccentText" weight="semibold">
               {t('common.appName')}
             </Text>
             <Text variant="display">{t('auth.welcomeTitle')}</Text>

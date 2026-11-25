@@ -8,7 +8,7 @@ import { createRenewalLink } from '@/services/client-billing';
 import { getFirmLockStatus, type FirmLockStatus } from '@/services/firm-lock-status';
 import { formatMoneyMinor, type Currency } from '@/lib/format';
 import { EXPO_PUBLIC_WEB_APP_URL } from '@/lib/env';
-import { radius, spacing } from '@/theme';
+import { radius, spacing, useTheme } from '@/theme';
 
 function daysUntil(dateStr: string): number {
   const ms = new Date(`${dateStr}T00:00:00`).getTime() - Date.now();
@@ -20,6 +20,7 @@ function daysUntil(dateStr: string): number {
  * grace period ends. Not shown once actually locked (that's the full-screen
  * access-suspended gate instead). */
 export function GracePeriodBanner() {
+  const theme = useTheme();
   const [status, setStatus] = useState<FirmLockStatus | null>(null);
   const [renewing, setRenewing] = useState(false);
 
@@ -55,17 +56,17 @@ export function GracePeriodBanner() {
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.sm,
-        backgroundColor: '#FFF4D6',
+        backgroundColor: theme.colors.warningSoft,
         borderRadius: radius.md,
         padding: spacing.base,
         marginBottom: spacing.lg,
       }}>
-      <Ionicons name="alert-circle" size={22} color="#8A5A00" />
+      <Ionicons name="alert-circle" size={22} color={theme.colors.warningSoftForeground} />
       <View style={{ flex: 1 }}>
-        <Text variant="callout" weight="semibold" style={{ color: '#8A5A00' }}>
+        <Text variant="callout" weight="semibold" style={{ color: theme.colors.warningSoftForeground }}>
           {days !== null ? `Subscription overdue — ${days} day${days === 1 ? '' : 's'} until access is suspended` : 'Subscription payment overdue'}
         </Text>
-        <Text variant="footnote" style={{ color: '#8A5A00' }}>
+        <Text variant="footnote" style={{ color: theme.colors.warningSoftForeground }}>
           {formatMoneyMinor(status.amountDueMinor, status.currency as Currency)} due. {renewing ? 'Opening…' : 'Tap to renew now.'}
         </Text>
       </View>

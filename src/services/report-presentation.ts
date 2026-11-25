@@ -1,5 +1,7 @@
 import type { Ionicons } from '@expo/vector-icons';
 
+import type { SoftTone } from '@/theme';
+
 import type { ReportCategory } from './types';
 
 export const CATEGORY_LABEL: Record<ReportCategory, string> = {
@@ -16,9 +18,10 @@ export const CATEGORY_ICON: Record<ReportCategory, keyof typeof Ionicons.glyphMa
   audit: 'shield-checkmark-outline',
 };
 
-export const CATEGORY_TINT: Record<ReportCategory, string> = {
-  pl: '#D5E3FF',
-  balance_sheet: '#E8E8ED',
-  tax: '#FFDAD6',
-  audit: '#D9F2E3',
+/** Tone of the category's icon tile. A category is not a status, so tax is not `danger`. */
+export const CATEGORY_TONE: Record<ReportCategory, SoftTone> = {
+  pl: 'info',
+  balance_sheet: 'neutral',
+  tax: 'warning',
+  audit: 'success',
 };

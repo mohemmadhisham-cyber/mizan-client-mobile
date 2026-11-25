@@ -1,20 +1,25 @@
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
+import { useTheme } from '@/theme';
+
 interface AmbientBackdropProps {
-  /** Soft glow color, top-start corner. */
-  topColor?: string;
-  /** Soft glow color, bottom-end corner. */
-  bottomColor?: string;
+  /** `brand` for sign-in and waiting screens; `warning` when access is paused. */
+  tone?: 'brand' | 'warning';
 }
 
 /**
  * Approximates Figma's blurred ambient-glow background (two large soft-edged
  * color blobs behind a glass card) using SVG radial gradients — react-native
  * has no CSS blur filter, and this avoids adding expo-blur for a single effect.
+ * Glow colours come from the theme, so the backdrop follows light/dark and a
+ * firm's co-branding.
  */
-export function AmbientBackdrop({ topColor = '#D5E3FF', bottomColor = '#6BFE9C' }: AmbientBackdropProps) {
+export function AmbientBackdrop({ tone = 'brand' }: AmbientBackdropProps) {
+  const theme = useTheme();
   const { width, height } = useWindowDimensions();
+  const topColor = tone === 'warning' ? theme.colors.dangerSoft : theme.colors.infoSoft;
+  const bottomColor = tone === 'warning' ? theme.colors.warningSoft : theme.colors.brandAccent;
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       <Svg width={width} height={height}>

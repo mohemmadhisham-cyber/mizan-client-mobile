@@ -64,7 +64,7 @@ export function AddEventModal({ visible, dateLabel, onCancel, onCreate }: AddEve
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onCancel}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+      <View style={{ flex: 1, backgroundColor: theme.colors.scrim, justifyContent: 'flex-end' }}>
         <Card
           elevated
           style={{

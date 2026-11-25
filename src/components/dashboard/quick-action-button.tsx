@@ -18,8 +18,11 @@ interface QuickActionButtonProps {
 export function QuickActionButton({ label, icon, tone, onPress }: QuickActionButtonProps) {
   const theme = useTheme();
 
-  const bg = tone === 'brand' ? theme.colors.brand : tone === 'accent' ? theme.colors.brandAccent : theme.colors.secondary;
-  const fg = tone === 'neutral' ? theme.colors.foreground : '#FFFFFF';
+  // `primary` is the brand colour in light and ivory in dark, so the brand-tone
+  // button stays distinct from the dark card behind it.
+  const bg = tone === 'brand' ? theme.colors.primary : tone === 'accent' ? theme.colors.brandAccent : theme.colors.secondary;
+  const fg =
+    tone === 'brand' ? theme.colors.primaryForeground : tone === 'accent' ? theme.colors.brandAccentForeground : theme.colors.foreground;
 
   const handlePress = () => {
     if (process.env.EXPO_OS !== 'web') {

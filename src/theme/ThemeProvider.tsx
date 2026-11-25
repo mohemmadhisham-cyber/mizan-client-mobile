@@ -1,6 +1,7 @@
 import { DefaultTheme } from 'expo-router';
 import {
   createContext,
+  useCallback,
   useContext,
   useMemo,
   useState,
@@ -8,6 +9,7 @@ import {
 } from 'react';
 import { useColorScheme } from 'react-native';
 
+import { readStoredThemeMode, storeThemeMode, type ThemeMode } from './mode-storage';
 import {
   buildDarkPalette,
   buildLightPalette,
@@ -26,7 +28,7 @@ import {
 } from './tokens';
 
 export type ColorScheme = 'light' | 'dark';
-export type ThemeMode = 'system' | 'light' | 'dark';
+export type { ThemeMode };
 
 export interface Theme {
   scheme: ColorScheme;
@@ -54,8 +56,14 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const system = useColorScheme() ?? 'light';
-  const [mode, setMode] = useState<ThemeMode>('system');
+  // Lazy initial read: the saved choice applies from the first frame.
+  const [mode, setModeState] = useState<ThemeMode>(readStoredThemeMode);
   const [brand, setBrandState] = useState<BrandTokens>(MIZAN_BRAND);
+
+  const setMode = useCallback((next: ThemeMode) => {
+    setModeState(next);
+    storeThemeMode(next);
+  }, []);
 
   const scheme: ColorScheme = mode === 'system' ? (system as ColorScheme) : mode;
 
@@ -83,7 +91,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       brand,
       setBrand: (next) => setBrandState(next ?? MIZAN_BRAND),
     }),
-    [theme, mode, brand],
+    [theme, mode, setMode, brand],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

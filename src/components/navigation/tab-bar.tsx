@@ -90,7 +90,7 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
           borderTopColor: theme.colors.border,
           paddingBottom: insets.bottom,
           height: TAB_BAR_HEIGHT + insets.bottom,
-          shadowColor: '#000',
+          shadowColor: theme.colors.shadow,
         },
       ]}>
       <View style={styles.row}>

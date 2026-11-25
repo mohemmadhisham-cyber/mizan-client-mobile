@@ -11,6 +11,7 @@ import { ScanningReticle } from '@/components/capture/scanning-reticle';
 import { Button, Text } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
 import { createManualReceipt, uploadReceipt, type CapturedFile } from '@/services/receipts';
+import { cameraChrome } from '@/theme';
 
 type CaptureMode = 'single' | 'batch';
 type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
@@ -138,16 +139,16 @@ export default function CaptureScreen() {
   if (!permission.granted) {
     return (
       <View style={[styles.root, styles.center, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        <Ionicons name="camera-outline" size={48} color="rgba(255,255,255,0.6)" />
-        <Text variant="title" style={{ color: '#FFFFFF', marginTop: 16, textAlign: 'center' }}>
+        <Ionicons name="camera-outline" size={48} color={cameraChrome.foregroundSubtle} />
+        <Text variant="title" style={{ color: cameraChrome.foreground, marginTop: 16, textAlign: 'center' }}>
           Camera access needed
         </Text>
-        <Text variant="body" style={{ color: 'rgba(255,255,255,0.7)', textAlign: 'center', marginTop: 8, marginBottom: 24 }}>
+        <Text variant="body" style={{ color: cameraChrome.foregroundMuted, textAlign: 'center', marginTop: 8, marginBottom: 24 }}>
           Mizan uses your camera to photograph receipts for your accountant to review.
         </Text>
         <Button title="Enable camera" onPress={() => requestPermission()} />
         <Pressable onPress={close} style={{ marginTop: 16 }}>
-          <Text variant="footnote" style={{ color: 'rgba(255,255,255,0.6)' }}>
+          <Text variant="footnote" style={{ color: cameraChrome.foregroundSubtle }}>
             Cancel
           </Text>
         </Pressable>
@@ -171,14 +172,14 @@ export default function CaptureScreen() {
       <View style={[styles.overlay, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <View style={styles.topBar}>
           <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={close} style={styles.roundButton}>
-            <Ionicons name="close" size={20} color="#FFFFFF" />
+            <Ionicons name="close" size={20} color={cameraChrome.foreground} />
           </Pressable>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Toggle flash"
             onPress={() => setTorch((t) => !t)}
             style={styles.roundButton}>
-            <Ionicons name={torch ? 'flash' : 'flash-outline'} size={20} color="#FFFFFF" />
+            <Ionicons name={torch ? 'flash' : 'flash-outline'} size={20} color={cameraChrome.foreground} />
           </Pressable>
         </View>
 
@@ -222,14 +223,14 @@ export default function CaptureScreen() {
             </>
           ) : status === 'success' ? (
             <>
-              <Ionicons name="checkmark-circle" size={56} color="#6BFE9C" />
+              <Ionicons name="checkmark-circle" size={56} color={cameraChrome.success} />
               <Text style={styles.statusTitle}>Receipt uploaded</Text>
               <Text style={styles.statusBody}>Pending review by your accountant.</Text>
               <Button title="Done" onPress={close} />
             </>
           ) : (
             <>
-              <Ionicons name="alert-circle" size={56} color="#FF8A80" />
+              <Ionicons name="alert-circle" size={56} color={cameraChrome.danger} />
               <Text style={styles.statusTitle}>Upload failed</Text>
               <Text style={styles.statusBody}>{errorMsg}</Text>
               <Button title="Try again" onPress={reset} />
@@ -244,7 +245,7 @@ export default function CaptureScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#1C1F20',
+    backgroundColor: cameraChrome.surface,
   },
   center: {
     alignItems: 'center',
@@ -252,7 +253,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   scrim: {
-    backgroundColor: 'rgba(0,0,0,0.25)',
+    backgroundColor: cameraChrome.scrim,
   },
   overlay: {
     flex: 1,
@@ -269,7 +270,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 9999,
-    backgroundColor: 'rgba(249,249,254,0.2)',
+    backgroundColor: cameraChrome.glass,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -278,15 +279,15 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   instructionPill: {
-    backgroundColor: 'rgba(249,249,254,0.2)',
+    backgroundColor: cameraChrome.glass,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: cameraChrome.glassBorder,
     borderRadius: 9999,
     paddingHorizontal: 25,
     paddingVertical: 9,
   },
   instructionText: {
-    color: '#FFFFFF',
+    color: cameraChrome.foreground,
     fontSize: 15,
     fontWeight: '500',
     letterSpacing: 0.4,
@@ -300,29 +301,29 @@ const styles = StyleSheet.create({
   queueBadge: {
     alignSelf: 'center',
     marginBottom: 12,
-    backgroundColor: '#003366',
+    backgroundColor: cameraChrome.pillSolid,
     borderRadius: 9999,
     paddingHorizontal: 20,
     paddingVertical: 10,
   },
   queueBadgeText: {
-    color: '#A7C8FF',
+    color: cameraChrome.foreground,
     fontWeight: '700',
   },
   statusOverlay: {
-    backgroundColor: 'rgba(28,31,32,0.95)',
+    backgroundColor: cameraChrome.surfaceRaised,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
     paddingHorizontal: 32,
   },
   statusTitle: {
-    color: '#FFFFFF',
+    color: cameraChrome.foreground,
     fontSize: 18,
     fontWeight: '700',
   },
   statusBody: {
-    color: 'rgba(255,255,255,0.7)',
+    color: cameraChrome.foregroundMuted,
     fontSize: 14,
     textAlign: 'center',
     marginBottom: 8,

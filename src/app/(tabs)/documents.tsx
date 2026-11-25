@@ -7,19 +7,19 @@ import { AppHeader } from '@/components/navigation/app-header';
 import { Badge, Card, EmptyState, Screen, Skeleton, Text } from '@/components/ui';
 import { formatMoneyMinor, type Currency } from '@/lib/format';
 import { listMyReceipts, type MyReceipt, type ReceiptStatus } from '@/services/receipts';
-import { radius, spacing, useTheme } from '@/theme';
+import { radius, softTone, spacing, useTheme, type SoftTone } from '@/theme';
 
 /** Client-facing status labels + tints. Internal machine states
  * (uploaded/extracting) collapse into a calm "Processing" so the client sees a
  * meaningful lifecycle, not implementation detail. */
-const STATUS_META: Record<ReceiptStatus, { label: string; bg: string; fg: string }> = {
-  uploaded: { label: 'Processing', bg: 'rgba(0,110,55,0.12)', fg: '#006D37' },
-  extracting: { label: 'Processing', bg: 'rgba(0,110,55,0.12)', fg: '#006D37' },
-  extracted: { label: 'Ready to send', bg: 'rgba(0,110,55,0.12)', fg: '#006D37' },
-  needs_review: { label: 'With accountant', bg: 'rgba(107,254,156,0.2)', fg: '#006D37' },
-  approved: { label: 'Approved', bg: 'rgba(107,254,156,0.28)', fg: '#006D37' },
-  posted: { label: 'Booked', bg: 'rgba(107,254,156,0.28)', fg: '#006D37' },
-  rejected: { label: 'Rejected', bg: '#FFDAD6', fg: '#BA1A1A' },
+const STATUS_META: Record<ReceiptStatus, { label: string; tone: SoftTone }> = {
+  uploaded: { label: 'Processing', tone: 'info' },
+  extracting: { label: 'Processing', tone: 'info' },
+  extracted: { label: 'Ready to send', tone: 'info' },
+  needs_review: { label: 'With accountant', tone: 'success' },
+  approved: { label: 'Approved', tone: 'success' },
+  posted: { label: 'Booked', tone: 'success' },
+  rejected: { label: 'Rejected', tone: 'danger' },
 };
 
 export default function DocumentsScreen() {
@@ -85,6 +85,7 @@ export default function DocumentsScreen() {
 function ReceiptRow({ receipt }: { receipt: MyReceipt }) {
   const theme = useTheme();
   const meta = STATUS_META[receipt.status];
+  const tone = softTone(theme.colors, meta.tone);
   const dateLabel = receipt.receiptDate
     ? new Date(receipt.receiptDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
     : new Date(receipt.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
@@ -118,7 +119,7 @@ function ReceiptRow({ receipt }: { receipt: MyReceipt }) {
               {formatMoneyMinor(receipt.totalMinor, (receipt.currency as Currency) ?? 'AED', { fractionDigits: 2 })}
             </Text>
           ) : null}
-          <Badge label={meta.label} bg={meta.bg} fg={meta.fg} />
+          <Badge label={meta.label} bg={tone.bg} fg={tone.fg} />
         </View>
       </View>
     </Card>

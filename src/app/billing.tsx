@@ -8,12 +8,12 @@ import { Badge, Card, Skeleton, Text } from '@/components/ui';
 import { formatMoneyMinor } from '@/lib/format';
 import { billingService } from '@/services/billing';
 import type { Invoice } from '@/services/types';
-import { radius, spacing, useTheme } from '@/theme';
+import { radius, softTone, spacing, useTheme, type SoftTone } from '@/theme';
 
-const STATUS_TONE: Record<string, { bg: string; fg: string }> = {
-  paid: { bg: '#6BFE9C', fg: '#00743A' },
-  unpaid: { bg: '#FFDAD6', fg: '#BA1A1A' },
-  partial: { bg: '#FFF4D6', fg: '#8A5A00' },
+const STATUS_TONE: Record<string, SoftTone> = {
+  paid: 'success',
+  unpaid: 'danger',
+  partial: 'warning',
 };
 
 function notAvailable(feature: string) {
@@ -132,7 +132,7 @@ export default function BillingScreen() {
 
 function InvoiceRow({ invoice, isLast }: { invoice: Invoice; isLast: boolean }) {
   const theme = useTheme();
-  const tone = STATUS_TONE[invoice.status] ?? { bg: theme.colors.secondary, fg: theme.colors.mutedForeground };
+  const tone = softTone(theme.colors, STATUS_TONE[invoice.status] ?? 'neutral');
   return (
     <View
       style={{

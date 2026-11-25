@@ -6,7 +6,7 @@ import { OtpBoxInput } from '@/components/auth/otp-box-input';
 import { Button, Card, Text } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
 import { issueStepUpOtp, verifyStepUpOtp } from '@/services/step-up';
-import { spacing } from '@/theme';
+import { spacing, useTheme } from '@/theme';
 
 interface StepUpModalProps {
   visible: boolean;
@@ -23,6 +23,7 @@ interface StepUpModalProps {
  */
 export function StepUpModal({ visible, scope, title, onCancel, onVerified }: StepUpModalProps) {
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
   const { user } = useAuth();
   const email = user?.email ?? '';
 
@@ -67,7 +68,7 @@ export function StepUpModal({ visible, scope, title, onCancel, onVerified }: Ste
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onCancel}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+      <View style={{ flex: 1, backgroundColor: theme.colors.scrim, justifyContent: 'flex-end' }}>
         <Card
           elevated
           style={{

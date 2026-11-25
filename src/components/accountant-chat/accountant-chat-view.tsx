@@ -211,7 +211,7 @@ function MessageBubble({ message, isSelf }: { message: ChatMessage; isSelf: bool
     <View style={{ alignSelf: isSelf ? 'flex-end' : 'flex-start', maxWidth: '80%', gap: 4 }}>
       <View
         style={{
-          backgroundColor: isSelf ? '#D5E3FF' : theme.colors.card,
+          backgroundColor: isSelf ? theme.colors.infoSoft : theme.colors.card,
           borderRadius: radius.xl,
           borderBottomRightRadius: isSelf ? 4 : radius.xl,
           borderTopLeftRadius: isSelf ? radius.xl : 4,
@@ -219,12 +219,12 @@ function MessageBubble({ message, isSelf }: { message: ChatMessage; isSelf: bool
           paddingVertical: spacing.md,
         }}>
         {isAudio && attachmentUrl ? (
-          <VoiceMessagePlayer uri={attachmentUrl} tint={isSelf ? '#001B3C' : theme.colors.foreground} />
+          <VoiceMessagePlayer uri={attachmentUrl} tint={isSelf ? theme.colors.infoSoftForeground : theme.colors.foreground} />
         ) : attachmentUrl ? (
           <Image source={{ uri: attachmentUrl }} style={{ width: 160, height: 160, borderRadius: radius.sm, marginBottom: spacing.xs }} />
         ) : null}
         {!isAudio ? (
-          <Text variant="body" style={{ color: isSelf ? '#001B3C' : theme.colors.foreground }}>
+          <Text variant="body" style={{ color: isSelf ? theme.colors.infoSoftForeground : theme.colors.foreground }}>
             {message.body}
           </Text>
         ) : null}

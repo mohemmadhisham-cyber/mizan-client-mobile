@@ -10,7 +10,7 @@ import { Badge, Card, Skeleton, Text } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
 import { calendarService } from '@/services/calendar';
 import type { CalendarEvent, CalendarEventKind, NewCalendarEvent } from '@/services/types';
-import { radius, spacing, useTheme } from '@/theme';
+import { radius, softTone, spacing, useTheme, type SoftTone } from '@/theme';
 
 const KIND_ICON: Record<CalendarEventKind, keyof typeof Ionicons.glyphMap> = {
   deadline: 'alert-circle',
@@ -18,10 +18,10 @@ const KIND_ICON: Record<CalendarEventKind, keyof typeof Ionicons.glyphMap> = {
   task: 'checkmark-done',
 };
 
-const KIND_COLOR: Record<CalendarEventKind, { bg: string; fg: string; dot: string }> = {
-  deadline: { bg: '#FFDAD6', fg: '#BA1A1A', dot: '#BA1A1A' },
-  meeting: { bg: '#D5E3FF', fg: '#001E40', dot: '#001E40' },
-  task: { bg: '#6BFE9C', fg: '#006D37', dot: '#006D37' },
+const KIND_TONE: Record<CalendarEventKind, SoftTone> = {
+  deadline: 'danger',
+  meeting: 'info',
+  task: 'success',
 };
 
 function formatTimeLabel(time?: string | null): string {
@@ -128,7 +128,7 @@ export default function CalendarScreen() {
                     {d.eventKinds.length > 0 ? (
                       <View style={{ flexDirection: 'row', gap: 4 }}>
                         {d.eventKinds.map((k, i) => (
-                          <View key={i} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: active ? '#FFFFFF' : KIND_COLOR[k].dot }} />
+                          <View key={i} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: active ? theme.colors.primaryForeground : softTone(theme.colors, KIND_TONE[k]).fg }} />
                         ))}
                       </View>
                     ) : null}
@@ -172,10 +172,10 @@ export default function CalendarScreen() {
 
 function EventCard({ event, onDelete }: { event: CalendarEvent; onDelete: () => void }) {
   const theme = useTheme();
-  const colors = KIND_COLOR[event.kind];
+  const colors = softTone(theme.colors, KIND_TONE[event.kind]);
   return (
     <View style={{ position: 'relative' }}>
-      <View style={{ position: 'absolute', left: -27, top: 18, width: 16, height: 16, borderRadius: 8, backgroundColor: colors.dot, borderWidth: 4, borderColor: theme.colors.background }} />
+      <View style={{ position: 'absolute', left: -27, top: 18, width: 16, height: 16, borderRadius: 8, backgroundColor: colors.fg, borderWidth: 4, borderColor: theme.colors.background }} />
       <Card elevated style={{ gap: spacing.sm }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <View style={{ flexDirection: 'row', gap: spacing.sm, flex: 1 }}>

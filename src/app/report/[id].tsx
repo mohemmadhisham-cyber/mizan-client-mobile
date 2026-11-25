@@ -8,9 +8,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TrendChart } from '@/components/charts/trend-chart';
 import { DetailHeader } from '@/components/navigation/detail-header';
 import { Button, Card, EmptyState, Skeleton, Text } from '@/components/ui';
-import { CATEGORY_ICON, CATEGORY_LABEL, CATEGORY_TINT } from '@/services/report-presentation';
+import { CATEGORY_ICON, CATEGORY_LABEL, CATEGORY_TONE } from '@/services/report-presentation';
 import { reportsService } from '@/services/reports';
-import { radius, spacing, useTheme } from '@/theme';
+import { radius, softTone, spacing, useTheme } from '@/theme';
 
 export default function ReportDetailScreen() {
   const theme = useTheme();
@@ -59,7 +59,7 @@ export default function ReportDetailScreen() {
                 width: 36,
                 height: 36,
                 borderRadius: radius.md,
-                backgroundColor: CATEGORY_TINT[report.data.category],
+                backgroundColor: softTone(theme.colors, CATEGORY_TONE[report.data.category]).bg,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}>

@@ -313,13 +313,13 @@ function ChatBubble({ message }: { message: ChatMessage }) {
       <View style={{ alignSelf: 'flex-end', maxWidth: '80%' }}>
         <View
           style={{
-            backgroundColor: '#D5E3FF',
+            backgroundColor: theme.colors.infoSoft,
             borderRadius: radius.xl,
             borderBottomRightRadius: 4,
             paddingHorizontal: spacing.base,
             paddingVertical: spacing.md,
           }}>
-          <Text variant="body" style={{ color: '#001B3C' }}>
+          <Text variant="body" style={{ color: theme.colors.infoSoftForeground }}>
             {message.text}
           </Text>
         </View>
