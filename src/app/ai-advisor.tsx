@@ -74,6 +74,8 @@ export default function AiAdvisorScreen() {
   const router = useRouter();
   const colors = horizonColors(theme.colors);
   const typing = useKeyboardShown();
+  // A notice from the app is not a question: the starters stay until the person has asked one.
+  const hasAsked = messages.some((m) => m.role === 'user');
   const field = typing ? ADVISOR_FIELD_TYPING : ADVISOR_FIELD;
   // Both conversations start below the field and the tab line, so the keyboard must clear that much.
   const chatOffset = horizonFieldHeight(insets.top, field) + WORD_TABS_HEIGHT;
@@ -96,6 +98,8 @@ export default function AiAdvisorScreen() {
   }
 
   useEffect(() => {
+    // Before the first question the greeting must stay in view, not be scrolled past.
+    if (!messages.some((m) => m.role === 'user')) return;
     scrollRef.current?.scrollToEnd({ animated: true });
   }, [messages, busy]);
 
@@ -217,8 +221,11 @@ export default function AiAdvisorScreen() {
             ref={scrollRef}
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ paddingVertical: spacing.base, flexGrow: 1 }}
-            onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
-            {messages.length === 0 ? (
+            onContentSizeChange={() => {
+              // Before the first question the greeting must stay in view, not be scrolled past.
+              if (hasAsked) scrollRef.current?.scrollToEnd({ animated: true });
+            }}>
+            {!hasAsked ? (
               // Before the first question: a greeting, and three questions to start from.
               <>
                 <View style={{ paddingHorizontal: HORIZON_GUTTER }}>
@@ -231,14 +238,15 @@ export default function AiAdvisorScreen() {
                   <RuledRow key={key} title={t(key)} onPress={() => void send(t(key))} />
                 ))}
               </>
-            ) : (
-              <View style={{ paddingHorizontal: HORIZON_GUTTER, gap: spacing.md }}>
+            ) : null}
+            {messages.length > 0 ? (
+              <View style={{ paddingHorizontal: HORIZON_GUTTER, paddingTop: hasAsked ? 0 : spacing.base, gap: spacing.md }}>
                 {messages.map((m) => (
                   <ChatBubble key={m.id} message={m} />
                 ))}
                 {busy ? <TypingIndicator label={t('horizonAdvisor.writing')} /> : null}
               </View>
-            )}
+            ) : null}
           </ScrollView>
 
           <View style={{ paddingHorizontal: HORIZON_GUTTER, paddingBottom: insets.bottom + spacing.sm, gap: spacing.sm }}>
@@ -306,6 +314,7 @@ export default function AiAdvisorScreen() {
                 accessibilityLabel={t('common.send')}
                 disabled={!input.trim() || busy}
                 onPress={() => send(input)}
+                hitSlop={2}
                 style={{
                   width: SEND_SIZE,
                   height: SEND_SIZE,

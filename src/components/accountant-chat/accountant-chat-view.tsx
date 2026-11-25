@@ -6,6 +6,7 @@ import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Te
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
+import { HORIZON_GUTTER } from '@/components/horizon/horizon-screen';
 import { EmptyState, Text } from '@/components/ui';
 import { useVoiceRecorder } from '@/hooks/use-voice-recorder';
 import { localeTag } from '@/lib/format';
@@ -109,7 +110,8 @@ export function AccountantChatView({ clientId, firmId, userId, safeBottom = true
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={keyboardOffset ?? insets.top}>
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={{ padding: spacing.gutter, gap: spacing.md, flexGrow: 1 }}
+        // The frame's gutter: this chat is only ever shown on a Horizon screen.
+        contentContainerStyle={{ padding: HORIZON_GUTTER, gap: spacing.md, flexGrow: 1 }}
         onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}>
         {messages === null ? null : messages.length === 0 ? (
           <View style={{ alignItems: 'center', paddingVertical: spacing['2xl'], gap: spacing.sm }}>
@@ -123,7 +125,7 @@ export function AccountantChatView({ clientId, firmId, userId, safeBottom = true
         )}
       </ScrollView>
 
-      <View style={{ paddingHorizontal: spacing.gutter, paddingBottom: (safeBottom ? insets.bottom : 0) + spacing.sm, gap: spacing.sm }}>
+      <View style={{ paddingHorizontal: HORIZON_GUTTER, paddingBottom: (safeBottom ? insets.bottom : 0) + spacing.sm, gap: spacing.sm }}>
         {pending ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
             <Image source={{ uri: pending.uri }} style={{ width: 40, height: 40, borderRadius: radius.sm }} />
