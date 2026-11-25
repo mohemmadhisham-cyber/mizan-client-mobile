@@ -161,18 +161,20 @@ export function AccountantChatView({ clientId, firmId, userId, safeBottom = true
             value={input}
             onChangeText={setInput}
             placeholder={t('chat.placeholder')}
+            accessibilityLabel={t('chat.placeholder')}
             placeholderTextColor={theme.colors.mutedForeground}
             style={{ flex: 1, color: theme.colors.foreground, fontSize: 16, paddingVertical: spacing.sm }}
             multiline
             editable={!voice.isRecording}
           />
-          <Pressable accessibilityRole="button" accessibilityLabel={t('common.attach')} onPress={pickAttachment} style={{ padding: spacing.sm }} disabled={voice.isRecording}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t('common.attach')} onPress={pickAttachment} hitSlop={4} style={{ padding: spacing.sm }} disabled={voice.isRecording}>
             <Ionicons name="attach-outline" size={20} color={theme.colors.mutedForeground} />
           </Pressable>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={voice.isRecording ? t('chat.stopAndSend') : t('chat.recordVoice')}
             onPress={handleMicPress}
+            hitSlop={4}
             style={{ padding: spacing.sm }}>
             <Ionicons name={voice.isRecording ? 'stop-circle' : 'mic-outline'} size={20} color={voice.isRecording ? theme.colors.danger : theme.colors.mutedForeground} />
           </Pressable>
@@ -205,6 +207,11 @@ function MessageBubble({ message, isSelf }: { message: ChatMessage; isSelf: bool
   const theme = useTheme();
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
   const isAudio = isAudioMime(message.attachmentMime);
+  // My messages: the field's colour in light. In dark that colour is almost the
+  // ground's, so a raised surface is used instead, to keep the shape visible.
+  const mine = theme.dark
+    ? { bg: theme.colors.surface, fg: theme.colors.surfaceForeground }
+    : { bg: theme.colors.brand, fg: theme.colors.brandForeground };
 
   useEffect(() => {
     if (!message.attachmentPath) return;
@@ -221,9 +228,9 @@ function MessageBubble({ message, isSelf }: { message: ChatMessage; isSelf: bool
     <View style={{ alignSelf: isSelf ? 'flex-end' : 'flex-start', maxWidth: '80%', gap: 4 }}>
       <View
         style={{
-          backgroundColor: isSelf ? theme.colors.brand : 'transparent',
+          backgroundColor: isSelf ? mine.bg : 'transparent',
           borderWidth: 1,
-          borderColor: isSelf ? theme.colors.brand : theme.colors.border,
+          borderColor: isSelf ? mine.bg : theme.colors.border,
           borderRadius: BUBBLE_RADIUS,
           // The tight corner points at the speaker; logical, so it mirrors in Arabic.
           borderBottomEndRadius: isSelf ? BUBBLE_TAIL : BUBBLE_RADIUS,
@@ -232,12 +239,12 @@ function MessageBubble({ message, isSelf }: { message: ChatMessage; isSelf: bool
           paddingVertical: spacing.md,
         }}>
         {isAudio && attachmentUrl ? (
-          <VoiceMessagePlayer uri={attachmentUrl} tint={isSelf ? theme.colors.brandForeground : theme.colors.foreground} />
+          <VoiceMessagePlayer uri={attachmentUrl} tint={isSelf ? mine.fg : theme.colors.foreground} />
         ) : attachmentUrl ? (
           <Image source={{ uri: attachmentUrl }} style={{ width: 160, height: 160, borderRadius: radius.sm, marginBottom: spacing.xs }} />
         ) : null}
         {!isAudio ? (
-          <Text variant="body" style={{ color: isSelf ? theme.colors.brandForeground : theme.colors.foreground }}>
+          <Text variant="body" style={{ color: isSelf ? mine.fg : theme.colors.foreground }}>
             {message.body}
           </Text>
         ) : null}
