@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { type ComponentRef, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppHeader } from '@/components/navigation/app-header';
+import { DetailHeader } from '@/components/navigation/detail-header';
 import { TypingIndicator } from '@/components/ai-advisor/typing-indicator';
 import { AccountantChatView } from '@/components/accountant-chat/accountant-chat-view';
 import { Text } from '@/components/ui';
@@ -52,7 +52,7 @@ export default function AiAdvisorScreen() {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const voice = useVoiceRecorder();
 
   useEffect(() => {
@@ -130,15 +130,15 @@ export default function AiAdvisorScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <AppHeader />
+    <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
+      <DetailHeader title={t('nav.aiAdvisor')} />
       <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
         <TabButton label={t('aiAdvisorScreen.tabAdvisor')} active={tab === 'advisor'} onPress={() => setTab('advisor')} />
         <TabButton label={t('aiAdvisorScreen.tabQueries')} active={tab === 'queries'} onPress={() => setTab('queries')} />
       </View>
 
       {tab === 'queries' ? (
-        <AccountantChatView clientId={clientId} firmId={firmId} userId={user?.id} safeBottom={false} />
+        <AccountantChatView clientId={clientId} firmId={firmId} userId={user?.id} />
       ) : (
         <KeyboardAvoidingView
           style={{ flex: 1 }}

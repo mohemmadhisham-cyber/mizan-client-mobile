@@ -54,7 +54,7 @@ function TabIcon({ focused, name, color, reduced }: { focused: boolean; name: Ic
   );
 }
 
-export function AppTabBar({ state, navigation }: BottomTabBarProps) {
+export function AppTabBar({ state, emitter, navigateToTab }: BottomTabBarProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
@@ -65,13 +65,12 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
   const indicatorX = useSharedValue(0);
   const indicatorW = useSharedValue(0);
 
-  // Render only the tabs above, in order (the other routes are href:null).
+  // Render the tabs above, in that order.
   const tabs = TAB_ORDER.map((name) => state.routes.find((r) => r.name === name)).filter(
     (r): r is BottomTabBarProps['state']['routes'][number] => Boolean(r),
   );
   const openName = state.routes[state.index]?.name;
-  // A screen that is not in the bar was reached from More, so More is its tab.
-  const activeName = (TAB_ORDER as readonly string[]).includes(openName ?? '') ? openName : 'more';
+  const activeName = openName;
   const activeKey = tabs.find((r) => r.name === activeName)?.key;
   const activeLayout = activeKey ? layouts[activeKey] : undefined;
   const activeX = activeLayout ? activeLayout.x + (activeLayout.width - MARKER_WIDTH) / 2 : undefined;
@@ -124,9 +123,9 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
             if (process.env.EXPO_OS !== 'web') {
               Haptics.selectionAsync().catch(() => {});
             }
-            const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+            const event = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
             if (route.name !== openName && !event.defaultPrevented) {
-              navigation.navigate(route.name);
+              navigateToTab(route.key);
             }
           };
 

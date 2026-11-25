@@ -10,11 +10,8 @@ export default function TabsLayout() {
       <Tabs.Screen name="calendar" />
       <Tabs.Screen name="messages" />
       <Tabs.Screen name="more" />
-      {/* Reachable from Home and More, but not shown in the tab bar. */}
-      <Tabs.Screen name="activity" options={{ href: null }} />
-      <Tabs.Screen name="ai-advisor" options={{ href: null }} />
-      <Tabs.Screen name="reports" options={{ href: null }} />
-      <Tabs.Screen name="documents" options={{ href: null }} />
+      {/* Activity, AI advisor, Reports and Documents are pushed screens (src/app/*.tsx), not
+          hidden tabs: since Expo Router 58 a hidden tab cannot be opened. */}
     </Tabs>
   );
 }

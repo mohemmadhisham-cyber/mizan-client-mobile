@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { AppHeader } from '@/components/navigation/app-header';
+import { DetailHeader } from '@/components/navigation/detail-header';
 import { Card, EmptyState, ScreenList, Skeleton, Text } from '@/components/ui';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { localeTag } from '@/lib/format';
@@ -68,7 +68,8 @@ export default function ActivityScreen() {
 
   return (
     <ScreenList
-      header={<AppHeader />}
+      header={<DetailHeader title={t('nav.activity')} />}
+      clearsTabBar={false}
       data={items}
       keyExtractor={activityId}
       renderItem={(it) => (

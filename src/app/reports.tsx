@@ -69,7 +69,6 @@ export default function ReportsScreen() {
       lines={[{ text: t('reportsScreen.title') }]}
       top={<FieldBack colors={colors} />}
       bridge={null}
-      safeBottom={false}
       refreshing={refreshing}
       onRefresh={onRefresh}>
       {metrics.isError && !m ? (

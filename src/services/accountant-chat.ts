@@ -1,4 +1,6 @@
-import * as FileSystem from 'expo-file-system';
+// The classic file functions live under /legacy. Imported from the package root they
+// are stubs that throw when called, so every upload and recording failed.
+import * as FileSystem from 'expo-file-system/legacy';
 
 import i18n from '@/i18n';
 import { supabase } from '@/lib/supabase';

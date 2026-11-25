@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { AppHeader } from '@/components/navigation/app-header';
+import { DetailHeader } from '@/components/navigation/detail-header';
 import { Badge, Card, EmptyState, ScreenList, Skeleton, Text } from '@/components/ui';
 import { usePagedList } from '@/hooks/use-paged-list';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
@@ -48,7 +48,8 @@ export default function DocumentsScreen() {
 
   return (
     <ScreenList
-      header={<AppHeader />}
+      header={<DetailHeader title={t('nav.documents')} />}
+      clearsTabBar={false}
       data={receipts}
       keyExtractor={receiptId}
       renderItem={(r) => <ReceiptRow receipt={r} />}

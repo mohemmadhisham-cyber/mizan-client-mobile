@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { type ComponentRef, useRef } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
 import { Text } from '@/components/ui';
@@ -20,7 +20,7 @@ interface OtpBoxInputProps {
  */
 export function OtpBoxInput({ value, onChangeText, onSubmit }: OtpBoxInputProps) {
   const theme = useTheme();
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
   const activeIndex = Math.min(value.length, BOX_COUNT - 1);
 
   return (
