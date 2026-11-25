@@ -10,7 +10,7 @@ import i18n, { setAppLocale, type AppLocale } from '@/i18n';
 import { hasAiConsent, recordAiConsent } from '@/lib/ai-consent';
 import { askToUnlock, isAppLockOn, maySwitchLock, phoneCanLock, setAppLock } from '@/lib/app-lock';
 import { useAuth } from '@/lib/auth-context';
-import { isPushOn, turnPushOff, turnPushOn } from '@/lib/push';
+import { isPushOn, isPushWorking, turnPushOff, turnPushOn } from '@/lib/push';
 import { supabase } from '@/lib/supabase';
 import { useTheme, useThemeControls, type ThemeMode } from '@/theme';
 import { horizonColors } from '@/theme/horizon';
@@ -51,6 +51,9 @@ export default function SettingsScreen() {
       setAiConsented(hasAiConsent(userId));
       // The lock screen turns the lock off itself on a phone that can no longer confirm anyone.
       setLockOn(isAppLockOn(userId));
+      // Notifications can be turned off in the phone's own settings, behind the app's back.
+      // The row then says Off, which is what the person will see happen.
+      void isPushWorking(userId).then(setPushOn);
     }, [userId]),
   );
 
