@@ -1,6 +1,6 @@
 # Mizan Connect — audit, plan and design brief (2026-11-25)
 
-Status: **draft for owner approval.** Nothing in this plan is built. No dependency is installed, no bundle id or app name is changed, no backend object is touched, nothing is deleted.
+Status: **draft for owner approval.** Design direction decided 2026-11-25 (D1: B with A's Requests screen); the other decisions in §11 are open. Nothing in this plan is built. No dependency is installed, no bundle id or app name is changed, no backend object is touched, nothing is deleted.
 
 Stream D of four. Sources: the owner's brief of 2026-11-25; `# MIZAN — STRATEGIC TRANSFORMATION.txt` §2–8 and §14; `balance-beams-ai/docs/plans/mizan-pro/MASTER-PLAN.md`; the brand kit (`balance-beams-ai/mizan_brand_kit`); the owner's Design canvas "Flowdo App Concept"; this repository at `origin/main` (03c87dc) plus `feat/figma-reskin`; `flowdo/`; `balance-beams-ai` at `origin/main`; the live migration list of Supabase project `nnqylkxtwmqjnyyqufix` (read only).
 
@@ -496,7 +496,7 @@ Four principles to take from them:
 
 | # | Decision | Recommendation |
 |---|---|---|
-| D1 | Design direction A, B or C (artifact) | B for Home, with A's Requests screen; see the artifact notes |
+| D1 | Design direction A, B or C (artifact) | **Decided 2026-11-25 by the owner: B (Horizon) for Home, the service screen and the app shell, with A's (Briefing) Requests screen.** |
 | D2 | Store name "Mizan Connect" and Arabic spelling | Check availability and trademark first (§4.2) |
 | D3 | Keep bundle id `com.mizan.client` | Keep |
 | D4 | What a client sees when the professional's Mizan account is overdue | "Paused by your professional" with contact; never ask the client to pay Mizan |
