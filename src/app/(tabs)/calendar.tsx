@@ -1,30 +1,35 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { AddEventModal } from '@/components/calendar/add-event-modal';
-import { DetailHeader } from '@/components/navigation/detail-header';
-import { Badge, Card, Skeleton, Text } from '@/components/ui';
+import { FieldMark, HORIZON_GUTTER, HorizonScreen } from '@/components/horizon/horizon-screen';
+import { Figure, RuledRow, SectionLabel } from '@/components/horizon/ruled';
+import { Text } from '@/components/ui';
 import i18n from '@/i18n';
 import { useAuth } from '@/lib/auth-context';
 import { localeTag } from '@/lib/format';
 import { calendarService } from '@/services/calendar';
 import type { CalendarEvent, CalendarEventKind, NewCalendarEvent } from '@/services/types';
-import { radius, softTone, spacing, useTheme, type SoftTone } from '@/theme';
+import { useTheme } from '@/theme';
+import { horizonColors } from '@/theme/horizon';
 
-const KIND_ICON: Record<CalendarEventKind, keyof typeof Ionicons.glyphMap> = {
-  deadline: 'alert-circle',
-  meeting: 'videocam',
-  task: 'checkmark-done',
-};
+const CALENDAR_FIELD = 200;
+const DAY_WIDTH = 56;
+const DAY_HEIGHT = 78;
+const DAY_MARKER_WIDTH = 28;
+const MARKER_HEIGHT = 2;
+const KIND_MARK = 4;
+const ADD_ICON = 26;
+const TIME_COLUMN = 76;
+const PRESSED_OPACITY = 0.6;
 
-const KIND_TONE: Record<CalendarEventKind, SoftTone> = {
-  deadline: 'danger',
-  meeting: 'info',
-  task: 'success',
+const KIND_LABEL_KEY: Record<CalendarEventKind, string> = {
+  deadline: 'calendar.kindDeadline',
+  meeting: 'calendar.kindMeeting',
+  task: 'calendar.kindTask',
 };
 
 function formatTimeLabel(time?: string | null): string {
@@ -38,10 +43,14 @@ function monthYearLabel(dateKey: string): string {
   return new Date(`${dateKey}T00:00:00`).toLocaleDateString(localeTag(), { month: 'long', year: 'numeric' });
 }
 
+function longDayLabel(dateKey: string): string {
+  return new Date(`${dateKey}T00:00:00`).toLocaleDateString(localeTag(), { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
 export default function CalendarScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
+  const colors = horizonColors(theme.colors);
   const qc = useQueryClient();
   const { clientId, user } = useAuth();
   const [selectedDate, setSelectedDate] = useState(calendarService.defaultDate);
@@ -79,137 +88,167 @@ export default function CalendarScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
-      <DetailHeader title={monthYearLabel(selectedDate)} showBack={false} />
-
-      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.gutter, marginBottom: spacing.md }}>
-          <Text variant="footnote" color="mutedForeground">
-            {t('calendar.eventsThisDay', { count: events.data?.length ?? 0 })}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('calendar.addEvent')}
-            onPress={() => setAddingEvent(true)}
-            style={{ width: 40, height: 40, borderRadius: radius.full, backgroundColor: theme.colors.primary, alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="add" size={18} color={theme.colors.primaryForeground} />
-          </Pressable>
+    <>
+      <HorizonScreen
+        field={CALENDAR_FIELD}
+        small
+        lines={[{ text: monthYearLabel(selectedDate) }]}
+        // Said only once the day's events are known: "0 events" while loading would be a claim.
+        sub={events.data ? t('calendar.eventsThisDay', { count: events.data.length }) : undefined}
+        top={
+          <>
+            <FieldMark />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('calendar.addEvent')}
+              onPress={() => setAddingEvent(true)}
+              hitSlop={10}
+              style={({ pressed }) => ({ opacity: pressed ? PRESSED_OPACITY : 1 })}>
+              <Ionicons name="add" size={ADD_ICON} color={colors.onField} />
+            </Pressable>
+          </>
+        }
+        // A diary: nothing here is waiting for the person.
+        bridge={null}
+        safeBottom={false}>
+        {/* The days sit right under the line. The chosen day carries an ink marker, like the tab bar. */}
+        <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.colors.border }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ flexGrow: 0, minHeight: DAY_HEIGHT }}
+            contentContainerStyle={{ paddingHorizontal: HORIZON_GUTTER - (DAY_WIDTH - DAY_MARKER_WIDTH) / 2 }}>
+            {(days.data ?? []).map((d) => {
+              const active = d.date === selectedDate;
+              return (
+                <Pressable
+                  key={d.date}
+                  accessibilityRole="button"
+                  accessibilityLabel={longDayLabel(d.date)}
+                  accessibilityState={{ selected: active }}
+                  onPress={() => setSelectedDate(d.date)}
+                  style={({ pressed }) => [styles.day, { opacity: pressed ? PRESSED_OPACITY : 1 }]}>
+                  <Text
+                    variant="caption"
+                    weight="semibold"
+                    style={{ color: active ? theme.colors.foreground : theme.colors.mutedForeground }}>
+                    {d.dayLabel}
+                  </Text>
+                  <Figure size={20} style={{ textAlign: 'center' }}>
+                    {String(d.dayNumber)}
+                  </Figure>
+                  <View style={styles.kinds}>
+                    {d.eventKinds.map((kind) => (
+                      <View
+                        key={kind}
+                        style={[
+                          styles.kind,
+                          // A deadline is the one kind worth a colour.
+                          { backgroundColor: kind === 'deadline' ? theme.colors.danger : theme.colors.mutedForeground },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                  {active ? <View style={[styles.dayMarker, { backgroundColor: theme.colors.foreground }]} /> : null}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         </View>
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ flexGrow: 0 }}
-          contentContainerStyle={{ alignItems: 'center', paddingHorizontal: spacing.gutter, gap: spacing.sm, marginBottom: spacing.lg }}>
-          {!days.data
-            ? Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} width={64} height={88} radius={radius.lg} />)
-            : days.data.map((d) => {
-                const active = d.date === selectedDate;
-                return (
-                  <Pressable
-                    key={d.date}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: active }}
-                    onPress={() => setSelectedDate(d.date)}
-                    style={{
-                      width: 64,
-                      height: 88,
-                      borderRadius: radius.lg,
-                      backgroundColor: active ? theme.colors.primary : theme.colors.secondary,
-                      borderWidth: active ? 0 : 1,
-                      borderColor: theme.colors.border,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 4,
-                    }}>
-                    <Text variant="caption" weight="semibold" style={{ color: active ? theme.colors.primaryForeground : theme.colors.mutedForeground, opacity: active ? 0.8 : 1 }}>
-                      {d.dayLabel}
-                    </Text>
-                    <Text variant="title" style={{ color: active ? theme.colors.primaryForeground : theme.colors.foreground }}>
-                      {d.dayNumber}
-                    </Text>
-                    {d.eventKinds.length > 0 ? (
-                      <View style={{ flexDirection: 'row', gap: 4 }}>
-                        {d.eventKinds.map((k, i) => (
-                          <View key={i} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: active ? theme.colors.primaryForeground : softTone(theme.colors, KIND_TONE[k]).fg }} />
-                        ))}
-                      </View>
-                    ) : null}
-                  </Pressable>
-                );
-              })}
-        </ScrollView>
-
-        <View style={{ paddingHorizontal: spacing.gutter }}>
-          <Text variant="title" style={{ marginBottom: spacing.md }}>
-            {t('calendar.schedule')}
-          </Text>
-
-          {!events.data ? (
-            <Skeleton height={200} radius={radius.lg} />
-          ) : events.data.length === 0 ? (
-            <Card>
-              <Text variant="callout" color="mutedForeground">
-                {t('calendar.nothingScheduled')}
-              </Text>
-            </Card>
-          ) : (
-            <View style={{ borderLeftWidth: 2, borderLeftColor: theme.colors.border, paddingLeft: spacing.lg, gap: spacing.lg }}>
-              {events.data.map((e) => (
-                <EventCard key={e.id} event={e} onDelete={() => handleDelete(e.id)} />
-              ))}
-            </View>
-          )}
-        </View>
-      </ScrollView>
+        <SectionLabel>{t('calendar.schedule')}</SectionLabel>
+        {events.isError && !events.data ? (
+          <RuledRow title={t('common.listLoadFailed')} action={t('common.retry')} onPress={() => void events.refetch()} />
+        ) : !events.data ? (
+          <RuledRow title={t('common.loading')} />
+        ) : events.data.length === 0 ? (
+          <RuledRow title={t('calendar.nothingScheduled')} plain />
+        ) : (
+          events.data.map((e) => <EventRow key={e.id} event={e} onDelete={() => void handleDelete(e.id)} />)
+        )}
+        <RuledRow title={t('calendar.addEvent')} onPress={() => setAddingEvent(true)} />
+      </HorizonScreen>
 
       <AddEventModal
         visible={addingEvent}
-        dateLabel={new Date(`${selectedDate}T00:00:00`).toLocaleDateString(localeTag(), { weekday: 'long', month: 'long', day: 'numeric' })}
+        dateLabel={longDayLabel(selectedDate)}
         onCancel={() => setAddingEvent(false)}
         onCreate={handleCreate}
       />
+    </>
+  );
+}
+
+/** One event as a line of a timetable: the time, then what it is, then where. */
+function EventRow({ event, onDelete }: { event: CalendarEvent; onDelete: () => void }) {
+  const { t } = useTranslation();
+  const theme = useTheme();
+  return (
+    <View style={[styles.event, { borderBottomColor: theme.colors.border }]}>
+      <Text variant="subhead" weight="semibold" style={{ width: TIME_COLUMN }}>
+        {formatTimeLabel(event.eventTime)}
+      </Text>
+      <View style={styles.eventText}>
+        <Text variant="body" weight="semibold">
+          {event.title}
+        </Text>
+        <Text variant="subhead" color={event.kind === 'deadline' ? 'danger' : 'mutedForeground'}>
+          {[t(KIND_LABEL_KEY[event.kind]), event.location].filter(Boolean).join(' · ')}
+        </Text>
+        {event.description ? (
+          <Text variant="subhead" color="mutedForeground">
+            {event.description}
+          </Text>
+        ) : null}
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${t('common.delete')}: ${event.title}`}
+        onPress={onDelete}
+        hitSlop={12}
+        style={({ pressed }) => ({ opacity: pressed ? PRESSED_OPACITY : 1 })}>
+        <Text variant="footnote" weight="semibold" color="danger">
+          {t('common.delete')}
+        </Text>
+      </Pressable>
     </View>
   );
 }
 
-function EventCard({ event, onDelete }: { event: CalendarEvent; onDelete: () => void }) {
-  const { t } = useTranslation();
-  const theme = useTheme();
-  const colors = softTone(theme.colors, KIND_TONE[event.kind]);
-  return (
-    <View style={{ position: 'relative' }}>
-      <View style={{ position: 'absolute', left: -27, top: 18, width: 16, height: 16, borderRadius: 8, backgroundColor: colors.fg, borderWidth: 4, borderColor: theme.colors.background }} />
-      <Card elevated style={{ gap: spacing.sm }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <View style={{ flexDirection: 'row', gap: spacing.sm, flex: 1 }}>
-            <View style={{ width: 40, height: 40, borderRadius: radius.full, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name={KIND_ICON[event.kind]} size={18} color={colors.fg} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text variant="title">{event.title}</Text>
-              {event.location ? (
-                <Text variant="footnote" color="mutedForeground">
-                  {event.location}
-                </Text>
-              ) : null}
-            </View>
-          </View>
-          <Badge label={formatTimeLabel(event.eventTime)} bg={colors.bg} fg={colors.fg} />
-        </View>
-        {event.description ? (
-          <View style={{ borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: spacing.sm }}>
-            <Text variant="footnote" color="mutedForeground">
-              {event.description}
-            </Text>
-          </View>
-        ) : null}
-        <Pressable accessibilityRole="button" onPress={onDelete} style={{ alignSelf: 'flex-end' }}>
-          <Text variant="caption" weight="semibold" color="danger">
-            {t('common.delete')}
-          </Text>
-        </Pressable>
-      </Card>
-    </View>
-  );
-}
+const styles = StyleSheet.create({
+  day: {
+    width: DAY_WIDTH,
+    height: DAY_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  kinds: {
+    flexDirection: 'row',
+    gap: 3,
+    height: KIND_MARK,
+  },
+  kind: {
+    width: KIND_MARK,
+    height: KIND_MARK,
+    borderRadius: KIND_MARK / 2,
+  },
+  dayMarker: {
+    position: 'absolute',
+    bottom: 0,
+    width: DAY_MARKER_WIDTH,
+    height: MARKER_HEIGHT,
+  },
+  event: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+    marginHorizontal: HORIZON_GUTTER,
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  eventText: {
+    flex: 1,
+    gap: 2,
+  },
+});

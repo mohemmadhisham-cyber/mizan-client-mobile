@@ -1,21 +1,22 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
-import { Pressable, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { DetailHeader } from '@/components/navigation/detail-header';
-import { Card, EmptyState, ScreenList, Skeleton, Text } from '@/components/ui';
+import { HorizonList } from '@/components/horizon/horizon-list';
+import { FieldBack, HorizonScreen } from '@/components/horizon/horizon-screen';
+import { RuledRow } from '@/components/horizon/ruled';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { localeTag } from '@/lib/format';
 import { listMyReceipts, type MyReceipt } from '@/services/receipts';
 import { reportsService } from '@/services/reports';
-import { radius, spacing, useTheme } from '@/theme';
+import { useTheme } from '@/theme';
+import { horizonColors } from '@/theme/horizon';
+
+const ACTIVITY_FIELD = 176;
 
 type ActivityItem = {
   id: string;
-  icon: keyof typeof Ionicons.glyphMap;
   title: string;
   subtitle: string;
   at: number;
@@ -38,6 +39,8 @@ const RECEIPT_TITLE_KEY: Record<MyReceipt['status'], string> = {
  * actually happened on the account. Both sources are real and RLS-scoped. */
 export default function ActivityScreen() {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const colors = horizonColors(theme.colors);
   const router = useRouter();
 
   const receipts = useQuery({ queryKey: ['my-receipts'], queryFn: listMyReceipts });
@@ -47,14 +50,12 @@ export default function ActivityScreen() {
   const items = useMemo<ActivityItem[]>(() => {
     const r: ActivityItem[] = (receipts.data ?? []).map((rec) => ({
       id: `receipt-${rec.id}`,
-      icon: rec.status === 'rejected' ? 'alert-circle-outline' : 'receipt-outline',
       title: t(RECEIPT_TITLE_KEY[rec.status]),
       subtitle: rec.vendorName ?? t('common.receipt'),
       at: new Date(rec.createdAt).getTime(),
     }));
     const rep: ActivityItem[] = (reports.data ?? []).map((rp) => ({
       id: `report-${rp.id}`,
-      icon: 'document-text-outline',
       title: t('activity.reportPublished'),
       subtitle: rp.title,
       at: new Date(rp.publishedAt).getTime(),
@@ -64,83 +65,52 @@ export default function ActivityScreen() {
   }, [receipts.data, reports.data, t]);
 
   const loading = receipts.isLoading || reports.isLoading;
+  // With nothing to show, a failed load must not read as "nothing has happened".
+  const failed = receipts.isError || reports.isError;
   const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([receipts.refetch(), reports.refetch()]));
 
   return (
-    <ScreenList
-      header={<DetailHeader title={t('nav.activity')} />}
-      clearsTabBar={false}
-      data={items}
-      keyExtractor={activityId}
-      renderItem={(it) => (
-        <ActivityRow item={it} onOpenReport={(id) => router.push({ pathname: '/report/[id]', params: { id } })} />
-      )}
-      refreshing={refreshing}
-      onRefresh={onRefresh}
-      listHeader={
-        // The list adds `spacing.sm` under the header; the margin makes up the rest of `spacing.lg`.
-        <View style={{ gap: 4, marginTop: spacing.sm, marginBottom: spacing.lg - spacing.sm }}>
-          <Text variant="h2" weight="semibold">
-            {t('activity.title')}
-          </Text>
-          <Text variant="body" color="mutedForeground">
-            {t('activity.subtitle')}
-          </Text>
-        </View>
-      }
-      listEmpty={
-        loading ? (
-          <View style={{ gap: spacing.md }}>
-            <Skeleton height={64} radius={radius.lg} />
-            <Skeleton height={64} radius={radius.lg} />
-            <Skeleton height={64} radius={radius.lg} />
-          </View>
-        ) : (
-          <EmptyState icon="pulse-outline" title={t('activity.emptyTitle')} message={t('activity.emptyBody')} />
-        )
-      }
-    />
+    <HorizonScreen
+      field={ACTIVITY_FIELD}
+      small
+      scroll={false}
+      safeBottom={false}
+      lines={[{ text: t('activity.title') }]}
+      sub={t('activity.subtitle')}
+      top={<FieldBack colors={colors} />}
+      // A history: nothing here is waiting for the person.
+      bridge={null}>
+      <HorizonList
+        data={items}
+        keyExtractor={activityId}
+        renderItem={(item) => {
+          const { reportId } = item;
+          return (
+            <RuledRow
+              title={item.title}
+              meta={`${item.subtitle} · ${dayLabel(item.at)}`}
+              onPress={reportId ? () => router.push({ pathname: '/report/[id]', params: { id: reportId } }) : undefined}
+            />
+          );
+        }}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        listEmpty={
+          loading ? (
+            <RuledRow title={t('common.loading')} />
+          ) : failed ? (
+            <RuledRow title={t('common.listLoadFailed')} action={t('common.retry')} onPress={onRefresh} />
+          ) : (
+            <RuledRow title={t('activity.emptyTitle')} meta={t('activity.emptyBody')} plain />
+          )
+        }
+      />
+    </HorizonScreen>
   );
 }
 
 const activityId = (it: ActivityItem): string => it.id;
 
-function ActivityRow({ item, onOpenReport }: { item: ActivityItem; onOpenReport: (reportId: string) => void }) {
-  const theme = useTheme();
-  const reportId = item.reportId;
-  const row = (
-    <Card padded={false} style={{ padding: spacing.base }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-        <View
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: radius.full,
-            backgroundColor: theme.colors.secondary,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-          <Ionicons name={item.icon} size={18} color={theme.colors.mutedForeground} />
-        </View>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text variant="callout" weight="semibold" numberOfLines={1}>
-            {item.title}
-          </Text>
-          <Text variant="footnote" color="mutedForeground" numberOfLines={1}>
-            {item.subtitle}
-          </Text>
-        </View>
-        <Text variant="caption" color="mutedForeground">
-          {new Date(item.at).toLocaleDateString(localeTag(), { day: 'numeric', month: 'short' })}
-        </Text>
-      </View>
-    </Card>
-  );
-  return reportId ? (
-    <Pressable accessibilityRole="button" onPress={() => onOpenReport(reportId)}>
-      {row}
-    </Pressable>
-  ) : (
-    row
-  );
+function dayLabel(at: number): string {
+  return new Date(at).toLocaleDateString(localeTag(), { day: 'numeric', month: 'short' });
 }
