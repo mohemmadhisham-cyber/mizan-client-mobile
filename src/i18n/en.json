@@ -553,5 +553,9 @@
     "noneWaiting": "Nothing is waiting.",
     "review": "Review",
     "checkFailed": "Could not check."
+  },
+  "horizonMessages": {
+    "title": "Your accountant",
+    "sub": "Text, photos and voice messages."
   }
 }

@@ -625,5 +625,9 @@
     "noneWaiting": "لا شيء بانتظارك.",
     "review": "مراجعة",
     "checkFailed": "تعذّر التحقق."
+  },
+  "horizonMessages": {
+    "title": "محاسبك",
+    "sub": "نصوص وصور ورسائل صوتية."
   }
 }

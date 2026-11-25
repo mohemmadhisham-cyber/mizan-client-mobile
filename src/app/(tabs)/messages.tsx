@@ -1,37 +1,41 @@
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AccountantChatView } from '@/components/accountant-chat/accountant-chat-view';
-import { Text } from '@/components/ui';
+import { FieldMark, HorizonScreen } from '@/components/horizon/horizon-screen';
 import { useAuth } from '@/lib/auth-context';
-import { spacing, useTheme } from '@/theme';
+
+/** Height of the field: a one-line title and one quiet line. Kept short so the conversation has the room. */
+const MESSAGES_FIELD = 148;
 
 /**
- * Messages with the accountant, as its own tab. The conversation itself
- * (text, photos, voice messages) is the existing chat view, unchanged.
+ * Messages with the accountant, as its own tab: text, photos and voice
+ * messages. The conversation is the shared chat view; this screen gives it the
+ * frame. No bridge here: nothing on this screen is waiting for a decision.
  */
 export default function MessagesScreen() {
   const { t } = useTranslation();
-  const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { user, clientId, firmId } = useAuth();
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
-      <Text
-        accessibilityRole="header"
-        variant="h2"
-        weight="semibold"
-        style={{
-          paddingHorizontal: spacing.gutter,
-          paddingVertical: spacing.md,
-          borderBottomWidth: 1,
-          borderBottomColor: theme.colors.border,
-        }}>
-        {t('nav.messages')}
-      </Text>
-      <AccountantChatView clientId={clientId} firmId={firmId} userId={user?.id} safeBottom={false} />
-    </View>
+    <HorizonScreen
+      field={MESSAGES_FIELD}
+      small
+      scroll={false}
+      safeBottom={false}
+      lines={[{ text: t('horizonMessages.title') }]}
+      sub={t('horizonMessages.sub')}
+      top={<FieldMark />}
+      bridge={null}>
+      <AccountantChatView
+        clientId={clientId}
+        firmId={firmId}
+        userId={user?.id}
+        safeBottom={false}
+        // The conversation starts below the field, so the keyboard must clear that much.
+        keyboardOffset={insets.top + MESSAGES_FIELD}
+      />
+    </HorizonScreen>
   );
 }

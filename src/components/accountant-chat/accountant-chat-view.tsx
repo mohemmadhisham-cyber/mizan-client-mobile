@@ -18,9 +18,11 @@ interface AccountantChatViewProps {
   userId: string | undefined;
   /** Keep the composer clear of the home indicator (default true). False inside a tab: the tab bar already does. */
   safeBottom?: boolean;
+  /** Distance from the top of the screen to this view, so the keyboard clears it. Defaults to the status bar. */
+  keyboardOffset?: number;
 }
 
-export function AccountantChatView({ clientId, firmId, userId, safeBottom = true }: AccountantChatViewProps) {
+export function AccountantChatView({ clientId, firmId, userId, safeBottom = true, keyboardOffset }: AccountantChatViewProps) {
   const { t } = useTranslation();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
@@ -104,7 +106,7 @@ export function AccountantChatView({ clientId, firmId, userId, safeBottom = true
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={insets.top}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={keyboardOffset ?? insets.top}>
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={{ padding: spacing.gutter, gap: spacing.md, flexGrow: 1 }}
@@ -150,10 +152,10 @@ export function AccountantChatView({ clientId, firmId, userId, safeBottom = true
             backgroundColor: theme.colors.card,
             borderWidth: 1,
             borderColor: theme.colors.border,
-            borderRadius: radius.full,
-            paddingLeft: spacing.base,
-            paddingRight: spacing.xs,
-            minHeight: 56,
+            borderRadius: radius.md,
+            paddingStart: spacing.base,
+            paddingEnd: spacing.xs,
+            minHeight: 52,
           }}>
           <TextInput
             value={input}
@@ -180,9 +182,9 @@ export function AccountantChatView({ clientId, firmId, userId, safeBottom = true
             disabled={(!input.trim() && !pending) || busy}
             onPress={send}
             style={{
-              width: 36,
-              height: 36,
-              borderRadius: radius.full,
+              width: 40,
+              height: 40,
+              borderRadius: radius.sm,
               backgroundColor: theme.colors.primary,
               alignItems: 'center',
               justifyContent: 'center',
@@ -195,6 +197,9 @@ export function AccountantChatView({ clientId, firmId, userId, safeBottom = true
     </KeyboardAvoidingView>
   );
 }
+
+const BUBBLE_RADIUS = 14;
+const BUBBLE_TAIL = 3;
 
 function MessageBubble({ message, isSelf }: { message: ChatMessage; isSelf: boolean }) {
   const theme = useTheme();
@@ -216,20 +221,23 @@ function MessageBubble({ message, isSelf }: { message: ChatMessage; isSelf: bool
     <View style={{ alignSelf: isSelf ? 'flex-end' : 'flex-start', maxWidth: '80%', gap: 4 }}>
       <View
         style={{
-          backgroundColor: isSelf ? theme.colors.infoSoft : theme.colors.card,
-          borderRadius: radius.xl,
-          borderBottomRightRadius: isSelf ? 4 : radius.xl,
-          borderTopLeftRadius: isSelf ? radius.xl : 4,
+          backgroundColor: isSelf ? theme.colors.brand : 'transparent',
+          borderWidth: 1,
+          borderColor: isSelf ? theme.colors.brand : theme.colors.border,
+          borderRadius: BUBBLE_RADIUS,
+          // The tight corner points at the speaker; logical, so it mirrors in Arabic.
+          borderBottomEndRadius: isSelf ? BUBBLE_TAIL : BUBBLE_RADIUS,
+          borderBottomStartRadius: isSelf ? BUBBLE_RADIUS : BUBBLE_TAIL,
           paddingHorizontal: spacing.base,
           paddingVertical: spacing.md,
         }}>
         {isAudio && attachmentUrl ? (
-          <VoiceMessagePlayer uri={attachmentUrl} tint={isSelf ? theme.colors.infoSoftForeground : theme.colors.foreground} />
+          <VoiceMessagePlayer uri={attachmentUrl} tint={isSelf ? theme.colors.brandForeground : theme.colors.foreground} />
         ) : attachmentUrl ? (
           <Image source={{ uri: attachmentUrl }} style={{ width: 160, height: 160, borderRadius: radius.sm, marginBottom: spacing.xs }} />
         ) : null}
         {!isAudio ? (
-          <Text variant="body" style={{ color: isSelf ? theme.colors.infoSoftForeground : theme.colors.foreground }}>
+          <Text variant="body" style={{ color: isSelf ? theme.colors.brandForeground : theme.colors.foreground }}>
             {message.body}
           </Text>
         ) : null}
