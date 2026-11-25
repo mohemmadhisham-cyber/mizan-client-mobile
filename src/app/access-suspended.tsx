@@ -1,15 +1,19 @@
 import { useRouter } from 'expo-router';
 import { openBrowserAsync } from 'expo-web-browser';
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { AmbientBackdrop } from '@/components/auth/ambient-backdrop';
-import { EmptyState, Text } from '@/components/ui';
+import { Cta } from '@/components/horizon/cta';
+import { BRIDGE_WIDTH, FieldMark, HORIZON_GUTTER, HorizonScreen } from '@/components/horizon/horizon-screen';
+import { Text } from '@/components/ui';
 import { EXPO_PUBLIC_WEB_APP_URL } from '@/lib/env';
 import { useAuth } from '@/lib/auth-context';
 import { createRenewalLink } from '@/services/client-billing';
-import { spacing, useTheme } from '@/theme';
+
+const SUSPENDED_FIELD = 220;
+const GROUND_TOP = 22;
+const GROUND_GAP = 16;
 
 /**
  * Shown when a session has a linked client company whose `clients.status`
@@ -19,7 +23,6 @@ import { spacing, useTheme } from '@/theme';
  */
 export default function AccessSuspendedScreen() {
   const { t } = useTranslation();
-  const theme = useTheme();
   const { refresh, signOut } = useAuth();
   const router = useRouter();
   const [checking, setChecking] = useState(false);
@@ -45,41 +48,34 @@ export default function AccessSuspendedScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <AmbientBackdrop tone="warning" />
-      <View style={{ flex: 1 }}>
-        <EmptyState
-          icon="lock-closed-outline"
-          title={t('gates.suspendedTitle')}
-          message={t('gates.suspendedBody')}
-          actionLabel={renewing ? t('common.opening') : t('gates.renewNow')}
-          onAction={renewNow}
-        />
+    <HorizonScreen
+      field={SUSPENDED_FIELD}
+      small
+      lines={[{ text: t('horizonAuth.suspendedA') }, { text: t('horizonAuth.suspendedB'), soft: true }]}
+      sub={t('gates.suspendedTitle')}
+      top={<FieldMark />}
+      // Renewing is the person's to do.
+      bridge={{ start: HORIZON_GUTTER, width: BRIDGE_WIDTH }}>
+      <View style={{ paddingHorizontal: HORIZON_GUTTER, paddingTop: GROUND_TOP, gap: GROUND_GAP }}>
+        <Text variant="body">{t('gates.suspendedBody')}</Text>
         {renewError ? (
-          <Text variant="footnote" color="danger" center style={{ marginHorizontal: spacing.gutter, marginBottom: spacing.md }}>
+          <Text variant="footnote" color="danger" accessibilityLiveRegion="polite">
             {renewError}
           </Text>
         ) : null}
+        <Cta title={t('gates.renewNow')} busy={renewing} disabled={checking} onPress={() => void renewNow()} />
+        <Cta
+          kind="outline"
+          title={t('gates.renewedCheckAgain')}
+          busy={checking}
+          disabled={renewing}
+          onPress={() => void checkAgain()}
+        />
+        <View>
+          <Cta kind="quiet" title={t('auth.signOut')} onPress={() => void signOut()} />
+          <Cta kind="quiet" title={t('support.deleteEntry')} onPress={() => router.push('/delete-account')} />
+        </View>
       </View>
-      <Pressable accessibilityRole="button" onPress={checkAgain} style={{ alignSelf: 'center', paddingBottom: spacing.md }}>
-        <Text variant="footnote" color="primary">
-          {checking ? t('common.checking') : t('gates.renewedCheckAgain')}
-        </Text>
-      </Pressable>
-      <Pressable accessibilityRole="button" onPress={() => void signOut()} style={{ alignSelf: 'center', paddingBottom: spacing.xl }}>
-        <Text variant="footnote" color="mutedForeground">
-          {t('auth.signOut')}
-        </Text>
-      </Pressable>
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => router.push('/delete-account')}
-        hitSlop={8}
-        style={{ alignSelf: 'center', paddingBottom: spacing.xl }}>
-        <Text variant="footnote" color="mutedForeground">
-          {t('support.deleteEntry')}
-        </Text>
-      </Pressable>
-    </View>
+    </HorizonScreen>
   );
 }

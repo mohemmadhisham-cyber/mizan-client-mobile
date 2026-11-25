@@ -235,6 +235,9 @@ export function HorizonScreen({
           <ScrollView
             showsVerticalScrollIndicator={false}
             alwaysBounceVertical={onRefresh !== undefined}
+            // A button under a text field answers the first tap, with the keyboard still up.
+            keyboardShouldPersistTaps="handled"
+            automaticallyAdjustKeyboardInsets
             refreshControl={
               onRefresh ? <AppRefreshControl refreshing={refreshing} onRefresh={onRefresh} /> : undefined
             }

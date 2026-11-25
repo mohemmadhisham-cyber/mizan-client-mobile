@@ -631,6 +631,20 @@
     "review": "مراجعة",
     "checkFailed": "تعذّر التحقق."
   },
+  "horizonAuth": {
+    "emailA": "سجّل الدخول",
+    "emailB": "ببريدك الإلكتروني.",
+    "emailSub": "نرسل لك رمزًا من 6 أرقام. بلا كلمة مرور.",
+    "emailHelp": "ليس لديك حساب بعد؟ اطلب من محاسبك إرسال دعوة لك.",
+    "verifyA": "أدخل",
+    "verifyB": "الرمز.",
+    "codeLabel": "رمز من 6 أرقام",
+    "resendIn": "إعادة إرسال الرمز بعد {{seconds}} ث",
+    "pendingA": "بانتظار",
+    "pendingB": "محاسبك.",
+    "suspendedA": "الوصول",
+    "suspendedB": "متوقف مؤقتًا."
+  },
   "horizonMessages": {
     "title": "محاسبك",
     "sub": "نصوص وصور ورسائل صوتية."

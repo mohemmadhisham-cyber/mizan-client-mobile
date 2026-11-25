@@ -1,6 +1,7 @@
 import { type ComponentRef, useRef } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 
+import { Figure } from '@/components/horizon/ruled';
 import { Text } from '@/components/ui';
 import { radius, useTheme } from '@/theme';
 
@@ -10,7 +11,14 @@ interface OtpBoxInputProps {
   value: string;
   onChangeText: (value: string) => void;
   onSubmit?: () => void;
+  /** Six ruled slots in place of six boxes, for a Horizon ground. */
+  ruled?: boolean;
+  /** What a screen reader calls the field. The boxes themselves are decoration. */
+  accessibilityLabel?: string;
 }
+
+const RULE_WIDTH = 2;
+const RULED_DIGIT_SIZE = 28;
 
 /**
  * Figma "OTP Verification" boxed code display (6 segments, active box
@@ -18,17 +26,38 @@ interface OtpBoxInputProps {
  * keyboard (and iOS/Android SMS-code autofill) works. The input itself is
  * transparent and overlaid on the boxes rather than shown directly.
  */
-export function OtpBoxInput({ value, onChangeText, onSubmit }: OtpBoxInputProps) {
+export function OtpBoxInput({ value, onChangeText, onSubmit, ruled = false, accessibilityLabel }: OtpBoxInputProps) {
   const theme = useTheme();
   const inputRef = useRef<ComponentRef<typeof TextInput>>(null);
   const activeIndex = Math.min(value.length, BOX_COUNT - 1);
 
   return (
-    <Pressable onPress={() => inputRef.current?.focus()} style={{ width: '100%' }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
+    <Pressable onPress={() => inputRef.current?.focus()} accessible={false} style={{ width: '100%' }}>
+      <View
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        // A code reads left to right in both languages.
+        style={{ flexDirection: 'row', direction: 'ltr', justifyContent: 'space-between', width: '100%' }}>
         {Array.from({ length: BOX_COUNT }).map((_, i) => {
           const filled = i < value.length;
           const active = i === activeIndex && value.length < BOX_COUNT;
+          if (ruled) {
+            return (
+              <View
+                key={i}
+                style={{
+                  width: 44,
+                  height: 56,
+                  // The rule keeps its weight and changes colour, so nothing shifts.
+                  borderBottomWidth: RULE_WIDTH,
+                  borderBottomColor: active || filled ? theme.colors.foreground : theme.colors.border,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                <Figure size={RULED_DIGIT_SIZE}>{filled ? value[i] : ''}</Figure>
+              </View>
+            );
+          }
           return (
             <View
               key={i}
@@ -51,6 +80,7 @@ export function OtpBoxInput({ value, onChangeText, onSubmit }: OtpBoxInputProps)
       </View>
       <TextInput
         ref={inputRef}
+        accessibilityLabel={accessibilityLabel}
         value={value}
         onChangeText={(v) => onChangeText(v.replace(/[^0-9]/g, '').slice(0, BOX_COUNT))}
         keyboardType="number-pad"
