@@ -165,7 +165,12 @@
     "team": "الفريق",
     "companies": "الشركات",
     "notifications": "الإشعارات",
-    "settings": "الإعدادات"
+    "settings": "الإعدادات",
+    "titleA": "ما تبقّى",
+    "titleB": "من حسابك.",
+    "groupBooks": "دفاترك",
+    "groupCompany": "شركتك",
+    "groupApp": "التطبيق"
   },
   "tasks": {
     "title": "مركز الإجراءات",

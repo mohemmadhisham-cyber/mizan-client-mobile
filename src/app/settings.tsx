@@ -1,41 +1,51 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Alert, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { DetailHeader } from '@/components/navigation/detail-header';
-import { Button, Card, Text } from '@/components/ui';
+import { Cta } from '@/components/horizon/cta';
+import { FieldBack, HORIZON_GUTTER, HorizonScreen } from '@/components/horizon/horizon-screen';
+import { ChoiceRow, RuledRow, SectionLabel } from '@/components/horizon/ruled';
 import i18n, { setAppLocale, type AppLocale } from '@/i18n';
 import { hasAiConsent, setAiConsent } from '@/lib/ai-consent';
 import { useAuth } from '@/lib/auth-context';
-import { chevronForward } from '@/lib/direction';
 import { supabase } from '@/lib/supabase';
-import { radius, spacing, useTheme, useThemeControls, type ThemeMode } from '@/theme';
+import { useTheme, useThemeControls, type ThemeMode } from '@/theme';
+import { horizonColors } from '@/theme/horizon';
+
+const SETTINGS_FIELD = 176;
+const SIGN_OUT_SPACE_ABOVE = 28;
 
 const LANGUAGES: { code: AppLocale; label: string }[] = [
   { code: 'en', label: 'English' },
   { code: 'ar', label: 'العربية' },
 ];
 
-const MODES: { key: ThemeMode; labelKey: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { key: 'system', labelKey: 'settings.modeSystem', icon: 'phone-portrait-outline' },
-  { key: 'light', labelKey: 'settings.modeLight', icon: 'sunny-outline' },
-  { key: 'dark', labelKey: 'settings.modeDark', icon: 'moon-outline' },
+const MODES: { key: ThemeMode; labelKey: string }[] = [
+  { key: 'system', labelKey: 'settings.modeSystem' },
+  { key: 'light', labelKey: 'settings.modeLight' },
+  { key: 'dark', labelKey: 'settings.modeDark' },
 ];
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
+  const colors = horizonColors(theme.colors);
   const router = useRouter();
   const { mode, setMode } = useThemeControls();
   const { user, signOut } = useAuth();
-  const [aiConsented, setAiConsented] = useState(() => hasAiConsent(user?.id));
+  const userId = user?.id;
+  const [aiConsented, setAiConsented] = useState(() => hasAiConsent(userId));
+
+  // Read again on return: the agreement may have been given on another screen
+  // while this one stayed open underneath.
+  useFocusEffect(
+    useCallback(() => {
+      setAiConsented(hasAiConsent(userId));
+    }, [userId]),
+  );
 
   function withdrawAiConsent() {
-    const userId = user?.id;
     if (!userId) return;
     Alert.alert(t('support.aiWithdraw'), t('support.aiWithdrawBody'), [
       { text: t('common.cancel'), style: 'cancel' },
@@ -81,145 +91,55 @@ export default function SettingsScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
-      <DetailHeader title={t('settings.title')} />
-      <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.gutter, paddingBottom: insets.bottom + spacing.xl, gap: spacing.lg }}>
-        <Card elevated style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <View style={{ width: 48, height: 48, borderRadius: radius.full, backgroundColor: theme.colors.primary, alignItems: 'center', justifyContent: 'center' }}>
-            <Text variant="title" weight="bold" style={{ color: theme.colors.primaryForeground }}>
-              {(user?.email?.[0] ?? 'M').toUpperCase()}
-            </Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text variant="callout" weight="semibold" numberOfLines={1}>
-              {user?.email ?? t('settings.signedIn')}
-            </Text>
-            <Text variant="footnote" color="mutedForeground">
-              {t('settings.clientAccount')}
-            </Text>
-          </View>
-        </Card>
+    <HorizonScreen
+      field={SETTINGS_FIELD}
+      small
+      lines={[{ text: t('settings.title') }]}
+      sub={user?.email ?? t('settings.signedIn')}
+      top={<FieldBack colors={colors} />}
+      // Nothing on this screen is waiting for the person.
+      bridge={null}>
+      <SectionLabel>{t('settings.language')}</SectionLabel>
+      <View accessibilityRole="radiogroup" accessibilityLabel={t('settings.language')}>
+        {LANGUAGES.map((language) => (
+          <ChoiceRow
+            key={language.code}
+            title={language.label}
+            selected={i18n.language === language.code}
+            onPress={() => changeLanguage(language.code)}
+          />
+        ))}
+      </View>
 
-        <View style={{ gap: spacing.sm }}>
-          <Text variant="title">{t('settings.language')}</Text>
-          <Card padded={false} style={{ overflow: 'hidden' }}>
-            {LANGUAGES.map((l, i) => (
-              <SelectRow
-                key={l.code}
-                label={l.label}
-                selected={i18n.language === l.code}
-                isLast={i === LANGUAGES.length - 1}
-                onPress={() => changeLanguage(l.code)}
-              />
-            ))}
-          </Card>
-        </View>
+      <SectionLabel>{t('settings.appearance')}</SectionLabel>
+      <View accessibilityRole="radiogroup" accessibilityLabel={t('settings.appearance')}>
+        {MODES.map((option) => (
+          <ChoiceRow
+            key={option.key}
+            title={t(option.labelKey)}
+            selected={mode === option.key}
+            onPress={() => setMode(option.key)}
+          />
+        ))}
+      </View>
 
-        <View style={{ gap: spacing.sm }}>
-          <Text variant="title">{t('settings.appearance')}</Text>
-          <Card padded={false} style={{ overflow: 'hidden' }}>
-            {MODES.map((m, i) => (
-              <SelectRow
-                key={m.key}
-                label={t(m.labelKey)}
-                icon={m.icon}
-                selected={mode === m.key}
-                isLast={i === MODES.length - 1}
-                onPress={() => setMode(m.key)}
-              />
-            ))}
-          </Card>
-        </View>
+      <SectionLabel>{t('settings.security')}</SectionLabel>
+      <RuledRow title={t('settings.backupCodes')} onPress={() => router.push('/backup-codes')} />
+      <RuledRow title={t('settings.activeSessions')} onPress={handleActiveSessions} />
 
-        <View style={{ gap: spacing.sm }}>
-          <Text variant="title">{t('settings.security')}</Text>
-          <Card padded={false} style={{ overflow: 'hidden' }}>
-            <ActionRow icon="finger-print-outline" label={t('settings.backupCodes')} onPress={() => router.push('/backup-codes')} />
-            <ActionRow icon="phone-portrait-outline" label={t('settings.activeSessions')} onPress={handleActiveSessions} isLast />
-          </Card>
-        </View>
+      <SectionLabel>{t('settings.about')}</SectionLabel>
+      <RuledRow title={t('settings.privacyPolicy')} onPress={() => router.push('/privacy-policy')} />
+      <RuledRow title={t('settings.termsOfService')} onPress={() => router.push('/terms-of-service')} />
 
-        <View style={{ gap: spacing.sm }}>
-          <Text variant="title">{t('settings.about')}</Text>
-          <Card padded={false} style={{ overflow: 'hidden' }}>
-            <ActionRow icon="document-text-outline" label={t('settings.privacyPolicy')} onPress={() => router.push('/privacy-policy')} />
-            <ActionRow icon="document-text-outline" label={t('settings.termsOfService')} onPress={() => router.push('/terms-of-service')} isLast />
-          </Card>
-        </View>
+      <SectionLabel>{t('support.helpAndPrivacy')}</SectionLabel>
+      <RuledRow title={t('support.helpTitle')} onPress={() => router.push('/help')} />
+      <RuledRow title={t('support.aboutApp')} onPress={() => router.push('/about')} />
+      {aiConsented ? <RuledRow title={t('support.aiWithdraw')} onPress={withdrawAiConsent} /> : null}
+      <RuledRow title={t('support.deleteEntry')} onPress={() => router.push('/delete-account')} />
 
-        <View style={{ gap: spacing.sm }}>
-          <Text variant="title">{t('support.helpAndPrivacy')}</Text>
-          <Card padded={false} style={{ overflow: 'hidden' }}>
-            <ActionRow icon="help-circle-outline" label={t('support.helpTitle')} onPress={() => router.push('/help')} />
-            <ActionRow icon="information-circle-outline" label={t('support.aboutApp')} onPress={() => router.push('/about')} />
-            {aiConsented ? (
-              <ActionRow icon="sparkles-outline" label={t('support.aiWithdraw')} onPress={withdrawAiConsent} />
-            ) : null}
-            <ActionRow icon="trash-outline" label={t('support.deleteEntry')} onPress={() => router.push('/delete-account')} isLast />
-          </Card>
-        </View>
-
-        <Button title={t('auth.signOut')} variant="secondary" icon="log-out-outline" onPress={signOut} fullWidth />
-      </ScrollView>
-    </View>
-  );
-}
-
-function SelectRow({
-  label,
-  icon,
-  selected,
-  isLast,
-  onPress,
-}: {
-  label: string;
-  icon?: keyof typeof Ionicons.glyphMap;
-  selected: boolean;
-  isLast: boolean;
-  onPress: () => void;
-}) {
-  const theme = useTheme();
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.sm,
-        padding: spacing.base,
-        borderBottomWidth: isLast ? 0 : 1,
-        borderBottomColor: theme.colors.border,
-      }}>
-      {icon ? <Ionicons name={icon} size={18} color={theme.colors.mutedForeground} /> : null}
-      <Text variant="body" weight="medium" style={{ flex: 1 }}>
-        {label}
-      </Text>
-      <Pressable accessibilityRole="radio" accessibilityState={{ checked: selected }} onPress={onPress} hitSlop={8}>
-        <Ionicons name={selected ? 'radio-button-on' : 'radio-button-off'} size={20} color={selected ? theme.colors.primary : theme.colors.mutedForeground} />
-      </Pressable>
-    </View>
-  );
-}
-
-function ActionRow({ icon, label, onPress, isLast }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; isLast?: boolean }) {
-  const theme = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => ({
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.md,
-        padding: spacing.base,
-        borderBottomWidth: isLast ? 0 : 1,
-        borderBottomColor: theme.colors.border,
-        opacity: pressed ? 0.6 : 1,
-      })}>
-      <Ionicons name={icon} size={18} color={theme.colors.mutedForeground} />
-      <Text variant="body" weight="medium" style={{ flex: 1 }}>
-        {label}
-      </Text>
-      <Ionicons name={chevronForward()} size={16} color={theme.colors.mutedForeground} />
-    </Pressable>
+      <View style={{ paddingHorizontal: HORIZON_GUTTER, paddingTop: SIGN_OUT_SPACE_ABOVE }}>
+        <Cta kind="outline" title={t('auth.signOut')} onPress={() => void signOut()} />
+      </View>
+    </HorizonScreen>
   );
 }

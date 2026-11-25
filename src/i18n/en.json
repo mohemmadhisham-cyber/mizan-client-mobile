@@ -157,7 +157,12 @@
     "team": "Team",
     "companies": "Companies",
     "notifications": "Notifications",
-    "settings": "Settings"
+    "settings": "Settings",
+    "titleA": "The rest",
+    "titleB": "of your account.",
+    "groupBooks": "Your books",
+    "groupCompany": "Your company",
+    "groupApp": "The app"
   },
   "tasks": {
     "title": "Action Center",
