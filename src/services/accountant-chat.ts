@@ -19,6 +19,8 @@ export interface ChatAttachment {
   uri: string;
   mimeType: string;
   fileName?: string;
+  /** The file at `uri` is a copy the app made for sending: it is deleted once it is sent or dropped. */
+  ownedCopy?: boolean;
 }
 
 interface MessageRow {
@@ -42,19 +44,63 @@ export function isImageMime(mime: string | null): boolean {
   return !!mime && mime.startsWith('image/');
 }
 
+const IMAGE_ENDING = /\.(jpe?g|png|heic|webp)$/i;
+
+/**
+ * Whether a stored attachment is a picture. Its kind says so; an old message
+ * with no kind recorded is judged by the ending of its stored name, since
+ * pictures were the only attachments before kinds were recorded.
+ */
+export function isImageAttachment(mime: string | null, path: string | null): boolean {
+  if (mime) return isImageMime(mime);
+  return !!path && IMAGE_ENDING.test(path);
+}
+
+/**
+ * The kind of a file chosen as a document: what the phone reports when it is
+ * a kind the chat takes, and otherwise judged by a `.pdf` ending. Null when
+ * it cannot be told: the file is then refused, never assumed to be a PDF.
+ */
+export function resolveDocumentMime(asset: { mimeType?: string | null; name?: string | null }): string | null {
+  if (asset.mimeType && (DOCUMENT_MIME_TYPES as readonly string[]).includes(asset.mimeType)) return asset.mimeType;
+  if (!asset.mimeType && asset.name && /\.pdf$/i.test(asset.name)) return 'application/pdf';
+  return null;
+}
+
+const PDF_START = [0x25, 0x50, 0x44, 0x46, 0x2d]; // "%PDF-"
+
+/** A PDF says so in its first five bytes. A file that claims to be one and does not is not sent. */
+export function looksLikePdf(bytes: ArrayBuffer): boolean {
+  const start = new Uint8Array(bytes.slice(0, PDF_START.length));
+  return start.length === PDF_START.length && PDF_START.every((byte, index) => start[index] === byte);
+}
+
+/** Deletes a copy the app made of a chosen file. Best effort: the phone clears its cache anyway. */
+export function deleteOwnedCopy(attachment: ChatAttachment | null): void {
+  if (!attachment?.ownedCopy) return;
+  FileSystem.deleteAsync(attachment.uri, { idempotent: true }).catch(() => {});
+}
+
 /** The kinds of document the chat takes, for the file chooser. Images and voice have their own ways in. */
 export const DOCUMENT_MIME_TYPES = ['application/pdf'] as const;
 
+const EXTENSION_FOR_MIME: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/heic': 'heic',
+  'image/webp': 'webp',
+  'application/pdf': 'pdf',
+  'audio/m4a': 'm4a',
+  'audio/mp4': 'm4a',
+};
+
 /**
- * The ending a stored file gets. It comes from the file's own name when that
- * ends in a few plain letters or digits, and from its kind otherwise. A file
- * name is chosen by whoever made the file, so nothing else of it is used.
+ * The ending a stored file gets: decided by its kind alone. The file's own
+ * name is chosen by whoever made the file and is never used, so a file called
+ * "statement.pdf.exe" is stored as what it was sent as, not as what it is called.
  */
-export function storedExtension(fileName: string | undefined, mimeType: string): string {
-  const fromName = fileName?.includes('.') ? fileName.split('.').pop()?.toLowerCase() : undefined;
-  if (fromName && /^[a-z0-9]{1,5}$/.test(fromName)) return fromName;
-  const fromKind = mimeType.split('/')[1]?.toLowerCase();
-  return fromKind && /^[a-z0-9]{1,5}$/.test(fromKind) ? fromKind : 'bin';
+export function storedExtension(mimeType: string): string {
+  return EXTENSION_FOR_MIME[mimeType] ?? 'bin';
 }
 
 function fromRow(r: MessageRow): ChatMessage {
@@ -101,9 +147,14 @@ export const accountantChatService = {
       if (!info.exists) return { ok: false, error: i18n.t('errors.fileUnreadable') };
       if ((info.size ?? 0) > MAX_ATTACHMENT_BYTES) return { ok: false, error: i18n.t('errors.attachmentTooLarge') };
 
-      const ext = storedExtension(attachment.fileName, attachment.mimeType);
+      const ext = storedExtension(attachment.mimeType);
       const path = `${firmId}/${clientId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const bytes = await fetch(attachment.uri).then((r) => r.arrayBuffer());
+      // Measured again on the bytes themselves: the phone does not always report a size.
+      if (bytes.byteLength > MAX_ATTACHMENT_BYTES) return { ok: false, error: i18n.t('errors.attachmentTooLarge') };
+      if (attachment.mimeType === 'application/pdf' && !looksLikePdf(bytes)) {
+        return { ok: false, error: i18n.t('errors.fileTypeUnsupported') };
+      }
       const { error: uploadError } = await supabase.storage.from('chat-attachments').upload(path, bytes, {
         contentType: attachment.mimeType,
       });

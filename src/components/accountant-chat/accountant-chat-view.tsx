@@ -14,9 +14,12 @@ import i18n from '@/i18n';
 import { localeTag } from '@/lib/format';
 import {
   accountantChatService,
+  deleteOwnedCopy,
   DOCUMENT_MIME_TYPES,
   isAudioMime,
+  isImageAttachment,
   isImageMime,
+  resolveDocumentMime,
   type ChatAttachment,
   type ChatMessage,
 } from '@/services/accountant-chat';
@@ -62,13 +65,26 @@ export function AccountantChatView({ clientId, firmId, userId, safeBottom = true
     scrollRef.current?.scrollToEnd({ animated: true });
   }, [messages]);
 
+  // The attachment waiting to be sent. A document is a copy the app made of a client's file:
+  // it is deleted as soon as it is sent, dropped or replaced, not left in the cache.
+  function replacePending(next: ChatAttachment | null) {
+    deleteOwnedCopy(pending);
+    setPending(next);
+  }
+
   // Attach: a photo from the library, or a document from the phone's files.
   function pickAttachment() {
-    Alert.alert(t('common.attach'), undefined, [
-      { text: t('chat.attachPhoto'), onPress: () => void pickPhoto() },
-      { text: t('chat.attachDocument'), onPress: () => void pickDocument() },
-      { text: t('common.cancel'), style: 'cancel' },
-    ]);
+    Alert.alert(
+      t('common.attach'),
+      undefined,
+      [
+        { text: t('chat.attachPhoto'), onPress: () => void pickPhoto() },
+        { text: t('chat.attachDocument'), onPress: () => void pickDocument() },
+        { text: t('common.cancel'), style: 'cancel' },
+      ],
+      // On Android a tap outside closes it, as Cancel does.
+      { cancelable: true },
+    );
   }
 
   async function pickDocument() {
@@ -81,7 +97,16 @@ export function AccountantChatView({ clientId, firmId, userId, safeBottom = true
       });
       if (result.canceled || !result.assets?.[0]) return;
       const asset = result.assets[0];
-      setPending({ uri: asset.uri, mimeType: asset.mimeType ?? 'application/pdf', fileName: asset.name });
+      const copy: ChatAttachment = { uri: asset.uri, mimeType: '', fileName: asset.name, ownedCopy: true };
+      // Some phones return files the chooser was told not to offer, or do not say what a file is.
+      // A file that cannot be told to be a PDF is refused, never assumed to be one.
+      const mimeType = resolveDocumentMime(asset);
+      if (!mimeType) {
+        deleteOwnedCopy(copy);
+        Alert.alert(t('chat.couldNotSend'), t('errors.fileTypeUnsupported'));
+        return;
+      }
+      replacePending({ ...copy, mimeType });
     } catch {
       Alert.alert(t('chat.couldNotSend'), t('errors.fileUnreadable'));
     }
@@ -96,7 +121,7 @@ export function AccountantChatView({ clientId, firmId, userId, safeBottom = true
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'images', quality: 0.8 });
     if (result.canceled || !result.assets?.[0]) return;
     const asset = result.assets[0];
-    setPending({ uri: asset.uri, mimeType: asset.mimeType ?? 'image/jpeg', fileName: asset.fileName ?? undefined });
+    replacePending({ uri: asset.uri, mimeType: asset.mimeType ?? 'image/jpeg', fileName: asset.fileName ?? undefined });
   }
 
   async function sendWith(attachment: ChatAttachment | null, body: string) {
@@ -112,7 +137,7 @@ export function AccountantChatView({ clientId, firmId, userId, safeBottom = true
       return;
     }
     setInput('');
-    setPending(null);
+    replacePending(null);
   }
 
   async function send() {
@@ -174,7 +199,7 @@ export function AccountantChatView({ clientId, firmId, userId, safeBottom = true
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t('chat.removeAttachment')}
-              onPress={() => setPending(null)}
+              onPress={() => replacePending(null)}
               hitSlop={12}>
               <Ionicons name="close-circle" size={20} color={theme.colors.mutedForeground} />
             </Pressable>
@@ -245,12 +270,19 @@ export function AccountantChatView({ clientId, firmId, userId, safeBottom = true
   );
 }
 
-/** Opens a document in the phone's own viewer. The address is the server's short-lived link; only https is followed. */
-function openDocument(url: string) {
-  if (!url.startsWith('https://')) return;
-  Linking.openURL(url).catch(() => {
+/**
+ * Opens a document in the phone's own viewer. The server's link to a stored file lasts ten
+ * minutes, so it is asked for at the moment of opening, not when the message first appeared.
+ * Only an https link is followed.
+ */
+async function openDocument(path: string) {
+  const url = await accountantChatService.getAttachmentUrl(path);
+  try {
+    if (!url?.startsWith('https://')) throw new Error('no link');
+    await Linking.openURL(url);
+  } catch {
     Alert.alert(i18n.t('chat.couldNotOpenTitle'), i18n.t('chat.couldNotOpenBody'));
-  });
+  }
 }
 
 const BUBBLE_RADIUS = 14;
@@ -261,6 +293,8 @@ function MessageBubble({ message, isSelf }: { message: ChatMessage; isSelf: bool
   const theme = useTheme();
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
   const isAudio = isAudioMime(message.attachmentMime);
+  const isImage = isImageAttachment(message.attachmentMime, message.attachmentPath);
+  const documentPath = !isAudio && !isImage ? message.attachmentPath : null;
   // My messages: the field's colour in light. In dark that colour is almost the
   // ground's, so a raised surface is used instead, to keep the shape visible.
   const mine = theme.dark
@@ -268,7 +302,8 @@ function MessageBubble({ message, isSelf }: { message: ChatMessage; isSelf: bool
     : { bg: theme.colors.brand, fg: theme.colors.brandForeground };
 
   useEffect(() => {
-    if (!message.attachmentPath) return;
+    // A picture or a voice note is fetched to be shown. A document is fetched when it is opened.
+    if (!message.attachmentPath || documentPath) return;
     let cancelled = false;
     accountantChatService.getAttachmentUrl(message.attachmentPath).then((url) => {
       if (!cancelled) setAttachmentUrl(url);
@@ -276,7 +311,7 @@ function MessageBubble({ message, isSelf }: { message: ChatMessage; isSelf: bool
     return () => {
       cancelled = true;
     };
-  }, [message.attachmentPath]);
+  }, [message.attachmentPath, documentPath]);
 
   return (
     <View style={{ alignSelf: isSelf ? 'flex-end' : 'flex-start', maxWidth: '80%', gap: 4 }}>
@@ -294,14 +329,14 @@ function MessageBubble({ message, isSelf }: { message: ChatMessage; isSelf: bool
         }}>
         {isAudio && attachmentUrl ? (
           <VoiceMessagePlayer uri={attachmentUrl} tint={isSelf ? mine.fg : theme.colors.foreground} />
-        ) : attachmentUrl && isImageMime(message.attachmentMime) ? (
+        ) : attachmentUrl && isImage ? (
           <Image source={{ uri: attachmentUrl }} style={{ width: 160, height: 160, borderRadius: radius.sm, marginBottom: spacing.xs }} />
-        ) : attachmentUrl ? (
+        ) : documentPath ? (
           // A document is opened, not drawn: the phone shows it in its own viewer.
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t('chat.openDocument')}
-            onPress={() => openDocument(attachmentUrl)}
+            onPress={() => void openDocument(documentPath)}
             hitSlop={8}
             style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 44, marginBottom: message.body ? spacing.xs : 0 }}>
             <Ionicons name="document-text-outline" size={24} color={isSelf ? mine.fg : theme.colors.foreground} />
