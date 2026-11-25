@@ -1,17 +1,24 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { AiConsent } from '@/components/ai-advisor/ai-consent';
-import { DetailHeader } from '@/components/navigation/detail-header';
-import { Button, Card, Input, Text } from '@/components/ui';
+import { Cta } from '@/components/horizon/cta';
+import { BRIDGE_WIDTH, FieldBack, HORIZON_GUTTER, HorizonScreen } from '@/components/horizon/horizon-screen';
+import { ChoiceRow, RuledRow, SectionLabel } from '@/components/horizon/ruled';
+import { Input, Text } from '@/components/ui';
 import { aiDeclinedThisRun, hasAiConsent, noteAiDeclined } from '@/lib/ai-consent';
 import { useAuth } from '@/lib/auth-context';
 import { EXPENSE_CATEGORIES, extractReceipt, submitReceiptReview, type ExpenseCategory } from '@/services/receipts';
-import { radius, spacing, useTheme } from '@/theme';
+import { useTheme } from '@/theme';
+import { horizonColors } from '@/theme/horizon';
+
+/** Height of the field: the title and a quiet line that takes two lines. */
+const WIZARD_FIELD = 200;
+const CURRENCY_WIDTH = 80;
+// On the ground a field is a line to write on, not a box.
+const FIELD_STYLE = { backgroundColor: 'transparent', paddingHorizontal: 0 } as const;
 
 /**
  * Capture wizard — runs right after a receipt photo is uploaded.
@@ -31,7 +38,7 @@ export default function ReceiptWizardScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const colors = horizonColors(theme.colors);
   const { id, manual } = useLocalSearchParams<{ id: string; manual?: string }>();
   const isManual = manual === '1';
   const { user } = useAuth();
@@ -125,133 +132,139 @@ export default function ReceiptWizardScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
-      <DetailHeader title={t('receiptWizard.title')} />
-
-      {loading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md }}>
-          <ActivityIndicator color={theme.colors.primary} />
-          <Text variant="callout" color="mutedForeground">
-            {t('receiptWizard.reading')}
-          </Text>
-        </View>
-      ) : (
-        <ScrollView
-          contentContainerStyle={{ paddingHorizontal: spacing.gutter, paddingBottom: insets.bottom + spacing.xl, gap: spacing.lg }}>
-          <Text variant="footnote" color="mutedForeground">
-            {ocrConfigured
+    // The keyboard must not cover the fields lower down the form.
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: colors.ground }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <HorizonScreen
+        field={WIZARD_FIELD}
+        small
+        lines={[{ text: t('receiptWizard.title') }]}
+        sub={
+          loading
+            ? t('receiptWizard.reading')
+            : ocrConfigured
               ? t('receiptWizard.introOcr')
-              : t('receiptWizard.introManual')}
-          </Text>
+              : t('receiptWizard.introManual')
+        }
+        top={<FieldBack colors={colors} />}
+        // Checking the details and sending them is the person's to do.
+        bridge={loading ? null : { start: HORIZON_GUTTER, width: BRIDGE_WIDTH }}>
+        {loading ? (
+          <RuledRow title={t('receiptWizard.reading')} />
+        ) : (
+          <>
+            <SectionLabel>{t('receiptWizard.details')}</SectionLabel>
+            <View style={styles.fields}>
+              <Input
+                label={t('receiptWizard.supplier')}
+                accessibilityLabel={t('receiptWizard.supplier')}
+                variant="underline"
+                style={FIELD_STYLE}
+                value={vendor}
+                onChangeText={setVendor}
+                placeholder={t('receiptWizard.supplierPlaceholder')}
+              />
+              <Input
+                label={t('receiptWizard.date')}
+                accessibilityLabel={t('receiptWizard.date')}
+                variant="underline"
+                style={FIELD_STYLE}
+                value={date}
+                onChangeText={setDate}
+                placeholder="YYYY-MM-DD"
+              />
+              <View style={styles.amounts}>
+                <View style={{ flex: 1 }}>
+                  <Input
+                    label={t('receiptWizard.total')}
+                    accessibilityLabel={t('receiptWizard.total')}
+                    variant="underline"
+                    style={FIELD_STYLE}
+                    value={total}
+                    onChangeText={setTotal}
+                    placeholder="0.00"
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Input
+                    label={t('receiptWizard.vat')}
+                    accessibilityLabel={t('receiptWizard.vat')}
+                    variant="underline"
+                    style={FIELD_STYLE}
+                    value={vat}
+                    onChangeText={setVat}
+                    placeholder="0.00"
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+                <View style={{ width: CURRENCY_WIDTH }}>
+                  <Input
+                    label={t('receiptWizard.currency')}
+                    accessibilityLabel={t('receiptWizard.currency')}
+                    variant="underline"
+                    style={FIELD_STYLE}
+                    value={currency}
+                    onChangeText={setCurrency}
+                    autoCapitalize="characters"
+                  />
+                </View>
+              </View>
+            </View>
 
-          <Card style={{ gap: spacing.md }}>
-            <Text variant="title">{t('receiptWizard.details')}</Text>
-            <View style={{ gap: 4 }}>
-              <Text variant="caption" color="mutedForeground">
-                {t('receiptWizard.supplier')}
-              </Text>
-              <Input value={vendor} onChangeText={setVendor} placeholder={t('receiptWizard.supplierPlaceholder')} />
-            </View>
-            <View style={{ gap: 4 }}>
-              <Text variant="caption" color="mutedForeground">
-                {t('receiptWizard.date')}
-              </Text>
-              <Input value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" />
-            </View>
-            <View style={{ flexDirection: 'row', gap: spacing.md }}>
-              <View style={{ flex: 1, gap: 4 }}>
-                <Text variant="caption" color="mutedForeground">
-                  {t('receiptWizard.total')}
-                </Text>
-                <Input value={total} onChangeText={setTotal} placeholder="0.00" keyboardType="decimal-pad" />
-              </View>
-              <View style={{ flex: 1, gap: 4 }}>
-                <Text variant="caption" color="mutedForeground">
-                  {t('receiptWizard.vat')}
-                </Text>
-                <Input value={vat} onChangeText={setVat} placeholder="0.00" keyboardType="decimal-pad" />
-              </View>
-              <View style={{ width: 80, gap: 4 }}>
-                <Text variant="caption" color="mutedForeground">
-                  {t('receiptWizard.currency')}
-                </Text>
-                <Input value={currency} onChangeText={setCurrency} autoCapitalize="characters" />
-              </View>
-            </View>
-          </Card>
-
-          <Card style={{ gap: spacing.md }}>
-            <View style={{ gap: 4 }}>
-              <Text variant="title">{t('receiptWizard.whatFor')}</Text>
-              <Text variant="footnote" color="mutedForeground">
+            <SectionLabel>{t('receiptWizard.whatFor')}</SectionLabel>
+            <View style={styles.hint}>
+              <Text variant="subhead" color="mutedForeground">
                 {t('receiptWizard.whatForHint')}
               </Text>
             </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-              {EXPENSE_CATEGORIES.map((c) => {
-                const active = category?.key === c.key;
-                return (
-                  <Pressable
-                    key={c.key}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: active }}
-                    accessibilityLabel={t(`expenseCategories.${c.key}`)}
-                    onPress={() => setCategory(c)}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: spacing.xs,
-                      paddingHorizontal: spacing.base,
-                      paddingVertical: spacing.sm,
-                      borderRadius: radius.full,
-                      backgroundColor: active ? theme.colors.primary : theme.colors.secondary,
-                    }}>
-                    <Ionicons
-                      name={c.icon as keyof typeof Ionicons.glyphMap}
-                      size={14}
-                      color={active ? theme.colors.primaryForeground : theme.colors.mutedForeground}
-                    />
-                    <Text
-                      variant="caption"
-                      weight="semibold"
-                      style={{ color: active ? theme.colors.primaryForeground : theme.colors.foreground }}>
-                      {t(`expenseCategories.${c.key}`)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+            {/* One is chosen: a list of choice rows, in place of a cloud of pills. */}
+            <View accessibilityRole="radiogroup" accessibilityLabel={t('receiptWizard.whatFor')}>
+              {EXPENSE_CATEGORIES.map((c) => (
+                <ChoiceRow
+                  key={c.key}
+                  title={t(`expenseCategories.${c.key}`)}
+                  selected={category?.key === c.key}
+                  onPress={() => setCategory(c)}
+                />
+              ))}
             </View>
-          </Card>
 
-          <View
-            style={{
-              flexDirection: 'row',
-              gap: spacing.sm,
-              alignItems: 'flex-start',
-              backgroundColor: theme.colors.secondary,
-              borderRadius: radius.md,
-              padding: spacing.base,
-            }}>
-            <Ionicons name="information-circle-outline" size={16} color={theme.colors.mutedForeground} />
-            <Text variant="caption" color="mutedForeground" style={{ flex: 1 }}>
-              {t('receiptWizard.reviewNote')}
-            </Text>
-          </View>
-
-          {error ? (
-            <Text variant="footnote" color="danger">
-              {error}
-            </Text>
-          ) : null}
-
-          <Button
-            title={saving ? t('receiptWizard.sending') : t('receiptWizard.send')}
-            fullWidth
-            disabled={!category || saving}
-            onPress={submit}
-          />
-        </ScrollView>
-      )}
-    </View>
+            <View style={styles.send}>
+              <Text variant="footnote" color="mutedForeground">
+                {t('receiptWizard.reviewNote')}
+              </Text>
+              {error ? (
+                <Text variant="footnote" color="danger" accessibilityLiveRegion="polite">
+                  {error}
+                </Text>
+              ) : null}
+              <Cta title={t('receiptWizard.send')} busy={saving} disabled={!category} onPress={() => void submit()} />
+            </View>
+          </>
+        )}
+      </HorizonScreen>
+    </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  fields: {
+    paddingHorizontal: HORIZON_GUTTER,
+    gap: 16,
+  },
+  amounts: {
+    flexDirection: 'row',
+    gap: 14,
+  },
+  hint: {
+    paddingHorizontal: HORIZON_GUTTER,
+    paddingBottom: 6,
+  },
+  send: {
+    paddingHorizontal: HORIZON_GUTTER,
+    paddingTop: 22,
+    gap: 12,
+  },
+});
