@@ -38,18 +38,35 @@ export function currentAppVersion(): string | null {
   return Constants.expoConfig?.version ?? null;
 }
 
-// The only places the app sends a person for an update. The server checks the
-// same; it is checked again here so that nothing the server says can send a
-// person anywhere else.
-const STORE_START: Record<StorePlatform, string> = {
-  ios: 'https://apps.apple.com/',
-  android: 'https://play.google.com/',
-};
+/** This app's own identifier on Google Play, from app.json. */
+export function ownAndroidPackage(): string | null {
+  return Constants.expoConfig?.android?.package ?? null;
+}
 
-/** The store address if it is an https link to this platform's own store, and null otherwise. */
-export function safeStoreUrl(platform: StorePlatform, value: unknown): string | null {
+// The only places the app sends a person for an update: an app's own page on
+// the platform's store. The server checks the same; it is checked again here
+// so that nothing the server says can send a person anywhere else. Each
+// pattern runs from the first character to the last, and the host is followed
+// at once by "/", so nothing can sit between it and the path.
+//   https://apps.apple.com/app/id123456789, with an optional country and name in the path
+//   https://play.google.com/store/apps/details?id=com.example.app
+const APP_STORE_PAGE = /^https:\/\/apps\.apple\.com\/([a-z]{2}\/)?app\/([^/?#\s]+\/)?id\d{5,15}(\?[^\s#]*)?$/;
+const PLAY_PAGE = /^https:\/\/play\.google\.com\/store\/apps\/details\?id=([A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+)(&[^\s#]*)?$/;
+
+/**
+ * The store address if it is an https link to an app's page on this
+ * platform's own store, and null otherwise. On Android the page must be this
+ * app's own, when the app knows its identifier.
+ */
+export function safeStoreUrl(
+  platform: StorePlatform,
+  value: unknown,
+  ownPackage: string | null = ownAndroidPackage(),
+): string | null {
   if (typeof value !== 'string') return null;
   const url = value.trim();
-  // The host is followed at once by "/", so nothing can sit between it and the path.
-  return url.startsWith(STORE_START[platform]) && !/\s/.test(url) ? url : null;
+  if (platform === 'ios') return APP_STORE_PAGE.test(url) ? url : null;
+  const page = PLAY_PAGE.exec(url);
+  if (!page) return null;
+  return ownPackage === null || page[1] === ownPackage ? url : null;
 }

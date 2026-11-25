@@ -1,6 +1,6 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
 
-import { checkUpdateRequired } from '@/services/app-version';
+import { ANSWER_TIMEOUT_MS, checkUpdateRequired } from '@/services/app-version';
 
 const mockInvoke = jest.fn();
 const mockConfigured = jest.fn();
@@ -9,7 +9,10 @@ jest.mock('@/lib/supabase', () => ({
   supabase: { functions: { invoke: (...args: unknown[]) => mockInvoke(...args) } },
 }));
 jest.mock('@/lib/env', () => ({ assertSupabaseConfigured: () => mockConfigured() }));
-jest.mock('expo-constants', () => ({ __esModule: true, default: { expoConfig: { version: '1.0.0' } } }));
+jest.mock('expo-constants', () => ({
+  __esModule: true,
+  default: { expoConfig: { version: '1.0.0', android: { package: 'com.mizan.client' } } },
+}));
 
 const IOS_STORE = 'https://apps.apple.com/app/id123456789';
 
@@ -74,6 +77,22 @@ describe('asking the server whether this version may still be used', () => {
     expect(await checkUpdateRequired('ios', '1.0.0')).toEqual({ status: 'required', storeUrl: null });
   });
 
+  test.each([
+    ['is very long', `https://example.com/${'x'.repeat(5_000)}`],
+    ['is not text', 42],
+    ['is a list', ['https://apps.apple.com/app/id123456789']],
+  ])('still requires the update when the store link %s: a bad link does not hide a clear minimum', async (_name, storeUrl) => {
+    serverSays({ ok: true, minVersion: '2.0.0', storeUrl });
+
+    expect(await checkUpdateRequired('ios', '1.0.0')).toEqual({ status: 'required', storeUrl: null });
+  });
+
+  test('carries on when the minimum is not text', async () => {
+    serverSays({ ok: true, minVersion: 2, storeUrl: IOS_STORE });
+
+    expect(await checkUpdateRequired('ios', '1.0.0')).toEqual({ status: 'current' });
+  });
+
   test('drops the other platform’s store link', async () => {
     serverSays({ ok: true, minVersion: '2.0.0', storeUrl: IOS_STORE });
 
@@ -97,6 +116,36 @@ describe('when the server gives no clear answer', () => {
     mockInvoke.mockResolvedValue(result);
 
     expect(await checkUpdateRequired('ios', '0.0.1')).toEqual({ status: 'unknown' });
+  });
+
+  test('nothing is known when the server never answers: the wait ends, so the next try can be made', async () => {
+    jest.useFakeTimers();
+    try {
+      mockInvoke.mockReturnValue(new Promise(() => {}));
+      let answer: unknown = 'still waiting';
+      void checkUpdateRequired('ios', '0.0.1').then((check) => (answer = check));
+
+      await jest.advanceTimersByTimeAsync(ANSWER_TIMEOUT_MS - 1);
+      expect(answer).toBe('still waiting');
+
+      await jest.advanceTimersByTimeAsync(1);
+      expect(answer).toEqual({ status: 'unknown' });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test('an answer in time leaves no timer running', async () => {
+    jest.useFakeTimers();
+    try {
+      serverSays({ ok: true, minVersion: null, storeUrl: null });
+
+      await checkUpdateRequired('ios', '1.0.0');
+
+      expect(jest.getTimerCount()).toBe(0);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   test('nothing is known when asking throws', async () => {

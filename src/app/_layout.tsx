@@ -104,7 +104,10 @@ function RootNav() {
   const router = useRouter();
   const onCamera = useSegments()[0] === 'capture';
   useEffect(() => {
-    if (blocked && onCamera && router.canGoBack()) router.back();
+    if (!blocked || !onCamera) return;
+    // Opened on its own, by a link, with nothing behind it: Home takes its place.
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
   }, [blocked, onCamera, router]);
 
   useEffect(() => {

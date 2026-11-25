@@ -1,6 +1,16 @@
-import { currentAppVersion, isOlderThan, isStorePlatform, parseVersion, safeStoreUrl } from '@/lib/app-version';
+import {
+  currentAppVersion,
+  isOlderThan,
+  isStorePlatform,
+  ownAndroidPackage,
+  parseVersion,
+  safeStoreUrl,
+} from '@/lib/app-version';
 
-jest.mock('expo-constants', () => ({ __esModule: true, default: { expoConfig: { version: '1.4.2' } } }));
+jest.mock('expo-constants', () => ({
+  __esModule: true,
+  default: { expoConfig: { version: '1.4.2', android: { package: 'com.mizan.client' } } },
+}));
 
 describe('parseVersion', () => {
   test('reads major.minor.patch', () => {
@@ -54,21 +64,53 @@ describe('isOlderThan', () => {
 });
 
 describe('safeStoreUrl', () => {
-  test('takes an https link to the platform’s own store', () => {
+  test('takes an https link to the app’s page on the platform’s own store', () => {
     expect(safeStoreUrl('ios', 'https://apps.apple.com/app/id123456789')).toBe('https://apps.apple.com/app/id123456789');
-    expect(safeStoreUrl('android', ' https://play.google.com/store/apps/details?id=team.mizan.connect ')).toBe(
-      'https://play.google.com/store/apps/details?id=team.mizan.connect',
+    expect(safeStoreUrl('ios', 'https://apps.apple.com/ae/app/mizan-connect/id123456789?mt=8')).toBe(
+      'https://apps.apple.com/ae/app/mizan-connect/id123456789?mt=8',
+    );
+    expect(safeStoreUrl('android', ' https://play.google.com/store/apps/details?id=com.mizan.client ')).toBe(
+      'https://play.google.com/store/apps/details?id=com.mizan.client',
+    );
+    expect(safeStoreUrl('android', 'https://play.google.com/store/apps/details?id=com.mizan.client&hl=ar')).toBe(
+      'https://play.google.com/store/apps/details?id=com.mizan.client&hl=ar',
     );
   });
 
+  test('on Android the page must be this app’s own', () => {
+    expect(safeStoreUrl('android', 'https://play.google.com/store/apps/details?id=com.someone.else')).toBeNull();
+    expect(safeStoreUrl('android', 'https://play.google.com/store/apps/details?id=com.mizan.client.evil')).toBeNull();
+  });
+
+  test('an app that does not know its own identifier still takes only an app’s page', () => {
+    expect(safeStoreUrl('android', 'https://play.google.com/store/apps/details?id=com.any.app', null)).toBe(
+      'https://play.google.com/store/apps/details?id=com.any.app',
+    );
+    expect(safeStoreUrl('android', 'https://play.google.com/store/search?q=x', null)).toBeNull();
+  });
+
+  test('takes a long link: length alone refuses nothing', () => {
+    const long = `https://play.google.com/store/apps/details?id=com.mizan.client&referrer=${'x'.repeat(600)}`;
+
+    expect(safeStoreUrl('android', long)).toBe(long);
+  });
+
   test.each([
-    ['the other platform’s store', 'ios', 'https://play.google.com/store/apps/details?id=x'],
+    ['the other platform’s store', 'ios', 'https://play.google.com/store/apps/details?id=com.mizan.client'],
+    ['the store’s front page', 'ios', 'https://apps.apple.com/'],
+    ['another kind of page on the store', 'ios', 'https://apps.apple.com/ae/developer/someone/id123456789'],
+    ['an app page with something after it', 'ios', 'https://apps.apple.com/app/id123456789/../../redirect'],
+    ['an app page with a fragment', 'ios', 'https://apps.apple.com/app/id123456789#x'],
+    ['another page on the Android store', 'android', 'https://play.google.com/store/search?q=mizan'],
+    ['an Android page with no app named', 'android', 'https://play.google.com/store/apps/details'],
+    ['an Android page whose app id is not one', 'android', 'https://play.google.com/store/apps/details?id=../x'],
+    ['capital letters in the address', 'ios', 'HTTPS://APPS.APPLE.COM/app/id123456789'],
     ['another site', 'ios', 'https://example.com/app'],
     ['a look-alike host', 'ios', 'https://apps.apple.com.example.com/app'],
-    ['a host hidden behind a user name', 'android', 'https://play.google.com@example.com/x'],
-    ['a user name on the real host', 'android', 'https://someone@play.google.com/x'],
-    ['a port on the host', 'android', 'https://play.google.com:8443/x'],
-    ['plain http', 'android', 'http://play.google.com/store/apps/details?id=x'],
+    ['a host hidden behind a user name', 'android', 'https://play.google.com@example.com/store/apps/details?id=com.mizan.client'],
+    ['a user name on the real host', 'android', 'https://someone@play.google.com/store/apps/details?id=com.mizan.client'],
+    ['a port on the host', 'android', 'https://play.google.com:8443/store/apps/details?id=com.mizan.client'],
+    ['plain http', 'android', 'http://play.google.com/store/apps/details?id=com.mizan.client'],
     ['a script', 'ios', 'javascript:alert(1)'],
     ['an app link', 'ios', 'itms-apps://apps.apple.com/app/id1'],
     ['a link with a space in it', 'ios', 'https://apps.apple.com/app id1'],
@@ -81,8 +123,9 @@ describe('safeStoreUrl', () => {
 });
 
 describe('the app itself', () => {
-  test('knows its version from its config', () => {
+  test('knows its version and its Android identifier from its config', () => {
     expect(currentAppVersion()).toBe('1.4.2');
+    expect(ownAndroidPackage()).toBe('com.mizan.client');
   });
 
   test('knows the two store platforms and nothing else', () => {

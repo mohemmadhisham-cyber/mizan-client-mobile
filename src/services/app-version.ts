@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import { z } from 'zod';
 
-import { currentAppVersion, isOlderThan, isStorePlatform, safeStoreUrl } from '@/lib/app-version';
+import { currentAppVersion, isOlderThan, isStorePlatform, safeStoreUrl, type StorePlatform } from '@/lib/app-version';
 import { assertSupabaseConfigured } from '@/lib/env';
 import { supabase } from '@/lib/supabase';
 
@@ -15,6 +15,8 @@ import { supabase } from '@/lib/supabase';
  */
 
 const FUNCTION = 'app-version';
+/** How long the server has to answer. A request that hangs must not stop the next try from being made. */
+export const ANSWER_TIMEOUT_MS = 10_000;
 
 export type UpdateCheck =
   /** This version is accepted, or the server sets no minimum. */
@@ -24,19 +26,16 @@ export type UpdateCheck =
   /** The server could not be asked, or its answer could not be read. Ask again later. */
   | { status: 'unknown' };
 
+// Only `ok` decides whether this is an answer. The two values are read by the functions
+// that judge them, each on its own: a store link the app will not follow must not hide
+// a minimum that is clear.
 const answerSchema = z.object({
   ok: z.literal(true),
-  minVersion: z.string().max(20).nullish(),
-  storeUrl: z.string().max(300).nullish(),
+  minVersion: z.unknown().optional(),
+  storeUrl: z.unknown().optional(),
 });
 
-/** Never throws. */
-export async function checkUpdateRequired(
-  platform: string = Platform.OS,
-  current: string | null = currentAppVersion(),
-): Promise<UpdateCheck> {
-  // The web build has no store version to fall behind.
-  if (!isStorePlatform(platform)) return { status: 'current' };
+async function ask(platform: StorePlatform, current: string | null): Promise<UpdateCheck> {
   try {
     assertSupabaseConfigured();
     const { data, error } = await supabase.functions.invoke<unknown>(FUNCTION, { body: { platform } });
@@ -47,5 +46,23 @@ export async function checkUpdateRequired(
     return { status: 'required', storeUrl: safeStoreUrl(platform, answer.data.storeUrl) };
   } catch {
     return { status: 'unknown' };
+  }
+}
+
+/** Never throws, and always answers: after `ANSWER_TIMEOUT_MS` with no word from the server, nothing is known. */
+export async function checkUpdateRequired(
+  platform: string = Platform.OS,
+  current: string | null = currentAppVersion(),
+): Promise<UpdateCheck> {
+  // The web build has no store version to fall behind.
+  if (!isStorePlatform(platform)) return { status: 'current' };
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const gaveUp = new Promise<UpdateCheck>((resolve) => {
+    timer = setTimeout(() => resolve({ status: 'unknown' }), ANSWER_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([ask(platform, current), gaveUp]);
+  } finally {
+    clearTimeout(timer);
   }
 }
