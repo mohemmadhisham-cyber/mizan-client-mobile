@@ -38,6 +38,25 @@ export function isAudioMime(mime: string | null): boolean {
   return !!mime && mime.startsWith('audio/');
 }
 
+export function isImageMime(mime: string | null): boolean {
+  return !!mime && mime.startsWith('image/');
+}
+
+/** The kinds of document the chat takes, for the file chooser. Images and voice have their own ways in. */
+export const DOCUMENT_MIME_TYPES = ['application/pdf'] as const;
+
+/**
+ * The ending a stored file gets. It comes from the file's own name when that
+ * ends in a few plain letters or digits, and from its kind otherwise. A file
+ * name is chosen by whoever made the file, so nothing else of it is used.
+ */
+export function storedExtension(fileName: string | undefined, mimeType: string): string {
+  const fromName = fileName?.includes('.') ? fileName.split('.').pop()?.toLowerCase() : undefined;
+  if (fromName && /^[a-z0-9]{1,5}$/.test(fromName)) return fromName;
+  const fromKind = mimeType.split('/')[1]?.toLowerCase();
+  return fromKind && /^[a-z0-9]{1,5}$/.test(fromKind) ? fromKind : 'bin';
+}
+
 function fromRow(r: MessageRow): ChatMessage {
   return {
     id: r.id,
@@ -82,7 +101,7 @@ export const accountantChatService = {
       if (!info.exists) return { ok: false, error: i18n.t('errors.fileUnreadable') };
       if ((info.size ?? 0) > MAX_ATTACHMENT_BYTES) return { ok: false, error: i18n.t('errors.attachmentTooLarge') };
 
-      const ext = attachment.fileName?.split('.').pop() ?? attachment.mimeType.split('/')[1] ?? 'bin';
+      const ext = storedExtension(attachment.fileName, attachment.mimeType);
       const path = `${firmId}/${clientId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const bytes = await fetch(attachment.uri).then((r) => r.arrayBuffer());
       const { error: uploadError } = await supabase.storage.from('chat-attachments').upload(path, bytes, {

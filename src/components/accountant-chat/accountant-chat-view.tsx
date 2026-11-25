@@ -1,16 +1,25 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
+import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { type ComponentRef, useEffect, useRef, useState } from 'react';
-import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { HORIZON_GUTTER } from '@/components/horizon/horizon-screen';
 import { EmptyState, Text } from '@/components/ui';
 import { useVoiceRecorder } from '@/hooks/use-voice-recorder';
+import i18n from '@/i18n';
 import { localeTag } from '@/lib/format';
-import { accountantChatService, isAudioMime, type ChatAttachment, type ChatMessage } from '@/services/accountant-chat';
+import {
+  accountantChatService,
+  DOCUMENT_MIME_TYPES,
+  isAudioMime,
+  isImageMime,
+  type ChatAttachment,
+  type ChatMessage,
+} from '@/services/accountant-chat';
 import { radius, spacing, useTheme } from '@/theme';
 
 interface AccountantChatViewProps {
@@ -53,7 +62,32 @@ export function AccountantChatView({ clientId, firmId, userId, safeBottom = true
     scrollRef.current?.scrollToEnd({ animated: true });
   }, [messages]);
 
-  async function pickAttachment() {
+  // Attach: a photo from the library, or a document from the phone's files.
+  function pickAttachment() {
+    Alert.alert(t('common.attach'), undefined, [
+      { text: t('chat.attachPhoto'), onPress: () => void pickPhoto() },
+      { text: t('chat.attachDocument'), onPress: () => void pickDocument() },
+      { text: t('common.cancel'), style: 'cancel' },
+    ]);
+  }
+
+  async function pickDocument() {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: [...DOCUMENT_MIME_TYPES],
+        multiple: false,
+        // A copy the app can read for as long as it takes to send.
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      setPending({ uri: asset.uri, mimeType: asset.mimeType ?? 'application/pdf', fileName: asset.name });
+    } catch {
+      Alert.alert(t('chat.couldNotSend'), t('errors.fileUnreadable'));
+    }
+  }
+
+  async function pickPhoto() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
       Alert.alert(t('common.photoAccessTitle'), t('chat.photoAccessBody'));
@@ -128,11 +162,20 @@ export function AccountantChatView({ clientId, firmId, userId, safeBottom = true
       <View style={{ paddingHorizontal: HORIZON_GUTTER, paddingBottom: (safeBottom ? insets.bottom : 0) + spacing.sm, gap: spacing.sm }}>
         {pending ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <Image source={{ uri: pending.uri }} style={{ width: 40, height: 40, borderRadius: radius.sm }} />
-            <Text variant="footnote" color="mutedForeground" style={{ flex: 1 }}>
-              {t('chat.attachmentReady')}
+            {isImageMime(pending.mimeType) ? (
+              <Image source={{ uri: pending.uri }} style={{ width: 40, height: 40, borderRadius: radius.sm }} />
+            ) : (
+              <Ionicons name="document-text-outline" size={24} color={theme.colors.foreground} />
+            )}
+            <Text variant="footnote" color="mutedForeground" numberOfLines={1} style={{ flex: 1 }}>
+              {/* A document is named, so the person can see it is the right one. */}
+              {!isImageMime(pending.mimeType) && pending.fileName ? pending.fileName : t('chat.attachmentReady')}
             </Text>
-            <Pressable accessibilityRole="button" onPress={() => setPending(null)} hitSlop={8}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('chat.removeAttachment')}
+              onPress={() => setPending(null)}
+              hitSlop={12}>
               <Ionicons name="close-circle" size={20} color={theme.colors.mutedForeground} />
             </Pressable>
           </View>
@@ -202,10 +245,19 @@ export function AccountantChatView({ clientId, firmId, userId, safeBottom = true
   );
 }
 
+/** Opens a document in the phone's own viewer. The address is the server's short-lived link; only https is followed. */
+function openDocument(url: string) {
+  if (!url.startsWith('https://')) return;
+  Linking.openURL(url).catch(() => {
+    Alert.alert(i18n.t('chat.couldNotOpenTitle'), i18n.t('chat.couldNotOpenBody'));
+  });
+}
+
 const BUBBLE_RADIUS = 14;
 const BUBBLE_TAIL = 3;
 
 function MessageBubble({ message, isSelf }: { message: ChatMessage; isSelf: boolean }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
   const isAudio = isAudioMime(message.attachmentMime);
@@ -242,8 +294,21 @@ function MessageBubble({ message, isSelf }: { message: ChatMessage; isSelf: bool
         }}>
         {isAudio && attachmentUrl ? (
           <VoiceMessagePlayer uri={attachmentUrl} tint={isSelf ? mine.fg : theme.colors.foreground} />
-        ) : attachmentUrl ? (
+        ) : attachmentUrl && isImageMime(message.attachmentMime) ? (
           <Image source={{ uri: attachmentUrl }} style={{ width: 160, height: 160, borderRadius: radius.sm, marginBottom: spacing.xs }} />
+        ) : attachmentUrl ? (
+          // A document is opened, not drawn: the phone shows it in its own viewer.
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('chat.openDocument')}
+            onPress={() => openDocument(attachmentUrl)}
+            hitSlop={8}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 44, marginBottom: message.body ? spacing.xs : 0 }}>
+            <Ionicons name="document-text-outline" size={24} color={isSelf ? mine.fg : theme.colors.foreground} />
+            <Text variant="body" weight="semibold" style={{ color: isSelf ? mine.fg : theme.colors.foreground }}>
+              {t('chat.openDocument')}
+            </Text>
+          </Pressable>
         ) : null}
         {!isAudio ? (
           <Text variant="body" style={{ color: isSelf ? mine.fg : theme.colors.foreground }}>
