@@ -1,6 +1,7 @@
 import NetInfo, { useNetInfo } from '@react-native-community/netinfo';
 import { onlineManager } from '@tanstack/react-query';
 import { screen } from '@testing-library/react-native';
+import { AccessibilityInfo } from 'react-native';
 
 import { OfflineNote } from '@/components/horizon/offline-note';
 import { isOffline, wireOnlineManager } from '@/lib/online';
@@ -35,7 +36,20 @@ describe('the no-connection note', () => {
     expect(screen.queryByText('support.offline')).toBeNull();
   });
 
-  test('says what is on screen may be old while offline', async () => {
+  test('is said aloud when the connection goes, and not while online', async () => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility').mockImplementation(() => {});
+    mockUseNetInfo.mockReturnValue(status(true, true));
+    await renderInApp(<OfflineNote />);
+    expect(announce).not.toHaveBeenCalled();
+
+    mockUseNetInfo.mockReturnValue(status(false, false));
+    await renderInApp(<OfflineNote />);
+
+    expect(announce).toHaveBeenCalledWith('support.offline');
+    announce.mockRestore();
+  });
+
+  test('says what is on screen may be out of date while offline', async () => {
     mockUseNetInfo.mockReturnValue(status(false, false));
 
     await renderInApp(<OfflineNote />);

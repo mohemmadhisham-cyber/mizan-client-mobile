@@ -1,5 +1,6 @@
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, StyleSheet, View } from 'react-native';
 
 import { Text } from '@/components/ui';
 import { useIsOffline } from '@/lib/online';
@@ -11,13 +12,20 @@ const NOTE_PADDING = 10;
 
 /**
  * One quiet line at the top of the ground while the phone has no connection:
- * what is on screen may be old, and the person should know. It is part of
+ * what is on screen may be out of date, and the person should know. It is part of
  * the frame, so every screen says it the same way. Nothing when online.
  */
 export function OfflineNote() {
   const { t } = useTranslation();
   const theme = useTheme();
   const offline = useIsOffline();
+  const words = t('support.offline');
+
+  // Said aloud once when the connection goes. The live region below does this on Android only.
+  useEffect(() => {
+    if (offline) AccessibilityInfo.announceForAccessibility(words);
+  }, [offline, words]);
+
   if (!offline) return null;
   return (
     <View
@@ -26,7 +34,7 @@ export function OfflineNote() {
       accessibilityLiveRegion="polite"
       style={[styles.note, { borderBottomColor: theme.colors.border, backgroundColor: theme.colors.secondary }]}>
       <Text variant="footnote" weight="semibold">
-        {t('support.offline')}
+        {words}
       </Text>
     </View>
   );
