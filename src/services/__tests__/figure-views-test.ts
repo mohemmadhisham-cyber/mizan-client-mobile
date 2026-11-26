@@ -1,10 +1,11 @@
-import { DashboardUnavailableError } from '@/services/client-data';
+import { DashboardUnavailableError, fetchDashboardAnswer } from '@/services/client-data';
 import { FigureDetailError } from '@/services/figure-detail';
 import {
   getCashView,
   getInvoicePage,
   getPeriodView,
   mergeInvoicePages,
+  offersView,
   parseCashView,
   parseInvoicePage,
   parsePeriodView,
@@ -17,6 +18,12 @@ jest.mock('@/i18n', () => ({ __esModule: true, default: { t: (key: string) => ke
 jest.mock('@/lib/supabase', () => ({
   supabase: { functions: { invoke: (...args: unknown[]) => mockInvoke(...args) } },
 }));
+jest.mock('@/services/client-data', () => ({
+  ...jest.requireActual('@/services/client-data'),
+  fetchDashboardAnswer: jest.fn(),
+}));
+
+const mockDashboard = fetchDashboardAnswer as jest.MockedFunction<typeof fetchDashboardAnswer>;
 
 /** What a server that does not know the views sends back whatever it is asked: the plain dashboard. */
 const PLAIN_DASHBOARD = { ok: true, currency: 'AED', kpis: [], trend: [], topCustomers: [], recentInvoices: [], mobile: {} };
@@ -70,8 +77,12 @@ function invoices(overrides: Record<string, unknown> = {}) {
   return { ok: true, view: 'invoices', currency: 'AED', offset: 0, nextOffset: 20, invoices: [invoice('11'), invoice('12')], ...overrides };
 }
 
+/** The plain dashboard of a server that has the views, and says so. */
+const DASHBOARD_WITH_VIEWS = { ...PLAIN_DASHBOARD, views: ['period', 'cash', 'invoices'] };
+
 beforeEach(() => {
   mockInvoke.mockReset();
+  mockDashboard.mockReset().mockResolvedValue(DASHBOARD_WITH_VIEWS);
 });
 
 describe('a period', () => {
@@ -245,6 +256,23 @@ describe('an answer to another question', () => {
   });
 });
 
+describe('what the server says it offers', () => {
+  test('is read from the list in the plain dashboard', () => {
+    expect(offersView(DASHBOARD_WITH_VIEWS, 'period')).toBe(true);
+    expect(offersView({ views: ['cash'] }, 'period')).toBe(false);
+  });
+
+  test.each([
+    ['an older server, which sends no list', PLAIN_DASHBOARD],
+    ['a list that is not a list', { views: 'period' }],
+    ['a list of something else', { views: [{ name: 'period' }] }],
+    ['nothing', null],
+    ['text', 'period'],
+  ])('is nothing from %s', (_name, dashboard) => {
+    expect(offersView(dashboard, 'period')).toBe(false);
+  });
+});
+
 describe('several pages as one list', () => {
   const pageOf = (...ids: string[]) => parseInvoicePage(invoices({ invoices: ids.map((id) => invoice(id)) }));
 
@@ -285,12 +313,35 @@ describe('asking the server', () => {
     expect(mockInvoke).toHaveBeenLastCalledWith('client-dashboard', { body: { view: 'invoices', offset: 40 } });
   });
 
-  test('a server that does not know the views leaves each screen as it was', async () => {
-    mockInvoke.mockResolvedValue({ data: PLAIN_DASHBOARD, error: null });
+  test('a server that does not say it has the views is not asked: each screen stays as it was, at no cost', async () => {
+    mockDashboard.mockResolvedValue(PLAIN_DASHBOARD);
 
     expect(await getPeriodView('this_month')).toBeNull();
     expect(await getCashView()).toBeNull();
     expect(await getInvoicePage(0)).toBeNull();
+    expect(mockInvoke).not.toHaveBeenCalled();
+  });
+
+  test('only the views the server names are asked for', async () => {
+    mockDashboard.mockResolvedValue({ ...PLAIN_DASHBOARD, views: ['cash'] });
+    mockInvoke.mockResolvedValue({ data: cash(), error: null });
+
+    expect(await getPeriodView('this_month')).toBeNull();
+    expect(await getCashView()).not.toBeNull();
+    expect(mockInvoke).toHaveBeenCalledTimes(1);
+  });
+
+  test('a server that says it has a view and then sends the plain dashboard still leaves the screen as it was', async () => {
+    mockInvoke.mockResolvedValue({ data: PLAIN_DASHBOARD, error: null });
+
+    expect(await getCashView()).toBeNull();
+  });
+
+  test('when the dashboard itself cannot be had, that is the error shown', async () => {
+    mockDashboard.mockRejectedValue(new DashboardUnavailableError('network_error'));
+
+    await expect(getCashView()).rejects.toBeInstanceOf(DashboardUnavailableError);
+    expect(mockInvoke).not.toHaveBeenCalled();
   });
 
   test.each([

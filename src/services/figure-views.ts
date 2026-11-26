@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { supabase } from '@/lib/supabase';
-import { DashboardUnavailableError } from '@/services/client-data';
+import { DashboardUnavailableError, fetchDashboardAnswer } from '@/services/client-data';
 import { calendarDay, type CustomerInvoice, displayText, FigureDetailError } from '@/services/figure-detail';
 
 /**
@@ -16,10 +16,12 @@ import { calendarDay, type CustomerInvoice, displayText, FigureDetailError } fro
  * The server sends these in whole minor units already. Nothing is multiplied
  * or rounded here.
  *
- * An older server does not know the views. It ignores the question and sends
- * the plain dashboard, which carries no `view`. That is read as "not offered"
- * (null), and the screens stay as they were. A view that is offered and
- * cannot be read is an error, never a silent blank.
+ * An older server does not know the views. A server that does says so in the
+ * plain dashboard (`views`), which the app already has, so a view is asked
+ * for only where it is offered: asking a server without it would have it
+ * build a whole dashboard for nothing. "Not offered" is null, and the screens
+ * stay as they were. A view that is offered and cannot be read is an error,
+ * never a silent blank.
  */
 
 const FUNCTION = 'client-dashboard';
@@ -210,7 +212,18 @@ export function mergeInvoicePages(pages: readonly (InvoicePage | null)[]): Custo
   return merged;
 }
 
-async function ask(body: Record<string, unknown>): Promise<unknown> {
+/**
+ * Whether the server says it answers this view. Read from the plain dashboard,
+ * which Home has already fetched: the same call and the same short cache.
+ */
+export function offersView(dashboard: unknown, view: string): boolean {
+  const views = typeof dashboard === 'object' && dashboard !== null ? (dashboard as { views?: unknown }).views : undefined;
+  return Array.isArray(views) && views.includes(view);
+}
+
+async function ask(body: Record<string, unknown> & { view: string }): Promise<unknown> {
+  // Not offered: nothing is asked, and the answer is the same as an old server's would be.
+  if (!offersView(await fetchDashboardAnswer(), body.view)) return null;
   const { data, error } = await supabase.functions.invoke<unknown>(FUNCTION, { body });
   if (error || typeof data !== 'object' || data === null) throw new DashboardUnavailableError('network_error');
   const answer = data as { ok?: unknown; error?: unknown };
