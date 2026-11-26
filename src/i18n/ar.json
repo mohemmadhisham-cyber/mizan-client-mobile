@@ -688,6 +688,25 @@
     "payableDays_few": "المستحق عليك للموردين يعادل تكاليف {{count}} أيام تقريبًا",
     "payableDays_many": "المستحق عليك للموردين يعادل تكاليف {{count}} يومًا تقريبًا",
     "payableDays_other": "المستحق عليك للموردين يعادل تكاليف {{count}} يوم تقريبًا",
+    "madeOf": "ممَّ يتكوّن",
+    "everythingElse": "كل ما عدا ذلك",
+    "tooMuchToBreakDown": "في هذه الفترة قيود أكثر من أن تُفصَّل هنا.",
+    "nothingInPeriod": "لا شيء مسجّل في هذه الفترة.",
+    "periodLabel": "الفترة",
+    "period": {
+      "this_month": "هذا الشهر",
+      "last_month": "الشهر الماضي",
+      "this_quarter": "هذا الربع",
+      "this_year": "هذه السنة"
+    },
+    "outSubPeriod": {
+      "this_month": "تكاليف هذا الشهر، من دفاترك.",
+      "last_month": "تكاليف الشهر الماضي، من دفاترك.",
+      "this_quarter": "تكاليف هذا الربع حتى الآن، من دفاترك.",
+      "this_year": "تكاليف هذه السنة حتى الآن، من دفاترك."
+    },
+    "cashAccounts": "حساباتك",
+    "overdrawn": "مكشوف",
     "daysNote": "تقدير، من المستحق اليوم ومن آخر 30 يومًا."
   },
   "invoicesScreen": {
@@ -704,6 +723,9 @@
     "statusOpenDue": "غير مسددة، تستحق في {{date}}",
     "statusPartialDue": "مسددة جزئيًا، تستحق في {{date}}",
     "statusOverdueSince": "متأخرة، استحقت في {{date}}",
+    "titleAll": "الفواتير",
+    "subAll": "فواتير عملائك، الأحدث أولًا.",
+    "showMore": "عرض المزيد",
     "stillToPay": "المتبقي {{amount}}"
   },
   "update": {

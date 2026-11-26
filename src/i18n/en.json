@@ -608,6 +608,25 @@
     "receivableDays_other": "Customers owe you about {{count}} days of sales",
     "payableDays_one": "You owe suppliers about {{count}} day of costs",
     "payableDays_other": "You owe suppliers about {{count}} days of costs",
+    "madeOf": "What it is made of",
+    "everythingElse": "Everything else",
+    "tooMuchToBreakDown": "This period has too many entries to break down here.",
+    "nothingInPeriod": "Nothing is recorded in this period.",
+    "periodLabel": "Period",
+    "period": {
+      "this_month": "This month",
+      "last_month": "Last month",
+      "this_quarter": "This quarter",
+      "this_year": "This year"
+    },
+    "outSubPeriod": {
+      "this_month": "Costs this month, from your books.",
+      "last_month": "Costs last month, from your books.",
+      "this_quarter": "Costs this quarter so far, from your books.",
+      "this_year": "Costs this year so far, from your books."
+    },
+    "cashAccounts": "Your accounts",
+    "overdrawn": "Overdrawn",
     "daysNote": "An estimate, from what is owed today and the last 30 days."
   },
   "invoicesScreen": {
@@ -620,6 +639,9 @@
     "statusOpenDue": "Not paid, due {{date}}",
     "statusPartialDue": "Partly paid, due {{date}}",
     "statusOverdueSince": "Overdue since {{date}}",
+    "titleAll": "Invoices",
+    "subAll": "Invoices to your customers, newest first.",
+    "showMore": "Show more",
     "stillToPay": "{{amount}} still to pay"
   },
   "update": {
