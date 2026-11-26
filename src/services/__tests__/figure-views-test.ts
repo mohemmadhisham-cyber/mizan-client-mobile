@@ -154,20 +154,35 @@ describe('cash by account', () => {
   });
 
   test('keeps an overdrawn account as it is', () => {
-    expect(parseCashView(cash({ accounts: [{ name: 'Overdraft', balance: -25_000 }] }))?.accounts).toEqual([
+    expect(parseCashView(cash({ total: -25_000, accounts: [{ name: 'Overdraft', balance: -25_000 }] }))?.accounts).toEqual([
       { name: 'Overdraft', balanceMinor: -25_000 },
     ]);
   });
 
-  test('counts an account it cannot read and still shows the rest', () => {
-    const view = parseCashView(cash({ accounts: [{ name: 'Current', balance: 100 }, { name: 'Broken', balance: 1.5 }, 'nonsense'] }));
+  test('counts an account it cannot read, and then lists none: the rest would not come to the total', () => {
+    const view = parseCashView(cash({ total: 100, accounts: [{ name: 'Current', balance: 100 }, { name: 'Broken', balance: 1.5 }, 'nonsense'] }));
 
-    expect(view?.accounts).toEqual([{ name: 'Current', balanceMinor: 100 }]);
+    expect(view?.accounts).toEqual([]);
     expect(view?.unreadable).toBe(2);
+    expect(view?.totalMinor).toBe(100);
   });
 
   test('is "not offered" from a server that sends the plain dashboard', () => {
     expect(parseCashView(PLAIN_DASHBOARD)).toBeNull();
+  });
+
+  test.each([
+    ['a company with too many accounts to list, which the server sends as a total and no list', { accounts: [] }],
+    ['a list that leaves an account out', { accounts: [{ name: 'Petty cash', balance: 35_075 }] }],
+  ])('shows the total and no list for %s: a list is shown only if it comes to the total', (_name, overrides) => {
+    const view = parseCashView(cash(overrides));
+
+    expect(view?.accounts).toEqual([]);
+    expect(view?.totalMinor).toBe(12_535_085);
+  });
+
+  test('an empty list with nothing in the bank is simply empty', () => {
+    expect(parseCashView(cash({ total: 0, accounts: [] }))).toMatchObject({ totalMinor: 0, accounts: [], unreadable: 0 });
   });
 
   test('cannot be read with a total that is not a whole number', () => {
@@ -218,6 +233,18 @@ describe('a page of invoices', () => {
   });
 });
 
+describe('an answer to another question', () => {
+  test('is an error, not an old server: a cash answer is never read as "periods are not offered"', () => {
+    expect(() => parsePeriodView(cash(), 'this_month')).toThrow(FigureDetailError);
+    expect(() => parseCashView(invoices())).toThrow(FigureDetailError);
+    expect(() => parseInvoicePage(period())).toThrow(FigureDetailError);
+  });
+
+  test('a view name that is not text is no view at all', () => {
+    expect(parseCashView({ ...PLAIN_DASHBOARD, view: 7 })).toBeNull();
+  });
+});
+
 describe('several pages as one list', () => {
   const pageOf = (...ids: string[]) => parseInvoicePage(invoices({ invoices: ids.map((id) => invoice(id)) }));
 
@@ -227,6 +254,10 @@ describe('several pages as one list', () => {
 
   test('shows an invoice once when a new one arriving moved it onto the next page too', () => {
     expect(mergeInvoicePages([pageOf('3', '2'), pageOf('2', '1')]).map((row) => row.id)).toEqual(['3', '2', '1']);
+  });
+
+  test('passes over a page that is not there', () => {
+    expect(mergeInvoicePages([pageOf('3'), null, pageOf('1')]).map((row) => row.id)).toEqual(['3', '1']);
   });
 
   test('is empty with no pages, or a server that sends none', () => {

@@ -85,7 +85,8 @@ export default function InvoicesScreen() {
         <RuledRow title={t('common.listLoadFailed')} action={t('common.retry')} onPress={onRefresh} />
       ) : waiting ? (
         <RuledRow title={t('common.loading')} />
-      ) : invoices.length === 0 ? (
+      ) : invoices.length === 0 && unreadable === 0 && !(paged && pages.hasNextPage) ? (
+        // Said only when it is true: a page whose lines could not be shown, or with more after it, is not "none".
         <RuledRow title={t('invoicesScreen.empty')} plain />
       ) : (
         <>

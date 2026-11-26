@@ -96,6 +96,7 @@ export interface CashView {
   currency: string;
   asOf: string;
   totalMinor: number;
+  /** Empty when the accounts sent do not come to the total: a list that left some out is not shown. */
   accounts: { name: string; balanceMinor: number }[];
   /** Accounts the server sent that could not be shown. */
   unreadable: number;
@@ -109,9 +110,16 @@ export interface InvoicePage {
   unreadable: number;
 }
 
-/** True when the answer is one of the views, whichever. Anything else is the plain dashboard of a server that does not know them. */
-function isView(answer: unknown, view: string): boolean {
-  return typeof answer === 'object' && answer !== null && (answer as { view?: unknown }).view === view;
+/**
+ * Whether the answer is the view that was asked for. An answer that names no
+ * view is the plain dashboard of a server that does not know them: false. An
+ * answer that names another view is a wrong answer, not an old server: it throws.
+ */
+function isView(answer: unknown, asked: string): boolean {
+  const named = typeof answer === 'object' && answer !== null ? (answer as { view?: unknown }).view : undefined;
+  if (typeof named !== 'string') return false;
+  if (named !== asked) throw new FigureDetailError();
+  return true;
 }
 
 function readRows<T>(rows: unknown[], schema: z.ZodType<T>): { read: T[]; unreadable: number } {
@@ -162,11 +170,14 @@ export function parseCashView(answer: unknown): CashView | null {
   const parsed = cashSchema.safeParse(answer);
   if (!parsed.success) throw new FigureDetailError();
   const rows = readRows(parsed.data.accounts, accountSchema);
+  // As with the parts of money out: the accounts are listed only if together they come to the total.
+  const listed = rows.read.reduce((sum, account) => sum + account.balance, 0);
+  const whole = rows.unreadable === 0 && listed === parsed.data.total;
   return {
     currency: parsed.data.currency,
     asOf: parsed.data.asOf,
     totalMinor: parsed.data.total,
-    accounts: rows.read.map((account) => ({ name: account.name, balanceMinor: account.balance })),
+    accounts: whole ? rows.read.map((account) => ({ name: account.name, balanceMinor: account.balance })) : [],
     unreadable: rows.unreadable,
   };
 }

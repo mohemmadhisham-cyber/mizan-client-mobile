@@ -86,13 +86,11 @@ export default function FigureScreen() {
   const k = kpis.data;
   const d = detail.data;
   const currency = k?.currency ?? 'AED';
-  // Money out for another period than this month is the period's own figure, once it has come.
-  const ofPeriod = key === 'out' && period !== 'this_month';
-  const amount = ofPeriod
-    ? (periodView.data?.moneyOut ?? null)
-    : k
-      ? { in: k.moneyIn, out: k.moneyOut, cash: k.cash, vat: k.vatDue }[key]
-      : null;
+  // Money out shows the chosen period's own figure once it has come, so it agrees with the parts
+  // under it. Until then this month falls back to the figure Home showed; another period waits.
+  const fromHome = k ? { in: k.moneyIn, out: k.moneyOut, cash: k.cash, vat: k.vatDue }[key] : null;
+  const amount =
+    key === 'out' ? (periodView.data?.moneyOut ?? (period === 'this_month' ? fromHome : null)) : fromHome;
 
   const lines: HeadlineLine[] = [
     { text: t(LABEL_KEY[key]), soft: true },
@@ -110,6 +108,19 @@ export default function FigureScreen() {
       bridge={null}
       refreshing={refreshing}
       onRefresh={onRefresh}>
+      {/* These two come from their own questions to the server, so they do not wait for the rest. */}
+      {key === 'out' ? (
+        <MoneyOut
+          period={period}
+          onPeriod={setPeriod}
+          view={periodView.data}
+          failed={periodView.isError}
+          onRetry={() => void periodView.refetch()}
+        />
+      ) : null}
+      {key === 'cash' ? (
+        <CashAccounts view={cashView.data} failed={cashView.isError} onRetry={() => void cashView.refetch()} />
+      ) : null}
       {detail.isError && !d ? (
         <RuledRow title={t('common.listLoadFailed')} action={t('common.retry')} onPress={onRefresh} />
       ) : !d ? (
@@ -117,24 +128,8 @@ export default function FigureScreen() {
       ) : (
         <>
           {key === 'in' ? <MoneyIn detail={d} onInvoices={() => router.push('/invoices')} /> : null}
-          {key === 'out' ? (
-            <>
-              <MoneyOut
-                period={period}
-                onPeriod={setPeriod}
-                view={periodView.data}
-                failed={periodView.isError}
-                onRetry={() => void periodView.refetch()}
-              />
-              <Months detail={d} pick="moneyOut" />
-            </>
-          ) : null}
-          {key === 'cash' ? (
-            <>
-              <CashAccounts view={cashView.data} />
-              <Cash detail={d} />
-            </>
-          ) : null}
+          {key === 'out' ? <Months detail={d} pick="moneyOut" /> : null}
+          {key === 'cash' ? <Cash detail={d} /> : null}
           {key === 'vat' ? <Vat dueDate={k?.vatDueDate} /> : null}
           {d.unreadable > 0 || (key === 'cash' && (cashView.data?.unreadable ?? 0) > 0) ? (
             <View style={{ paddingHorizontal: HORIZON_GUTTER, paddingTop: NOTE_SPACE }}>
@@ -186,8 +181,9 @@ interface MoneyOutProps {
  */
 function MoneyOut({ period, onPeriod, view, failed, onRetry }: MoneyOutProps) {
   const { t } = useTranslation();
-  // Not offered. (Only ever answered for the first period asked: a server either knows the view or does not.)
-  if (view === null) return null;
+  // Not offered: nothing is drawn and the screen is as it was. Judged on the first period asked
+  // only. Once the line of periods is up it stays up, so the person can always choose another.
+  if (view === null && period === 'this_month') return null;
   return (
     <>
       <WordTabs
@@ -197,7 +193,7 @@ function MoneyOut({ period, onPeriod, view, failed, onRetry }: MoneyOutProps) {
         onChange={onPeriod}
       />
       <SectionLabel>{t('figures.madeOf')}</SectionLabel>
-      {failed && !view ? (
+      {(failed && !view) || view === null ? (
         <RuledRow title={t('common.listLoadFailed')} action={t('common.retry')} onPress={onRetry} />
       ) : !view || view.period !== period ? (
         <RuledRow title={t('common.loading')} />
@@ -259,9 +255,24 @@ function MoneyIn({ detail, onInvoices }: { detail: FigureDetail; onInvoices: () 
   );
 }
 
+interface CashAccountsProps {
+  /** Undefined while it is on its way. Null when the server does not offer it. */
+  view: CashView | null | undefined;
+  failed: boolean;
+  onRetry: () => void;
+}
+
 /** Each cash and bank account and what is in it today. Draws nothing until a server that knows the view has answered. */
-function CashAccounts({ view }: { view: CashView | null | undefined }) {
+function CashAccounts({ view, failed, onRetry }: CashAccountsProps) {
   const { t } = useTranslation();
+  if (failed && !view) {
+    return (
+      <>
+        <SectionLabel>{t('figures.cashAccounts')}</SectionLabel>
+        <RuledRow title={t('common.listLoadFailed')} action={t('common.retry')} onPress={onRetry} />
+      </>
+    );
+  }
   if (!view || view.accounts.length === 0) return null;
   return (
     <>
