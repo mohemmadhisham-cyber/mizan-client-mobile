@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useCanGoBack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Platform, View } from 'react-native';
@@ -73,7 +73,7 @@ export default function EmailScreen() {
 
   // Opened from an invite link there is nothing behind this screen. Going
   // elsewhere would drop the invite, so then there is no Back, only the mark.
-  const canLeave = router.canGoBack();
+  const canLeave = useCanGoBack();
 
   return (
     // The keyboard is handled as these screens always handled it, so the button stays in reach.
