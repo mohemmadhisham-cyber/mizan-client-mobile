@@ -29,7 +29,9 @@ interface InvoiceRow {
 export const billingService = {
   async getPlan(): Promise<BillingPlan | null> {
     const { data, error } = await supabase.rpc('get_my_firm_billing_summary');
-    if (error || !data || (data as BillingSummaryRow[]).length === 0) return null;
+    // Thrown, so the screen can say it could not be read: an empty answer would read as "none".
+    if (error) throw new Error(error.message);
+    if (!data || (data as BillingSummaryRow[]).length === 0) return null;
     const row = (data as BillingSummaryRow[])[0];
     return {
       firmName: row.firm_name,
@@ -42,7 +44,9 @@ export const billingService = {
 
   async getInvoices(): Promise<Invoice[]> {
     const { data, error } = await supabase.rpc('get_my_firm_invoices');
-    if (error || !data) return [];
+    // Thrown, so the screen can say it could not be read: an empty answer would read as "none".
+    if (error) throw new Error(error.message);
+    if (!data) return [];
     return (data as InvoiceRow[]).map((r) => ({
       id: r.id,
       number: r.number,

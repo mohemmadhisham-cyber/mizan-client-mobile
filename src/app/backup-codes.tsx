@@ -1,22 +1,32 @@
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Alert, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { DetailHeader } from '@/components/navigation/detail-header';
-import { Button, Card, Skeleton, Text } from '@/components/ui';
+import { Cta } from '@/components/horizon/cta';
+import { BRIDGE_WIDTH, FieldBack, HORIZON_GUTTER, HorizonScreen } from '@/components/horizon/horizon-screen';
+import { Figure, RuledRow, SectionLabel } from '@/components/horizon/ruled';
+import { Text } from '@/components/ui';
 import {
   disableBackupCodes,
   generateBackupCodes,
   getBackupCodesStatus,
   type BackupCodesStatus,
 } from '@/services/backup-codes';
-import { radius, spacing, useTheme } from '@/theme';
+import { useTheme } from '@/theme';
+import { horizonColors } from '@/theme/horizon';
+
+const BACKUP_FIELD = 150;
+const INTRO_SPACE_ABOVE = 20;
+const INTRO_SPACE_BELOW = 6;
+const ACTIONS_SPACE_ABOVE = 20;
+const ACTIONS_GAP = 10;
+const CODE_SIZE = 17;
+const CODE_PADDING = 14;
 
 export default function BackupCodesScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
+  const colors = horizonColors(theme.colors);
   const [status, setStatus] = useState<BackupCodesStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [freshCodes, setFreshCodes] = useState<string[] | null>(null);
@@ -73,59 +83,83 @@ export default function BackupCodesScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
-      <DetailHeader title={t('backupCodes.title')} />
-      <ScrollView contentContainerStyle={{ padding: spacing.gutter, gap: spacing.lg, paddingBottom: insets.bottom + spacing.xl }}>
+    <HorizonScreen
+      field={BACKUP_FIELD}
+      small
+      lines={[{ text: t('backupCodes.title') }]}
+      top={<FieldBack colors={colors} />}
+      // New codes are shown once: saving them is the one thing to do now.
+      bridge={freshCodes ? { start: HORIZON_GUTTER, width: BRIDGE_WIDTH } : null}>
+      <View
+        style={{
+          paddingHorizontal: HORIZON_GUTTER,
+          paddingTop: INTRO_SPACE_ABOVE,
+          paddingBottom: INTRO_SPACE_BELOW,
+        }}>
         <Text variant="callout" color="mutedForeground">
           {t('backupCodes.intro')}
         </Text>
+      </View>
 
-        {!status ? (
-          <Skeleton height={100} radius={radius.lg} />
-        ) : freshCodes ? (
-          <Card elevated style={{ gap: spacing.md }}>
-            <Text variant="title">{t('backupCodes.saveNowTitle')}</Text>
-            <Text variant="footnote" color="mutedForeground">
+      {!status ? (
+        <RuledRow title={t('common.loading')} />
+      ) : freshCodes ? (
+        <>
+          <SectionLabel>{t('backupCodes.saveNowTitle')}</SectionLabel>
+          <View style={{ paddingHorizontal: HORIZON_GUTTER, paddingBottom: 10 }}>
+            <Text variant="subhead" color="mutedForeground">
               {t('backupCodes.saveNowBody')}
             </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
-              {freshCodes.map((code) => (
-                <View
-                  key={code}
-                  style={{
-                    backgroundColor: theme.colors.secondary,
-                    borderRadius: radius.sm,
-                    paddingHorizontal: spacing.base,
-                    paddingVertical: spacing.sm,
-                  }}>
-                  <Text variant="body" weight="semibold" tabular>
-                    {code}
-                  </Text>
-                </View>
-              ))}
-            </View>
-            <Button title={t('backupCodes.doneSaved')} onPress={() => setFreshCodes(null)} fullWidth />
-          </Card>
-        ) : (
-          <Card elevated style={{ gap: spacing.md }}>
-            <Text variant="title">{status.enabled ? t('backupCodes.remaining', { count: status.remaining }) : t('backupCodes.notSetUp')}</Text>
-            <Text variant="footnote" color="mutedForeground">
-              {status.enabled
-                ? t('backupCodes.replaceHint')
-                : t('backupCodes.setupHint')}
-            </Text>
-            <Button
+          </View>
+          {/* Two to a line in the mono face, ruled like a ledger. */}
+          <View style={[styles.codes, { borderTopColor: theme.colors.border }]}>
+            {freshCodes.map((code) => (
+              <View key={code} style={[styles.code, { borderBottomColor: theme.colors.border }]}>
+                <Figure size={CODE_SIZE}>{code}</Figure>
+              </View>
+            ))}
+          </View>
+          <View style={styles.actions}>
+            <Cta title={t('backupCodes.doneSaved')} onPress={() => setFreshCodes(null)} />
+          </View>
+        </>
+      ) : (
+        <>
+          <RuledRow
+            title={status.enabled ? t('backupCodes.remaining', { count: status.remaining }) : t('backupCodes.notSetUp')}
+            meta={status.enabled ? t('backupCodes.replaceHint') : t('backupCodes.setupHint')}
+          />
+          <View style={styles.actions}>
+            <Cta
               title={status.enabled ? t('backupCodes.regenerate') : t('backupCodes.generate')}
-              onPress={handleGenerate}
-              loading={busy}
-              fullWidth
+              busy={busy}
+              onPress={() => void handleGenerate()}
             />
             {status.enabled ? (
-              <Button title={t('backupCodes.turnOff')} variant="secondary" onPress={handleDisable} disabled={busy} fullWidth />
+              <Cta kind="outline" title={t('backupCodes.turnOff')} disabled={busy} onPress={handleDisable} />
             ) : null}
-          </Card>
-        )}
-      </ScrollView>
-    </View>
+          </View>
+        </>
+      )}
+    </HorizonScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  codes: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: HORIZON_GUTTER,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  code: {
+    width: '50%',
+    paddingVertical: CODE_PADDING,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  actions: {
+    paddingHorizontal: HORIZON_GUTTER,
+    paddingTop: ACTIONS_SPACE_ABOVE,
+    gap: ACTIONS_GAP,
+  },
+});

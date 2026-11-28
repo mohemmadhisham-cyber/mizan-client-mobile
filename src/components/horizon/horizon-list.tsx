@@ -17,6 +17,8 @@ interface HorizonListProps<T> {
   listHeader?: ReactElement;
   /** Shown instead of rows when `data` is empty: loading, failed, or nothing yet. */
   listEmpty?: ReactElement;
+  /** Scrolls with the list, below the last row. */
+  listFooter?: ReactElement;
   /** Called near the end of the list; load the next page here. */
   onEndReached?: () => void;
   /** Shows a spinner under the last row while the next page loads. */
@@ -39,6 +41,7 @@ export function HorizonList<T>({
   keyExtractor,
   listHeader,
   listEmpty,
+  listFooter,
   onEndReached,
   loadingMore = false,
   refreshing = false,
@@ -58,10 +61,14 @@ export function HorizonList<T>({
       ListFooterComponent={
         loadingMore ? (
           <ActivityIndicator color={theme.colors.foreground} style={{ paddingVertical: FOOTER_SPACE }} />
-        ) : undefined
+        ) : (
+          listFooter
+        )
       }
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
+      // Dragging the list puts the keyboard away, so the rows behind it can be reached.
+      keyboardDismissMode="on-drag"
       contentContainerStyle={{ paddingBottom: (safeBottom ? insets.bottom : 0) + HORIZON_GUTTER }}
       onEndReached={onEndReached}
       onEndReachedThreshold={0.5}
