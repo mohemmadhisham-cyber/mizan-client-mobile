@@ -561,5 +561,37 @@
   "horizonReports": {
     "vsPrevious": "against the report before",
     "notOpened": "This report could not be opened. It may have been removed, or the connection failed."
+  },
+  "horizonPlan": {
+    "title": "Your plan",
+    "currentOfGoal": "{{current}} of {{goal}}",
+    "ofGoal": "of {{goal}}.",
+    "percent": "{{value}}%",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days",
+    "statusOnTrack": "On track",
+    "statusBehind": "Behind",
+    "statusAtRisk": "At risk",
+    "statusMet": "Reached",
+    "daysLeft_one": "{{count}} day left",
+    "daysLeft_other": "{{count}} days left",
+    "deadlinePassed": "The date has passed",
+    "reached": "{{percent}} of the way",
+    "goal": "Goal",
+    "soFar": "So far",
+    "startedAt": "Started at",
+    "deadline": "By",
+    "agreedOn": "Agreed on",
+    "note": "From your accountant",
+    "steps": "Steps you agreed",
+    "stepDone": "Done",
+    "stepOpen": "Not done yet",
+    "monthByMonth": "Month by month",
+    "planWas": "Plan: {{plan}}",
+    "ask": "Ask your accountant about this",
+    "goneTitle": "Target not found",
+    "goneBody": "This target is not in your plan now. It may have been closed, or the connection failed.",
+    "dueToday": "Due today",
+    "unreadable": "Some targets could not be shown. Update the app or ask your accountant."
   }
 }

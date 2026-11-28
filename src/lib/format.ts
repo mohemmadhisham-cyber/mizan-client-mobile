@@ -68,6 +68,7 @@ export function daysUntil(date: Date | string): number {
 
 export function formatDate(date: Date | string, opts?: Intl.DateTimeFormatOptions): string {
   const d = typeof date === 'string' ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return '';
   try {
     return new Intl.DateTimeFormat(localeTag(), opts ?? { day: 'numeric', month: 'short', year: 'numeric' }).format(d);
   } catch {

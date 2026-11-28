@@ -15,7 +15,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import { Stack, ThemeProvider as NavigationThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { IntroOverlay } from '@/components/horizon/intro-overlay';
 import { useAuthGate } from '@/hooks/use-auth-gate';
@@ -34,8 +34,19 @@ const queryClient = new QueryClient({
 
 function RootNav() {
   const theme = useTheme();
-  const { loading } = useAuth();
+  const { loading, user } = useAuth();
   useAuthGate();
+
+  // Everything read from the server is cached for a while. When the signed-in
+  // person changes (sign out, another sign in), that cache belongs to someone
+  // else: drop all of it, so no screen can show the previous person's data.
+  const userId = user?.id ?? null;
+  const cachedFor = useRef(userId);
+  useEffect(() => {
+    if (cachedFor.current === userId) return;
+    cachedFor.current = userId;
+    queryClient.clear();
+  }, [userId]);
 
   useEffect(() => {
     // Hold the native splash until the session is resolved, so the auth gate
