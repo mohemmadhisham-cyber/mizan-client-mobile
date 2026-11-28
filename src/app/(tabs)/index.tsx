@@ -90,15 +90,20 @@ export default function HomeScreen() {
           { text: t('horizonHome.thisMonth'), soft: true },
         ];
 
+  // A figure opens what it is made of, once there is a figure to open.
+  const openFigure = (key: 'in' | 'out' | 'cash' | 'vat') =>
+    k ? () => router.push({ pathname: '/figure/[key]', params: { key } }) : undefined;
+
   const cells: LedgerCell[] = [
-    { key: 'in', label: t('home.moneyIn'), value: k ? formatMoneyMinor(k.moneyIn, cur) : null },
-    { key: 'out', label: t('home.moneyOut'), value: k ? formatMoneyMinor(k.moneyOut, cur) : null },
-    { key: 'cash', label: t('horizonHome.cash'), value: k ? formatMoneyMinor(k.cash, cur) : null },
+    { key: 'in', label: t('home.moneyIn'), value: k ? formatMoneyMinor(k.moneyIn, cur) : null, onPress: openFigure('in') },
+    { key: 'out', label: t('home.moneyOut'), value: k ? formatMoneyMinor(k.moneyOut, cur) : null, onPress: openFigure('out') },
+    { key: 'cash', label: t('horizonHome.cash'), value: k ? formatMoneyMinor(k.cash, cur) : null, onPress: openFigure('cash') },
     {
       key: 'vat',
       label: t('home.vatDue'),
       value: k ? formatMoneyMinor(k.vatDue, cur) : null,
       note: k ? vatNote(k.vatDue, k.vatDueDate, t) : undefined,
+      onPress: openFigure('vat'),
     },
   ];
 

@@ -34,35 +34,72 @@ export class DashboardUnavailableError extends Error {
   }
 }
 
-let cached: { at: number; data: MobileSummary } | null = null;
+type Loaded = { mobile: MobileSummary; answer: unknown };
 
-/** Forget the cached summary so the next read goes to the server (pull to refresh). */
+/** How long one answer from the server is reused. Matches the app's query stale time. */
+const CACHE_MS = 30_000;
+
+let cached: { at: number; loaded: Loaded } | null = null;
+let inflight: Promise<Loaded> | null = null;
+/**
+ * Moves on every clear. An answer that set out before a clear belongs to
+ * what was cleared (an earlier pull, or the person who was signed in before)
+ * and is not kept.
+ */
+let generation = 0;
+
+/**
+ * Forget the dashboard: the next read goes to the server. Called on a pull to
+ * refresh, and whenever the signed-in person changes, so one person's figures
+ * can never be shown to the next. A request still in the air is let go: its
+ * answer is not kept and no later caller is given it.
+ */
 export function clearDashboardCache(): void {
+  generation += 1;
   cached = null;
+  inflight = null;
 }
 
-let inflight: Promise<MobileSummary> | null = null;
+// Coalesce the dashboard queries onto a single edge-function round trip (each
+// getX below, and the detail screens, would otherwise re-invoke it). Callers
+// that arrive while a request is in the air share it, so a cold start or a
+// pull to refresh is still one call, not five.
+function fetchLoaded(): Promise<Loaded> {
+  if (cached && Date.now() - cached.at < CACHE_MS) return Promise.resolve(cached.loaded);
+  if (inflight) return inflight;
+  const startedIn = generation;
+  const request: Promise<Loaded> = loadDashboard()
+    .then((loaded) => {
+      if (startedIn === generation) cached = { at: Date.now(), loaded };
+      return loaded;
+    })
+    .finally(() => {
+      if (inflight === request) inflight = null;
+    });
+  inflight = request;
+  return request;
+}
 
-// Coalesce the five dashboard queries onto a single edge-function round trip
-// (each getX below would otherwise re-invoke it). 30s window matches the
-// app's query staleTime. Callers that arrive while a request is in the air
-// share it, so a cold start or a pull to refresh is still one call, not five.
 function fetchMobile(): Promise<MobileSummary> {
-  if (cached && Date.now() - cached.at < 30_000) return Promise.resolve(cached.data);
-  inflight ??= loadMobile().finally(() => {
-    inflight = null;
-  });
-  return inflight;
+  return fetchLoaded().then((loaded) => loaded.mobile);
 }
 
-async function loadMobile(): Promise<MobileSummary> {
+async function loadDashboard(): Promise<Loaded> {
   const { data, error } = await supabase.functions.invoke('client-dashboard');
   if (error || !data) throw new DashboardUnavailableError('network_error');
   if (!data.ok) throw new DashboardUnavailableError(data.error ?? 'unavailable');
   const mobile = data.mobile as MobileSummary | undefined;
   if (!mobile) throw new DashboardUnavailableError('unavailable');
-  cached = { at: Date.now(), data: mobile };
-  return mobile;
+  return { mobile, answer: data };
+}
+
+/**
+ * The server's whole answer, as sent, for the screens that show what a figure
+ * is made of. It is the same call and the same cache as the summary: opening
+ * a detail screen from Home asks the server nothing more.
+ */
+export function fetchDashboardAnswer(): Promise<unknown> {
+  return fetchLoaded().then((loaded) => loaded.answer);
 }
 
 function currencyCode(c: string): 'AED' | 'SAR' {

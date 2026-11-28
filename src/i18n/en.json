@@ -581,6 +581,39 @@
     "tryAsking": "Try asking",
     "writing": "The advisor is writing"
   },
+  "figures": {
+    "inSub": "Sales this month, from your books.",
+    "outSub": "Costs this month, from your books.",
+    "cashSub": "In your bank and cash accounts today.",
+    "vatSub": "What your books say you owe today.",
+    "months": "Month by month",
+    "topCustomers": "Your biggest customers",
+    "topCustomersNote": "By all invoices to date, not this month alone.",
+    "invoicesSection": "Invoices",
+    "cashFlowSection": "How money moves",
+    "cashNothing": "There is not enough in your books yet to show how money moves.",
+    "vatDueDate": "Due date",
+    "vatNote": "Your accountant prepares and files the return. This figure can change until then.",
+    "unreadable": "Some lines could not be shown.",
+    "soFar": "So far this month",
+    "receivableDays_one": "Customers owe you about {{count}} day of sales",
+    "receivableDays_other": "Customers owe you about {{count}} days of sales",
+    "payableDays_one": "You owe suppliers about {{count}} day of costs",
+    "payableDays_other": "You owe suppliers about {{count}} days of costs",
+    "daysNote": "An estimate, from what is owed today and the last 30 days."
+  },
+  "invoicesScreen": {
+    "title": "Latest invoices",
+    "sub": "The newest invoices to your customers.",
+    "statusPaid": "Paid",
+    "empty": "No invoices yet.",
+    "latestOnly_one": "The latest {{count}} invoice. Ask your accountant for older ones.",
+    "latestOnly_other": "The latest {{count}} invoices. Ask your accountant for older ones.",
+    "statusOpenDue": "Not paid, due {{date}}",
+    "statusPartialDue": "Partly paid, due {{date}}",
+    "statusOverdueSince": "Overdue since {{date}}",
+    "stillToPay": "{{amount}} still to pay"
+  },
   "horizonMessages": {
     "title": "Your accountant",
     "sub": "Text, photos and voice messages."
