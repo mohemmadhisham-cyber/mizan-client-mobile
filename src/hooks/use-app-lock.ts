@@ -4,9 +4,10 @@ import { AppState } from 'react-native';
 import { awayBetween, isAppLockOn, locksOnReturn, type Moment, momentNow, startsLocked } from '@/lib/app-lock';
 
 /**
- * Whether the app is locked right now. A sheet that opens over the app (a
- * native window above every screen, the lock included) reads this and closes
- * itself while the app is locked, so nothing shows over the lock.
+ * Whether something is drawn over the whole app right now: the lock, or the
+ * notice that the app must be updated. A sheet that opens over the app (a
+ * native window above every screen, those included) reads this and closes
+ * itself meanwhile, so nothing shows over them.
  */
 export const AppLockedContext = createContext(false);
 

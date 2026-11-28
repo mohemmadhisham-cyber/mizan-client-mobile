@@ -27,8 +27,10 @@ import { StyleSheet, View } from 'react-native';
 import { IntroOverlay } from '@/components/horizon/intro-overlay';
 import { AppError } from '@/components/support/app-error';
 import { AppLockScreen } from '@/components/support/app-lock-screen';
+import { UpdateRequiredScreen } from '@/components/support/update-required-screen';
 import { AppLockedContext, useAppLock } from '@/hooks/use-app-lock';
 import { useAuthGate } from '@/hooks/use-auth-gate';
+import { useUpdateRequired } from '@/hooks/use-update-required';
 import { syncAiConsent } from '@/lib/ai-consent';
 import { clearDashboardCache } from '@/services/client-data';
 import { wireOnlineManager } from '@/lib/online';
@@ -91,15 +93,22 @@ function RootNav() {
   }, [userId]);
 
   const lock = useAppLock(userId, loading);
-  const hidden = lock.locked || lock.covered;
+  // This version of the app may be older than the server still accepts.
+  const update = useUpdateRequired();
+  /** Something is drawn over the whole app: its screens are not to be reached or read out. */
+  const blocked = lock.locked || update !== null;
+  const hidden = blocked || lock.covered;
 
   // The camera opens as a full-screen window, which iOS draws above everything else in the
-  // app, the lock included. It is closed when the app locks, so the lock is what is seen.
+  // app, the lock included. It is closed when the app is blocked, so what blocks it is seen.
   const router = useRouter();
   const onCamera = useSegments()[0] === 'capture';
   useEffect(() => {
-    if (lock.locked && onCamera && router.canGoBack()) router.back();
-  }, [lock.locked, onCamera, router]);
+    if (!blocked || !onCamera) return;
+    // Opened on its own, by a link, with nothing behind it: Home takes its place.
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
+  }, [blocked, onCamera, router]);
 
   useEffect(() => {
     // Hold the native splash until the session is resolved, so the auth gate
@@ -114,7 +123,7 @@ function RootNav() {
         style={styles.app}
         accessibilityElementsHidden={hidden}
         importantForAccessibility={hidden ? 'no-hide-descendants' : 'auto'}>
-        <AppLockedContext.Provider value={lock.locked}>
+        <AppLockedContext.Provider value={blocked}>
           <Stack
             screenOptions={{
               headerShown: false,
@@ -124,7 +133,12 @@ function RootNav() {
           </Stack>
         </AppLockedContext.Provider>
       </View>
-      {lock.locked && userId ? (
+      {update ? (
+        // Before the lock: a version that cannot be used is not worth unlocking.
+        <View style={StyleSheet.absoluteFill} accessibilityViewIsModal>
+          <UpdateRequiredScreen storeUrl={update.storeUrl} />
+        </View>
+      ) : lock.locked && userId ? (
         <View style={StyleSheet.absoluteFill} accessibilityViewIsModal>
           <AppLockScreen userId={userId} onUnlocked={lock.unlock} onSignOut={() => void signOut()} />
         </View>

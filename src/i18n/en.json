@@ -620,6 +620,13 @@
     "statusOverdueSince": "Overdue since {{date}}",
     "stillToPay": "{{amount}} still to pay"
   },
+  "update": {
+    "titleB": "needs an update.",
+    "body": "This version of the app can no longer be used. Update it to carry on.",
+    "action": "Update the app",
+    "noLink": "Open your phone's app store and update the app.",
+    "openFailedTitle": "The store could not be opened"
+  },
   "lock": {
     "titleB": "is locked.",
     "body": "Confirm it is you to carry on.",
