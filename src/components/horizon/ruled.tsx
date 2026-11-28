@@ -67,15 +67,17 @@ interface RuledRowProps {
   onPress?: () => void;
   /** The meta line is a warning (overdue, late). */
   alert?: boolean;
+  /** A sentence to read, not a thing to open: the title is set at reading weight. */
+  plain?: boolean;
 }
 
 /** One line of the ground: a title, a quieter line under it, a rule below. No card. */
-export function RuledRow({ title, meta, action, end, onPress, alert = false }: RuledRowProps) {
+export function RuledRow({ title, meta, action, end, onPress, alert = false, plain = false }: RuledRowProps) {
   const theme = useTheme();
   const body = (
     <>
       <View style={styles.rowText}>
-        <Text variant="body" weight="semibold">
+        <Text variant="body" weight={plain ? 'regular' : 'semibold'}>
           {title}
         </Text>
         {meta ? (
@@ -129,12 +131,16 @@ export function Ledger({ cells }: { cells: LedgerCell[] }) {
     <View style={[styles.ledger, { borderBottomColor: rule }]}>
       {cells.map((cell, index) => {
         const leading = index % 2 === 0;
+        // A last cell with no partner takes the whole line, with no rule down its side.
+        const alone = leading && index === cells.length - 1;
         const frame = [
           styles.cell,
           { borderTopColor: rule, borderTopWidth: index < 2 ? 0 : StyleSheet.hairlineWidth },
-          leading
-            ? { borderEndColor: rule, borderEndWidth: StyleSheet.hairlineWidth, paddingEnd: ROW_PADDING }
-            : { paddingStart: ROW_PADDING },
+          alone
+            ? { width: '100%' as const }
+            : leading
+              ? { borderEndColor: rule, borderEndWidth: StyleSheet.hairlineWidth, paddingEnd: ROW_PADDING }
+              : { paddingStart: ROW_PADDING },
         ];
         const body = (
           <>

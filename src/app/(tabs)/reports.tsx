@@ -1,22 +1,30 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 
 import { TrendChart } from '@/components/charts/trend-chart';
-import { AppHeader } from '@/components/navigation/app-header';
-import { Card, Screen, Skeleton, Text } from '@/components/ui';
+import { FieldBack, HORIZON_GUTTER, HorizonScreen } from '@/components/horizon/horizon-screen';
+import { Ledger, type LedgerCell, RuledRow, SectionLabel } from '@/components/horizon/ruled';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { formatMoneyMinor } from '@/lib/format';
+import { CATEGORY_LABEL_KEY } from '@/services/report-presentation';
 import { reportsService } from '@/services/reports';
-import type { Report } from '@/services/types';
-import { CATEGORY_ICON, CATEGORY_TONE } from '@/services/report-presentation';
-import { radius, softTone, spacing, useTheme } from '@/theme';
+import { useTheme } from '@/theme';
+import { horizonColors } from '@/theme/horizon';
 
+/** Height of the field: a one-line title. No period is named: the figures below carry their own. */
+const REPORTS_FIELD = 150;
+
+/**
+ * Reports: the two key figures, the profit and loss trend, and the latest
+ * reports from the accountant. Reached from More and from Home. Figures are the
+ * server's; this screen only formats them.
+ */
 export default function ReportsScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
+  const colors = horizonColors(theme.colors);
   const router = useRouter();
 
   const metrics = useQuery({ queryKey: ['reports-key-metrics'], queryFn: reportsService.getKeyMetrics });
@@ -25,169 +33,84 @@ export default function ReportsScreen() {
   const insights = useQuery({ queryKey: ['reports-insights', 2], queryFn: () => reportsService.getRecentInsights(2) });
   const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([metrics.refetch(), pl.refetch(), insights.refetch()]));
 
+  const m = metrics.data;
+  const cells: LedgerCell[] = [
+    // The service gives 0 when there are not yet two reports to compare, so 0 is not shown
+    // as a result. The sign is shown as it is: a fall must not read as a rise.
+    ...(m && m.revenueGrowthPct !== 0
+      ? [
+          {
+            key: 'growth',
+            label: t('reportsScreen.revenueGrowth'),
+            value: `${m.revenueGrowthPct > 0 ? '+' : ''}${m.revenueGrowthPct}%`,
+            // The service compares the two latest profit and loss reports, whatever their period.
+            note: t('horizonReports.vsPrevious'),
+          },
+        ]
+      : []),
+    // Shown only when there is a figure: the service returns 0 until savings are worked out
+    // on the server, and "AED 0 savings potential" would read as a finding.
+    ...(m && m.savingsPotentialMinor > 0
+      ? [
+          {
+            key: 'savings',
+            label: t('reportsScreen.savingsPotential'),
+            value: formatMoneyMinor(m.savingsPotentialMinor, m.currency),
+            note: t('reportsScreen.acrossCategories', { count: m.savingsCategoryCount }),
+          },
+        ]
+      : []),
+  ];
+
   return (
-    <Screen scroll header={<AppHeader />} refreshing={refreshing} onRefresh={onRefresh}>
-      <View style={{ gap: 4, marginTop: spacing.sm, marginBottom: spacing.lg }}>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-          <View>
-            <Text variant="h2" weight="semibold">
-              {t('reportsScreen.title')}
-            </Text>
-            <Text variant="body" color="mutedForeground">
-              {t('reportsScreen.subtitle')}
-            </Text>
-          </View>
-          <View style={[styles(theme).periodPill]}>
-            <Ionicons name="calendar-outline" size={14} color={theme.colors.primary} />
-            <Text variant="caption" weight="semibold" color="primary">
-              {t('reportsScreen.thisQuarter')}
-            </Text>
-          </View>
-        </View>
-      </View>
+    <HorizonScreen
+      field={REPORTS_FIELD}
+      small
+      lines={[{ text: t('reportsScreen.title') }]}
+      top={<FieldBack colors={colors} />}
+      bridge={null}
+      safeBottom={false}
+      refreshing={refreshing}
+      onRefresh={onRefresh}>
+      {metrics.isError && !m ? (
+        <RuledRow title={t('common.listLoadFailed')} action={t('common.retry')} onPress={() => void metrics.refetch()} />
+      ) : cells.length > 0 ? (
+        <Ledger cells={cells} />
+      ) : null}
 
-      <View style={{ flexDirection: 'row', gap: spacing.md, marginBottom: spacing.lg }}>
-        {metrics.data ? (
-          <>
-            <MetricCard
-              label={t('reportsScreen.revenueGrowth')}
-              value={`+${metrics.data.revenueGrowthPct}%`}
-              sub={t('reportsScreen.vsLastQuarter')}
-              icon="trending-up"
-              tint={theme.colors.chart5}
-            />
-            <MetricCard
-              label={t('reportsScreen.savingsPotential')}
-              value={formatMoneyMinor(metrics.data.savingsPotentialMinor, metrics.data.currency)}
-              sub={t('reportsScreen.acrossCategories', { count: metrics.data.savingsCategoryCount })}
-              icon="wallet-outline"
-              tint={theme.colors.accent}
-            />
-          </>
-        ) : (
-          <>
-            <Skeleton height={132} radius={radius.lg} style={{ flex: 1 }} />
-            <Skeleton height={132} radius={radius.lg} style={{ flex: 1 }} />
-          </>
-        )}
-      </View>
-
-      <View style={{ marginBottom: spacing.lg }}>
-        {pl.data ? (
+      {pl.data ? (
+        <View style={{ paddingHorizontal: HORIZON_GUTTER, paddingTop: 22 }}>
           <TrendChart question={t('reportsScreen.profitAndLoss')} data={pl.data} type="bar" headingVariant="title" />
-        ) : (
-          <Skeleton height={220} radius={radius.lg} />
-        )}
-      </View>
-
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm }}>
-        <Text variant="title">{t('reportsScreen.monthlyInsights')}</Text>
-        <Pressable accessibilityRole="button" onPress={() => router.push('/reports-archive')}>
-          <Text variant="caption" weight="semibold" color="primary">
-            {t('reportsScreen.viewAll')}
-          </Text>
-        </Pressable>
-      </View>
-
-      {!insights.data ? (
-        <View style={{ gap: spacing.sm }}>
-          <Skeleton height={72} radius={radius.md} />
-          <Skeleton height={72} radius={radius.md} />
         </View>
       ) : (
-        <View style={{ gap: spacing.sm }}>
-          {insights.data.map((r) => (
-            <ReportRow key={r.id} report={r} onPress={() => router.push({ pathname: '/report/[id]', params: { id: r.id } })} />
-          ))}
-        </View>
+        <>
+          <SectionLabel>{t('reportsScreen.profitAndLoss')}</SectionLabel>
+          {pl.isError ? (
+            <RuledRow title={t('common.listLoadFailed')} action={t('common.retry')} onPress={() => void pl.refetch()} />
+          ) : (
+            <RuledRow title={t('common.loading')} />
+          )}
+        </>
       )}
-    </Screen>
+
+      <SectionLabel>{t('reportsScreen.monthlyInsights')}</SectionLabel>
+      {insights.isError && !insights.data ? (
+        <RuledRow title={t('common.listLoadFailed')} action={t('common.retry')} onPress={() => void insights.refetch()} />
+      ) : !insights.data ? (
+        <RuledRow title={t('common.loading')} />
+      ) : insights.data.length === 0 ? (
+        <RuledRow title={t('reportDetail.noneFoundTitle')} />
+      ) : (
+        insights.data.map((report) => (
+          <RuledRow
+            key={report.id}
+            title={report.title}
+            meta={[t(CATEGORY_LABEL_KEY[report.category]), report.publishedAt, report.sizeLabel].filter(Boolean).join(' · ')}
+            onPress={() => router.push({ pathname: '/report/[id]', params: { id: report.id } })}
+          />
+        ))
+      )}
+      <RuledRow title={t('reportDetail.allReports')} action={t('reportsScreen.viewAll')} onPress={() => router.push('/reports-archive')} />
+    </HorizonScreen>
   );
 }
-
-function MetricCard({
-  label,
-  value,
-  sub,
-  icon,
-  tint,
-}: {
-  label: string;
-  value: string;
-  sub: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  tint: string;
-}) {
-  return (
-    <Card elevated style={{ flex: 1, gap: spacing.sm, overflow: 'hidden' }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <Text variant="footnote" color="mutedForeground" style={{ flex: 1 }}>
-          {label}
-        </Text>
-        <Ionicons name={icon} size={18} color={tint} />
-      </View>
-      <Text variant="h1" tabular numberOfLines={1} adjustsFontSizeToFit>
-        {value}
-      </Text>
-      <Text variant="caption" color="mutedForeground">
-        {sub}
-      </Text>
-    </Card>
-  );
-}
-
-function ReportRow({ report, onPress }: { report: Report; onPress: () => void }) {
-  const theme = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [
-        {
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: spacing.md,
-          padding: spacing.base,
-          borderRadius: radius.md,
-          backgroundColor: theme.colors.card,
-          opacity: pressed ? 0.7 : 1,
-        },
-        theme.elevation.xs,
-      ]}>
-      <View
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: radius.md,
-          backgroundColor: softTone(theme.colors, CATEGORY_TONE[report.category]).bg,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-        <Ionicons name={CATEGORY_ICON[report.category]} size={18} color={theme.colors.primary} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text variant="callout" weight="semibold" numberOfLines={1}>
-          {report.title}
-        </Text>
-        <Text variant="footnote" color="mutedForeground">
-          {report.publishedAt} · {report.sizeLabel}
-        </Text>
-      </View>
-      <Ionicons name="download-outline" size={18} color={theme.colors.mutedForeground} />
-    </Pressable>
-  );
-}
-
-const styles = (theme: ReturnType<typeof useTheme>) => ({
-  periodPill: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 6,
-    backgroundColor: theme.colors.card,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-});

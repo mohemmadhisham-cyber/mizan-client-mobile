@@ -1,22 +1,34 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Linking, ScrollView, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { Alert, Linking, View } from 'react-native';
 
 import { TrendChart } from '@/components/charts/trend-chart';
-import { DetailHeader } from '@/components/navigation/detail-header';
-import { Button, Card, EmptyState, Skeleton, Text } from '@/components/ui';
-import { CATEGORY_ICON, CATEGORY_LABEL_KEY, CATEGORY_TONE } from '@/services/report-presentation';
+import { Cta } from '@/components/horizon/cta';
+import type { HeadlineLine } from '@/components/horizon/headline';
+import { BRIDGE_WIDTH, FieldBack, HORIZON_GUTTER, HorizonScreen } from '@/components/horizon/horizon-screen';
+import { RuledRow, SectionLabel } from '@/components/horizon/ruled';
+import { Text } from '@/components/ui';
+import { CATEGORY_LABEL_KEY } from '@/services/report-presentation';
 import { reportsService } from '@/services/reports';
-import { radius, softTone, spacing, useTheme } from '@/theme';
+import { useTheme } from '@/theme';
+import { horizonColors } from '@/theme/horizon';
 
+/** Height of the field: a one-line title and one quiet line under it. */
+const REPORT_FIELD = 176;
+/** A title longer than this may be cut in the field (sooner in Arabic or with large text), so it is repeated in full below the line. */
+const TITLE_FITS = 20;
+
+/**
+ * One report from the accountant: what it says, its highlights, its trend, and
+ * the PDF to download. The words and figures are the accountant's; nothing here
+ * computes or alters them.
+ */
 export default function ReportDetailScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
+  const colors = horizonColors(theme.colors);
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [downloading, setDownloading] = useState(false);
@@ -34,6 +46,8 @@ export default function ReportDetailScreen() {
         Alert.alert(t('reportDetail.noPdfTitle'), t('reportDetail.noPdfBody'));
         return;
       }
+      // Only a secure web link is opened, whatever the server returned.
+      if (!url.startsWith('https://')) throw new Error('unexpected link');
       await Linking.openURL(url);
     } catch {
       Alert.alert(t('reportDetail.downloadFailedTitle'), t('reportDetail.downloadFailedBody'));
@@ -42,66 +56,71 @@ export default function ReportDetailScreen() {
     }
   }
 
-  return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
-      <DetailHeader title={report.data?.title ?? 'Report'} />
+  const data = report.data;
+  const missing = !report.isLoading && !data;
+  const lines: HeadlineLine[] = data
+    ? [{ text: data.title }]
+    : missing
+      ? [{ text: t('reportDetail.notFoundTitle') }]
+      : [{ text: t('common.loading'), soft: true }];
+  const sub = data
+    ? [t(CATEGORY_LABEL_KEY[data.category]), data.publishedAt, data.sizeLabel].filter(Boolean).join(' · ')
+    : undefined;
 
-      {report.isLoading ? (
-        <View style={{ paddingHorizontal: spacing.gutter, gap: spacing.md }}>
-          <Skeleton height={100} radius={radius.lg} />
-          <Skeleton height={140} radius={radius.lg} />
-        </View>
-      ) : !report.data ? (
-        <EmptyState icon="alert-circle-outline" title={t('reportDetail.notFoundTitle')} message={t('reportDetail.notFoundBody')} />
-      ) : (
-        <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.gutter, paddingBottom: insets.bottom + spacing.xl, gap: spacing.lg }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <View
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: radius.md,
-                backgroundColor: softTone(theme.colors, CATEGORY_TONE[report.data.category]).bg,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-              <Ionicons name={CATEGORY_ICON[report.data.category]} size={16} color={theme.colors.primary} />
+  return (
+    <HorizonScreen
+      field={REPORT_FIELD}
+      small
+      animateKey={data ? 'report' : missing ? 'missing' : 'loading'}
+      lines={lines}
+      sub={sub}
+      top={<FieldBack colors={colors} />}
+      // The bridge marks the one thing to do here: take the PDF.
+      bridge={data ? { start: HORIZON_GUTTER, width: BRIDGE_WIDTH } : null}>
+      {missing ? (
+        <View style={{ padding: HORIZON_GUTTER }}>
+          <Text variant="body" color="mutedForeground">
+            {t('horizonReports.notOpened')}
+          </Text>
+          {id ? (
+            <View style={{ paddingTop: 14 }}>
+              <Cta title={t('common.retry')} busy={report.isFetching} onPress={() => void report.refetch()} />
             </View>
-            <Text variant="footnote" color="mutedForeground">
-              {t(CATEGORY_LABEL_KEY[report.data.category])} · {report.data.publishedAt} · {report.data.sizeLabel}
-            </Text>
+          ) : null}
+        </View>
+      ) : data ? (
+        <>
+          <View style={{ paddingHorizontal: HORIZON_GUTTER, paddingTop: 22, gap: 14 }}>
+            <Cta
+              title={downloading ? t('common.opening') : t('reportDetail.downloadPdf')}
+              busy={downloading}
+              onPress={() => void downloadPdf()}
+            />
+            {data.title.length > TITLE_FITS ? (
+              // Read once: the field already speaks the title in full.
+              <Text variant="title" accessibilityElementsHidden importantForAccessibility="no">
+                {data.title}
+              </Text>
+            ) : null}
+            {data.narrative ? <Text variant="body">{data.narrative}</Text> : null}
           </View>
 
-          <Card elevated>
-            <Text variant="body">{report.data.narrative}</Text>
-          </Card>
-
-          {report.data.highlights.length > 0 ? (
-            <Card elevated style={{ gap: spacing.sm }}>
-              <Text variant="title">{t('reportDetail.highlights')}</Text>
-              {report.data.highlights.map((h) => (
-                <View key={h} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm }}>
-                  <Ionicons name="checkmark-circle" size={16} color={theme.colors.success} style={{ marginTop: 2 }} />
-                  <Text variant="body" style={{ flex: 1 }}>
-                    {h}
-                  </Text>
-                </View>
+          {data.highlights.length > 0 ? (
+            <>
+              <SectionLabel>{t('reportDetail.highlights')}</SectionLabel>
+              {data.highlights.map((highlight, index) => (
+                <RuledRow key={`${index}-${highlight}`} title={highlight} plain />
               ))}
-            </Card>
+            </>
           ) : null}
 
-          {report.data.series.length > 0 ? <TrendChart question={t('reportDetail.trend')} data={report.data.series} type="line" /> : null}
-
-          <Button
-            title={downloading ? t('common.opening') : t('reportDetail.downloadPdf')}
-            icon="download-outline"
-            variant="secondary"
-            fullWidth
-            disabled={downloading}
-            onPress={downloadPdf}
-          />
-        </ScrollView>
-      )}
-    </View>
+          {data.series.length > 0 ? (
+            <View style={{ paddingHorizontal: HORIZON_GUTTER, paddingTop: 22 }}>
+              <TrendChart question={t('reportDetail.trend')} data={data.series} type="line" />
+            </View>
+          ) : null}
+        </>
+      ) : null}
+    </HorizonScreen>
   );
 }

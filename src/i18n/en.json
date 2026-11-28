@@ -557,5 +557,9 @@
   "horizonMessages": {
     "title": "Your accountant",
     "sub": "Text, photos and voice messages."
+  },
+  "horizonReports": {
+    "vsPrevious": "against the report before",
+    "notOpened": "This report could not be opened. It may have been removed, or the connection failed."
   }
 }
