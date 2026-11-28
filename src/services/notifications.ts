@@ -56,6 +56,7 @@ function toItem(r: Row): NotificationItem {
     timeLabel: relativeTime(r.created_at),
     read: r.read,
     actionLabel: r.link ? i18n.t('common.view') : undefined,
+    link: r.link ?? undefined,
   };
 }
 

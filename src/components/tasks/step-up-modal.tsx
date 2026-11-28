@@ -14,6 +14,10 @@ interface StepUpModalProps {
   visible: boolean;
   scope: string;
   title: string;
+  /** Button text. Defaults to "Verify — <title>". */
+  actionLabel?: string;
+  /** One or two sentences on what verifying will do, shown under the button. */
+  note?: string;
   onCancel: () => void;
   onVerified: () => void;
 }
@@ -23,7 +27,7 @@ interface StepUpModalProps {
  * OTP to the signed-in user's own email on open; verifying grants a scoped,
  * short-lived step_up_grants row server-side (see services/step-up.ts).
  */
-export function StepUpModal({ visible, scope, title, onCancel, onVerified }: StepUpModalProps) {
+export function StepUpModal({ visible, scope, title, actionLabel, note, onCancel, onVerified }: StepUpModalProps) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
@@ -103,7 +107,18 @@ export function StepUpModal({ visible, scope, title, onCancel, onVerified }: Ste
             </Text>
           ) : null}
 
-          <Button title={t('stepUp.verifyAction', { title })} onPress={submit} disabled={code.length < 6} loading={busy} fullWidth />
+          <Button
+            title={actionLabel ?? t('stepUp.verifyAction', { title })}
+            onPress={submit}
+            disabled={code.length < 6}
+            loading={busy}
+            fullWidth
+          />
+          {note ? (
+            <Text variant="footnote" color="mutedForeground" center>
+              {note}
+            </Text>
+          ) : null}
           <Pressable accessibilityRole="button" onPress={onCancel}>
             <Text variant="footnote" color="mutedForeground">
               {t('common.cancel')}

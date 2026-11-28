@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
+import { type Href, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,6 +10,7 @@ import { DetailHeader } from '@/components/navigation/detail-header';
 import { AppRefreshControl, Card, EmptyState, Skeleton, Text } from '@/components/ui';
 import { usePagedList } from '@/hooks/use-paged-list';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
+import { requestIdFromLink } from '@/services/accountant-requests';
 import { NOTIFICATIONS_PAGE_SIZE, notificationsService } from '@/services/notifications';
 import type { NotificationCategory, NotificationItem } from '@/services/types';
 import { radius, softTone, spacing, useTheme } from '@/theme';
@@ -44,6 +46,7 @@ export default function NotificationsScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
+  const router = useRouter();
   const [filter, setFilter] = useState<Filter>('all');
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
 
@@ -77,6 +80,14 @@ export default function NotificationsScreen() {
       .markRead(id)
       .then(() => queryClient.invalidateQueries({ queryKey: ['notifications'] }))
       .catch(() => {});
+  }
+
+  // "View" marks the notification read and, when it is about a request from
+  // the accountant, opens that request.
+  function openNotification(item: NotificationItem) {
+    markOneRead(item.id);
+    const requestId = requestIdFromLink(item.link);
+    if (requestId) router.push(`/approvals/${requestId}` as Href);
   }
 
   function markAllRead() {
@@ -132,7 +143,7 @@ export default function NotificationsScreen() {
         data={items}
         keyExtractor={notificationId}
         renderItem={({ item }) => (
-          <NotificationRow item={item} onPress={() => markOneRead(item.id)} onAction={() => markOneRead(item.id)} />
+          <NotificationRow item={item} onPress={() => markOneRead(item.id)} onAction={() => openNotification(item)} />
         )}
         contentContainerStyle={{ paddingHorizontal: spacing.gutter, paddingBottom: insets.bottom + spacing.xl, gap: spacing.md }}
         showsVerticalScrollIndicator={false}

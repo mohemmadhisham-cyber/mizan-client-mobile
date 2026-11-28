@@ -1,15 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { AppHeader } from '@/components/navigation/app-header';
+import { RequestCard } from '@/components/requests/request-card';
 import { StepUpModal } from '@/components/tasks/step-up-modal';
 import { Badge, Card, Screen, Skeleton, Text } from '@/components/ui';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { chevronForward } from '@/lib/direction';
+import { listPendingRequests, REQUESTS_QUERY_KEY } from '@/services/accountant-requests';
 import { tasksService } from '@/services/tasks';
 import type { ActionCenterTask } from '@/services/types';
 import { radius, spacing, useTheme } from '@/theme';
@@ -25,7 +27,10 @@ export default function TasksScreen() {
   const urgent = useQuery({ queryKey: ['tasks-urgent'], queryFn: tasksService.getUrgent });
   const pending = useQuery({ queryKey: ['tasks-pending'], queryFn: tasksService.getPending });
   const completed = useQuery({ queryKey: ['tasks-completed-summary'], queryFn: tasksService.getCompletedSummary });
-  const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([urgent.refetch(), pending.refetch(), completed.refetch()]));
+  const requests = useQuery({ queryKey: REQUESTS_QUERY_KEY, queryFn: listPendingRequests });
+  const { refreshing, onRefresh } = usePullToRefresh(() =>
+    Promise.all([requests.refetch(), urgent.refetch(), pending.refetch(), completed.refetch()]),
+  );
 
   const urgentTasks = (urgent.data ?? []).filter((t) => !approvedIds.has(t.id));
 
@@ -73,6 +78,24 @@ export default function TasksScreen() {
           {t('tasks.subtitle')}
         </Text>
       </View>
+
+      {requests.isError ? (
+        <Text variant="footnote" color="mutedForeground" accessibilityLiveRegion="polite" style={{ marginBottom: spacing.lg }}>
+          {t('requests.loadFailed')}
+        </Text>
+      ) : requests.data && (requests.data.requests.length > 0 || requests.data.unreadable > 0) ? (
+        <View style={{ gap: spacing.sm, marginBottom: spacing.lg }}>
+          <Text variant="title">{t('requests.sectionTitle')}</Text>
+          {requests.data.requests.map((request) => (
+            <RequestCard key={request.id} request={request} onPress={() => router.push(`/approvals/${request.id}` as Href)} />
+          ))}
+          {requests.data.unreadable > 0 ? (
+            <Text variant="footnote" style={{ color: theme.colors.warningSoftForeground }}>
+              {t('requests.unreadable', { count: requests.data.unreadable })}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
 
       <Card padded={false} elevated style={{ marginBottom: spacing.lg, overflow: 'hidden' }}>
         <View

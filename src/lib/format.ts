@@ -74,3 +74,33 @@ export function formatDate(date: Date | string, opts?: Intl.DateTimeFormatOption
     return d.toISOString().slice(0, 10);
   }
 }
+
+/**
+ * Formats an integer amount in minor units for any currency and precision
+ * (the server says how many decimals: 2 for AED and SAR, 3 for KWD or BHD).
+ * Decimals are shown only when the amount has them, so a budget reads
+ * "AED 5,600,000" and a price reads "AED 12.50"; pass `showDecimals` to decide
+ * it for a whole column instead. A null currency gives a plain grouped number,
+ * for an amount whose unit is not known. Falls back to a plain number with the
+ * code if the engine does not know the currency.
+ */
+export function formatMinorUnits(minor: number, currency: string | null, decimals = 2, showDecimals?: boolean): string {
+  const unit = 10 ** decimals;
+  const digits = (showDecimals ?? minor % unit !== 0) ? decimals : 0;
+  const value = minor / unit;
+  const locale = currentLocale() === 'ar' ? 'ar-AE-u-nu-latn' : 'en-AE';
+  if (currency === null) {
+    return new Intl.NumberFormat(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
+  }
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    }).format(value);
+  } catch {
+    const n = new Intl.NumberFormat('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
+    return `${currency} ${n}`;
+  }
+}
