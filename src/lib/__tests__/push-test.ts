@@ -137,6 +137,13 @@ describe('turning notifications on', () => {
     expect(mockGetToken).not.toHaveBeenCalled();
   });
 
+  test('is "unavailable" on an Android build made without Google’s push set up', async () => {
+    mockGetToken.mockRejectedValue(new Error('Default FirebaseApp is not initialized in this process com.mizan.client.'));
+
+    expect(await turnPushOn('user-a', 'Notifications')).toBe('unavailable');
+    expect(mockRegister).not.toHaveBeenCalled();
+  });
+
   test('is "unavailable" when the server does not keep phones yet', async () => {
     mockRegister.mockResolvedValue('not_offered');
 

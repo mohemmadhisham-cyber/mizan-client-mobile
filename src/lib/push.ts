@@ -91,9 +91,17 @@ async function phoneToken(): Promise<PhoneToken> {
   try {
     const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
     return token ? { kind: 'ok', token } : { kind: 'error' };
-  } catch {
-    return { kind: 'error' };
+  } catch (error) {
+    // An Android build made without Google's push set up (no Firebase file) can never get one:
+    // that is "not available in this version", not a passing failure to try again.
+    return isPushNotSetUp(error) ? { kind: 'none' } : { kind: 'error' };
   }
+}
+
+/** True for the error an Android build without Firebase gives when asked for a push address. */
+export function isPushNotSetUp(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+  return /FirebaseApp|google-services|FCM/i.test(message);
 }
 
 // ------------------------------------------------------------------ taking a phone off the list
