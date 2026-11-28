@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -7,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { DetailHeader } from '@/components/navigation/detail-header';
 import { Button, Card, Text } from '@/components/ui';
 import i18n, { setAppLocale, type AppLocale } from '@/i18n';
+import { hasAiConsent, setAiConsent } from '@/lib/ai-consent';
 import { useAuth } from '@/lib/auth-context';
 import { chevronForward } from '@/lib/direction';
 import { supabase } from '@/lib/supabase';
@@ -30,6 +32,25 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { mode, setMode } = useThemeControls();
   const { user, signOut } = useAuth();
+  const [aiConsented, setAiConsented] = useState(() => hasAiConsent(user?.id));
+
+  function withdrawAiConsent() {
+    const userId = user?.id;
+    if (!userId) return;
+    Alert.alert(t('support.aiWithdraw'), t('support.aiWithdrawBody'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('support.aiWithdrawYes'),
+        style: 'destructive',
+        onPress: () => {
+          void setAiConsent(userId, false).then((saved) => {
+            if (saved) setAiConsented(false);
+            else Alert.alert(t('support.aiWithdraw'), t('support.aiSaveFailed'));
+          });
+        },
+      },
+    ]);
+  }
 
   function changeLanguage(code: AppLocale) {
     // Saves the choice and reloads the app when the layout direction flips.
@@ -123,6 +144,18 @@ export default function SettingsScreen() {
           <Card padded={false} style={{ overflow: 'hidden' }}>
             <ActionRow icon="document-text-outline" label={t('settings.privacyPolicy')} onPress={() => router.push('/privacy-policy')} />
             <ActionRow icon="document-text-outline" label={t('settings.termsOfService')} onPress={() => router.push('/terms-of-service')} isLast />
+          </Card>
+        </View>
+
+        <View style={{ gap: spacing.sm }}>
+          <Text variant="title">{t('support.helpAndPrivacy')}</Text>
+          <Card padded={false} style={{ overflow: 'hidden' }}>
+            <ActionRow icon="help-circle-outline" label={t('support.helpTitle')} onPress={() => router.push('/help')} />
+            <ActionRow icon="information-circle-outline" label={t('support.aboutApp')} onPress={() => router.push('/about')} />
+            {aiConsented ? (
+              <ActionRow icon="sparkles-outline" label={t('support.aiWithdraw')} onPress={withdrawAiConsent} />
+            ) : null}
+            <ActionRow icon="trash-outline" label={t('support.deleteEntry')} onPress={() => router.push('/delete-account')} isLast />
           </Card>
         </View>
 

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { useLocalSearchParams } from 'expo-router';
-import { type ComponentRef, useEffect, useRef, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { type ComponentRef, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
@@ -17,8 +17,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DetailHeader } from '@/components/navigation/detail-header';
 import { TypingIndicator } from '@/components/ai-advisor/typing-indicator';
 import { AccountantChatView } from '@/components/accountant-chat/accountant-chat-view';
+import { AiConsent } from '@/components/ai-advisor/ai-consent';
 import { Text } from '@/components/ui';
 import { useVoiceRecorder } from '@/hooks/use-voice-recorder';
+import { hasAiConsent } from '@/lib/ai-consent';
 import { useAuth } from '@/lib/auth-context';
 import { askAi } from '@/services/ai-advisor';
 import { uploadReceipt } from '@/services/receipts';
@@ -54,6 +56,24 @@ export default function AiAdvisorScreen() {
   const [transcribing, setTranscribing] = useState(false);
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const voice = useVoiceRecorder();
+  const router = useRouter();
+  const userId = user?.id;
+  const [consented, setConsented] = useState(() => hasAiConsent(userId));
+
+  // Read again each time this screen comes back into view: the agreement can
+  // be withdrawn in Settings while this screen stays open underneath.
+  useFocusEffect(
+    useCallback(() => {
+      setConsented(hasAiConsent(userId));
+    }, [userId]),
+  );
+
+  /** Checked at the moment of sending, not only when the screen opened. */
+  function stillConsented(): boolean {
+    if (hasAiConsent(userId)) return true;
+    setConsented(false);
+    return false;
+  }
 
   useEffect(() => {
     scrollRef.current?.scrollToEnd({ animated: true });
@@ -62,6 +82,7 @@ export default function AiAdvisorScreen() {
   async function send(text: string) {
     const prompt = text.trim();
     if (!prompt || busy) return;
+    if (!stillConsented()) return;
     setInput('');
     setMessages((m) => [...m, { id: nextId(), role: 'user', text: prompt }]);
     setBusy(true);
@@ -113,6 +134,7 @@ export default function AiAdvisorScreen() {
   }
 
   async function handleMicPress() {
+    if (!voice.isRecording && !stillConsented()) return;
     if (voice.isRecording) {
       const recording = await voice.stop();
       if (!recording) return;
@@ -127,6 +149,20 @@ export default function AiAdvisorScreen() {
       return;
     }
     await voice.start();
+  }
+
+  // Asked once, before first use. Until then no question, file or recording leaves the app for an AI provider.
+  if (tab === 'advisor' && !consented) {
+    // The agreement is recorded per person. With no one signed in there is no one to ask.
+    if (!userId) return null;
+    return (
+      <AiConsent
+        userId={userId}
+        onAgreed={() => setConsented(true)}
+        // Opened from a link there may be nothing to go back to.
+        onDeclined={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+      />
+    );
   }
 
   return (
