@@ -35,6 +35,14 @@ const GROUPS: MoreGroup[] = [
     ],
   },
   {
+    titleKey: 'more.groupAccountant',
+    items: [
+      { labelKey: 'more.services', href: '/services' },
+      { labelKey: 'more.bills', href: '/invoices-to-pay' },
+      { labelKey: 'more.meeting', href: '/book-meeting' },
+    ],
+  },
+  {
     titleKey: 'more.groupCompany',
     items: [
       { labelKey: 'more.billing', href: '/billing' },
@@ -52,7 +60,7 @@ const GROUPS: MoreGroup[] = [
   },
 ];
 
-/** Everything that is not one of the four main tabs, in three plain groups. */
+/** Everything that is not one of the four main tabs, in four plain groups. */
 export default function MoreScreen() {
   const { t } = useTranslation();
   const { user, signOut } = useAuth();
