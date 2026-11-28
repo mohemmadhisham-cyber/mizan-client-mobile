@@ -17,7 +17,7 @@ import { useDashboardPrefs } from '@/lib/dashboard-prefs';
 import { daysUntil, formatMoneyMinor, pctChange } from '@/lib/format';
 import { clientDataService } from '@/services/client-data';
 import type { InsightCard, Severity } from '@/services/types';
-import { radius, spacing, useTheme } from '@/theme';
+import { radius, softTone, spacing, useTheme, type ColorTokens, type SoftToneColors } from '@/theme';
 
 const SEVERITY_ICON: Record<Severity, keyof typeof Ionicons.glyphMap> = {
   good: 'sparkles',
@@ -109,7 +109,7 @@ export default function HomeScreen() {
           <Text variant="caption" color="mutedForeground" weight="semibold" style={{ letterSpacing: 0.6, textTransform: 'uppercase' }}>
             {t('home.availableToSpend')}
           </Text>
-          <Text variant="display" color="brand" tabular adjustsFontSizeToFit numberOfLines={1}>
+          <Text variant="display" color="primary" tabular adjustsFontSizeToFit numberOfLines={1}>
             {formatMoneyMinor(k.cash, cur)}
           </Text>
           {revDelta !== null ? (
@@ -118,7 +118,7 @@ export default function HomeScreen() {
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 4,
-                backgroundColor: trendTone(revDelta).soft,
+                backgroundColor: trendTone(theme.colors, revDelta).bg,
                 borderRadius: radius.full,
                 paddingHorizontal: spacing.sm,
                 paddingVertical: 4,
@@ -127,9 +127,9 @@ export default function HomeScreen() {
               <Ionicons
                 name={revDelta >= 0 ? 'trending-up' : 'trending-down'}
                 size={13}
-                color={trendTone(revDelta).text}
+                color={trendTone(theme.colors, revDelta).fg}
               />
-              <Text variant="caption" weight="semibold" style={{ color: trendTone(revDelta).text }}>
+              <Text variant="caption" weight="semibold" style={{ color: trendTone(theme.colors, revDelta).fg }}>
                 {deltaSub(revDelta)}
               </Text>
             </View>
@@ -262,10 +262,8 @@ export default function HomeScreen() {
 }
 
 // Small helper so the hero trend badge reads success (green) or danger (red).
-function trendTone(delta: number) {
-  return delta >= 0
-    ? { soft: 'rgba(0,109,55,0.14)', text: '#006D37' }
-    : { soft: 'rgba(220,38,38,0.12)', text: '#DC2626' };
+function trendTone(colors: ColorTokens, delta: number): SoftToneColors {
+  return softTone(colors, delta >= 0 ? 'success' : 'danger');
 }
 
 function SectionHeader({ title }: { title: string }) {
@@ -300,8 +298,8 @@ function TaskRow({ label, count, href, urgent }: { label: string; count: number;
   const theme = useTheme();
   const router = useRouter();
   const chevron: keyof typeof Ionicons.glyphMap = I18nManager.isRTL ? 'chevron-back' : 'chevron-forward';
-  const badgeBg = urgent ? '#FFDAD6' : theme.colors.secondary;
-  const badgeFg = urgent ? '#B3261E' : theme.colors.mutedForeground;
+  const badgeBg = urgent ? theme.colors.dangerSoft : theme.colors.secondary;
+  const badgeFg = urgent ? theme.colors.dangerSoftForeground : theme.colors.mutedForeground;
 
   return (
     <Pressable

@@ -10,8 +10,8 @@ import { Card, Screen, Skeleton, Text } from '@/components/ui';
 import { formatMoneyMinor } from '@/lib/format';
 import { reportsService } from '@/services/reports';
 import type { Report } from '@/services/types';
-import { CATEGORY_ICON, CATEGORY_TINT } from '@/services/report-presentation';
-import { radius, spacing, useTheme } from '@/theme';
+import { CATEGORY_ICON, CATEGORY_TONE } from '@/services/report-presentation';
+import { radius, softTone, spacing, useTheme } from '@/theme';
 
 export default function ReportsScreen() {
   const { t } = useTranslation();
@@ -156,7 +156,7 @@ function ReportRow({ report, onPress }: { report: Report; onPress: () => void })
           width: 40,
           height: 40,
           borderRadius: radius.md,
-          backgroundColor: CATEGORY_TINT[report.category],
+          backgroundColor: softTone(theme.colors, CATEGORY_TONE[report.category]).bg,
           alignItems: 'center',
           justifyContent: 'center',
         }}>

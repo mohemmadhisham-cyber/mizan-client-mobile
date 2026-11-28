@@ -6,6 +6,7 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { radius, spacing, useTheme } from '@/theme';
 
 function Dot({ delay, reduced }: { delay: number; reduced: boolean }) {
+  const theme = useTheme();
   const opacity = useSharedValue(0.3);
 
   useEffect(() => {
@@ -20,7 +21,7 @@ function Dot({ delay, reduced }: { delay: number; reduced: boolean }) {
   }, [reduced, delay, opacity]);
 
   const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
-  return <Animated.View style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(0,30,64,0.5)' }, style]} />;
+  return <Animated.View style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.mutedForeground }, style]} />;
 }
 
 export function TypingIndicator() {

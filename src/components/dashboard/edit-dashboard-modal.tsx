@@ -20,7 +20,7 @@ export function EditDashboardModal({ visible, sectionVisibility, onToggle, onDon
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onDone}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+      <View style={{ flex: 1, backgroundColor: theme.colors.scrim, justifyContent: 'flex-end' }}>
         <Card
           elevated
           padded={false}

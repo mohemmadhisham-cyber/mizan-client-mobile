@@ -81,10 +81,10 @@ export default function TasksScreen() {
             borderBottomColor: theme.colors.border,
           }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <View style={{ width: 4, height: 18, borderRadius: 2, backgroundColor: '#BA1A1A' }} />
+            <View style={{ width: 4, height: 18, borderRadius: 2, backgroundColor: theme.colors.danger }} />
             <Text variant="title">Requires Attention</Text>
           </View>
-          <Badge label={`${urgentTasks.length} Urgent`} bg="#FFDAD6" fg="#BA1A1A" />
+          <Badge label={`${urgentTasks.length} Urgent`} bg={theme.colors.dangerSoft} fg={theme.colors.dangerSoftForeground} />
         </View>
 
         {!urgent.data ? (
@@ -170,7 +170,7 @@ function UrgentTaskRow({ task, isLast, onAction }: { task: ActionCenterTask; isL
         padding: spacing.base,
         gap: spacing.md,
         borderBottomWidth: isLast ? 0 : 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
+        borderBottomColor: theme.colors.border,
       }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <View style={{ flex: 1, gap: 4, paddingRight: spacing.md }}>
@@ -179,7 +179,7 @@ function UrgentTaskRow({ task, isLast, onAction }: { task: ActionCenterTask; isL
             {task.description}
           </Text>
         </View>
-        <Badge label={task.badgeLabel} bg="#FFDAD6" fg="#BA1A1A" />
+        <Badge label={task.badgeLabel} bg={theme.colors.dangerSoft} fg={theme.colors.dangerSoftForeground} />
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         {task.metaLabel ? (
@@ -213,13 +213,14 @@ function UrgentTaskRow({ task, isLast, onAction }: { task: ActionCenterTask; isL
 }
 
 function PendingTaskRow({ task, onAction }: { task: ActionCenterTask; onAction: () => void }) {
+  const theme = useTheme();
   return (
     <View style={{ padding: spacing.sm, gap: 4 }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <Text variant="callout" weight="semibold">
           {task.title}
         </Text>
-        <Badge label={task.badgeLabel} bg="rgba(107,254,156,0.2)" fg="#006D37" />
+        <Badge label={task.badgeLabel} bg={theme.colors.successSoft} fg={theme.colors.successSoftForeground} />
       </View>
       <Text variant="footnote" color="mutedForeground">
         {task.description}

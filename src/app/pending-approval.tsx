@@ -30,7 +30,7 @@ export default function PendingApprovalScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <AmbientBackdrop topColor="#D5E3FF" bottomColor="#6BFE9C" />
+      <AmbientBackdrop />
       <View style={{ flex: 1 }}>
         <EmptyState
           icon="time-outline"

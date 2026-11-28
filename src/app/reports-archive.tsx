@@ -7,10 +7,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DetailHeader } from '@/components/navigation/detail-header';
 import { Card, EmptyState, Input, Skeleton, Text } from '@/components/ui';
-import { CATEGORY_ICON, CATEGORY_LABEL, CATEGORY_TINT } from '@/services/report-presentation';
+import { CATEGORY_ICON, CATEGORY_LABEL, CATEGORY_TONE } from '@/services/report-presentation';
 import { reportsService } from '@/services/reports';
 import type { Report, ReportCategory } from '@/services/types';
-import { radius, spacing, useTheme } from '@/theme';
+import { radius, softTone, spacing, useTheme } from '@/theme';
 
 type CategoryFilter = ReportCategory | 'all';
 
@@ -110,7 +110,7 @@ function ArchiveRow({ report, onPress }: { report: Report; onPress: () => void }
             width: 40,
             height: 40,
             borderRadius: radius.md,
-            backgroundColor: CATEGORY_TINT[report.category],
+            backgroundColor: softTone(theme.colors, CATEGORY_TONE[report.category]).bg,
             alignItems: 'center',
             justifyContent: 'center',
           }}>

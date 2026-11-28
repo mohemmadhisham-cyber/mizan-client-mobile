@@ -209,7 +209,7 @@ export default function ReceiptWizardScreen() {
           </View>
 
           {error ? (
-            <Text variant="footnote" style={{ color: theme.colors.destructive ?? '#BA1A1A' }}>
+            <Text variant="footnote" color="danger">
               {error}
             </Text>
           ) : null}

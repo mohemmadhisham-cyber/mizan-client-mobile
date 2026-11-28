@@ -55,14 +55,14 @@ export default function CompaniesScreen() {
                 style={{
                   borderWidth: 2,
                   borderStyle: 'dashed',
-                  borderColor: 'rgba(0,30,64,0.2)',
+                  borderColor: theme.colors.input,
                   borderRadius: radius.lg,
                   paddingVertical: spacing['2xl'],
                   alignItems: 'center',
                   gap: spacing.sm,
                 }}>
-                <Ionicons name="add-circle-outline" size={28} color="rgba(0,30,64,0.7)" />
-                <Text variant="title" style={{ color: 'rgba(0,30,64,0.7)' }}>
+                <Ionicons name="add-circle-outline" size={28} color={theme.colors.mutedForeground} />
+                <Text variant="title" color="mutedForeground">
                   Add Company
                 </Text>
               </Pressable>

@@ -2,6 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { cameraChrome } from '@/theme';
+
 type Mode = 'single' | 'batch';
 
 interface CaptureControlsProps {
@@ -48,7 +50,7 @@ export function CaptureControls({
 
       <View style={styles.actionRow}>
         <Pressable accessibilityRole="button" accessibilityLabel="Choose from gallery" onPress={onGallery} style={styles.squareButton}>
-          <Ionicons name="images-outline" size={22} color="#FFFFFF" />
+          <Ionicons name="images-outline" size={22} color={cameraChrome.foreground} />
         </Pressable>
 
         <Pressable
@@ -64,7 +66,7 @@ export function CaptureControls({
         </Pressable>
 
         <Pressable accessibilityRole="button" accessibilityLabel="Enter manually" onPress={onManualEntry} style={styles.squareButton}>
-          <Ionicons name="keypad-outline" size={22} color="#FFFFFF" />
+          <Ionicons name="keypad-outline" size={22} color={cameraChrome.foreground} />
         </Pressable>
       </View>
 
@@ -92,18 +94,18 @@ const styles = StyleSheet.create({
     borderRadius: 9999,
   },
   modePillActive: {
-    backgroundColor: 'rgba(0,51,102,0.8)',
+    backgroundColor: cameraChrome.pill,
     borderWidth: 1,
-    borderColor: 'rgba(167,200,255,0.2)',
+    borderColor: cameraChrome.pillBorder,
   },
   modeText: {
     fontSize: 12,
     fontWeight: '600',
     letterSpacing: 0.6,
-    color: 'rgba(255,255,255,0.6)',
+    color: cameraChrome.foregroundSubtle,
   },
   modeTextActive: {
-    color: '#A7C8FF',
+    color: cameraChrome.foreground,
   },
   actionRow: {
     flexDirection: 'row',
@@ -116,9 +118,9 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 16,
-    backgroundColor: 'rgba(249,249,254,0.1)',
+    backgroundColor: cameraChrome.glassSubtle,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: cameraChrome.glassBorder,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -127,7 +129,7 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 9999,
     borderWidth: 4,
-    borderColor: '#FFFFFF',
+    borderColor: cameraChrome.foreground,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -135,12 +137,12 @@ const styles = StyleSheet.create({
     width: 68,
     height: 68,
     borderRadius: 9999,
-    backgroundColor: '#A7C8FF',
+    backgroundColor: cameraChrome.foreground,
   },
   libraryLink: {
     fontSize: 12,
     fontWeight: '600',
     letterSpacing: 0.6,
-    color: 'rgba(255,255,255,0.6)',
+    color: cameraChrome.foregroundSubtle,
   },
 });

@@ -58,7 +58,7 @@ export default function EmailScreen() {
 
   return (
     <Screen clearsTabBar={false} edges={['top', 'bottom']}>
-      <AmbientBackdrop topColor="#D5E3FF" bottomColor="#6BFE9C" />
+      <AmbientBackdrop />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
           contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', gap: spacing.xl }}

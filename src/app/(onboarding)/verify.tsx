@@ -64,7 +64,7 @@ export default function VerifyScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <AmbientBackdrop topColor="#D5E3FF" bottomColor="#6BFE9C" />
+      <AmbientBackdrop />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
           contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.gutter }}
