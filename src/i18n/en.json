@@ -559,6 +559,21 @@
     "review": "Review",
     "checkFailed": "Could not check."
   },
+  "horizonAuth": {
+    "emailA": "Sign in",
+    "emailB": "with your email.",
+    "emailSub": "We send a 6-digit code. No password.",
+    "emailHelp": "No account yet? Ask your accountant to send you an invite.",
+    "verifyA": "Enter",
+    "verifyB": "the code.",
+    "codeLabel": "6-digit code",
+    "resendIn": "Resend code in {{seconds}} s",
+    "resendReady": "You can resend the code now.",
+    "pendingA": "Waiting for",
+    "pendingB": "your accountant.",
+    "suspendedA": "Access",
+    "suspendedB": "is paused."
+  },
   "horizonMessages": {
     "title": "Your accountant",
     "sub": "Text, photos and voice messages."

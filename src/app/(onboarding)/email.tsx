@@ -1,16 +1,31 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, View } from 'react-native';
 
-import { AmbientBackdrop } from '@/components/auth/ambient-backdrop';
-import { Button, Card, Input, Screen, Text } from '@/components/ui';
+import { Cta } from '@/components/horizon/cta';
+import {
+  BRIDGE_WIDTH,
+  FieldBack,
+  FieldMark,
+  HORIZON_GUTTER,
+  HorizonScreen,
+} from '@/components/horizon/horizon-screen';
+import { Input, Text } from '@/components/ui';
 import { emailSchema, peekInvite, sendEmailOtp } from '@/services/auth';
-import { spacing } from '@/theme';
+import { useTheme } from '@/theme';
+import { horizonColors } from '@/theme/horizon';
+
+const EMAIL_FIELD = 200;
+const GROUND_TOP = 22;
+const GROUND_GAP = 16;
+const EMAIL_TEXT_SIZE = 18;
 
 export default function EmailScreen() {
   const router = useRouter();
   const { t } = useTranslation();
+  const theme = useTheme();
+  const colors = horizonColors(theme.colors);
   const params = useLocalSearchParams<{ token?: string }>();
   const token = typeof params.token === 'string' ? params.token : undefined;
 
@@ -56,57 +71,55 @@ export default function EmailScreen() {
     });
   };
 
-  return (
-    <Screen clearsTabBar={false} edges={['top', 'bottom']}>
-      <AmbientBackdrop />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', gap: spacing.xl }}
-          keyboardShouldPersistTaps="handled">
-          <View style={{ gap: spacing.sm }}>
-            <Text variant="h1" center>
-              {t('auth.emailTitle')}
-            </Text>
-            <Text variant="body" color="mutedForeground" center>
-              {t('auth.emailBody')}
-            </Text>
-          </View>
+  // Opened from an invite link there is nothing behind this screen. Going
+  // elsewhere would drop the invite, so then there is no Back, only the mark.
+  const canLeave = router.canGoBack();
 
-          <Card elevated style={{ gap: spacing.lg, paddingVertical: spacing.xl }}>
-            <Input
-              label={t('auth.emailLabel')}
-              icon="mail-outline"
-              variant="underline"
-              value={email}
-              onChangeText={(v) => {
-                setEmail(v);
-                setError(null);
-              }}
-              placeholder={t('auth.emailPlaceholder')}
-              keyboardType="email-address"
-              inputMode="email"
-              autoCapitalize="none"
-              autoComplete="email"
-              autoFocus
-              returnKeyType="go"
-              onSubmitEditing={submit}
-            />
-            {error ? (
-              <Text variant="footnote" color="danger">
-                {error}
-              </Text>
-            ) : null}
-            <Button
-              title={t('auth.sendCode')}
-              icon="arrow-forward"
-              onPress={submit}
-              disabled={!valid}
-              loading={busy}
-              fullWidth
-            />
-          </Card>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </Screen>
+  return (
+    // The keyboard is handled as these screens always handled it, so the button stays in reach.
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: colors.ground }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <HorizonScreen
+      field={EMAIL_FIELD}
+      small
+      lines={[{ text: t('horizonAuth.emailA') }, { text: t('horizonAuth.emailB'), soft: true }]}
+      sub={t('horizonAuth.emailSub')}
+      top={canLeave ? <FieldBack colors={colors} /> : <FieldMark />}
+      // The one thing to do here.
+      bridge={{ start: HORIZON_GUTTER, width: BRIDGE_WIDTH }}>
+      <View style={{ paddingHorizontal: HORIZON_GUTTER, paddingTop: GROUND_TOP, gap: GROUND_GAP }}>
+        <Input
+          label={t('auth.emailLabel')}
+          variant="underline"
+          // On the ground the field is a line to write on, not a box.
+          style={{ backgroundColor: 'transparent', paddingHorizontal: 0, fontSize: EMAIL_TEXT_SIZE }}
+          accessibilityLabel={t('auth.emailLabel')}
+          value={email}
+          onChangeText={(v) => {
+            setEmail(v);
+            setError(null);
+          }}
+          placeholder={t('auth.emailPlaceholder')}
+          keyboardType="email-address"
+          inputMode="email"
+          autoCapitalize="none"
+          autoComplete="email"
+          autoFocus
+          returnKeyType="go"
+          onSubmitEditing={submit}
+        />
+        {error ? (
+          <Text variant="footnote" color="danger" accessibilityLiveRegion="polite">
+            {error}
+          </Text>
+        ) : null}
+        <Cta title={t('auth.sendCode')} disabled={!valid} busy={busy} onPress={() => void submit()} />
+        <Text variant="footnote" color="mutedForeground">
+          {t('horizonAuth.emailHelp')}
+        </Text>
+      </View>
+    </HorizonScreen>
+    </KeyboardAvoidingView>
   );
 }

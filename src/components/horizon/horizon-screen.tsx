@@ -217,6 +217,7 @@ export function HorizonScreen({
                 <Text
                   variant="callout"
                   numberOfLines={subLines}
+                  maxFontSizeMultiplier={MAX_FIELD_TEXT_SCALE}
                   ellipsizeMode="middle"
                   style={{ color: colors.fieldMuted }}>
                   {sub}
@@ -235,6 +236,8 @@ export function HorizonScreen({
           <ScrollView
             showsVerticalScrollIndicator={false}
             alwaysBounceVertical={onRefresh !== undefined}
+            // A button under a text field answers the first tap, with the keyboard still up.
+            keyboardShouldPersistTaps="handled"
             refreshControl={
               onRefresh ? <AppRefreshControl refreshing={refreshing} onRefresh={onRefresh} /> : undefined
             }

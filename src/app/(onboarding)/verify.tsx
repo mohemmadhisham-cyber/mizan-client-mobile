@@ -1,21 +1,27 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { AccessibilityInfo, KeyboardAvoidingView, Platform, View } from 'react-native';
 
-import { AmbientBackdrop } from '@/components/auth/ambient-backdrop';
 import { OtpBoxInput } from '@/components/auth/otp-box-input';
-import { Button, Card, Text } from '@/components/ui';
-import { chevronBack } from '@/lib/direction';
+import { Cta } from '@/components/horizon/cta';
+import { BRIDGE_WIDTH, FieldBack, HORIZON_GUTTER, HorizonScreen } from '@/components/horizon/horizon-screen';
+import { Text } from '@/components/ui';
 import { acceptInvite, sendEmailOtp, verifyEmailOtp } from '@/services/auth';
-import { spacing, useTheme } from '@/theme';
+import { useTheme } from '@/theme';
+import { horizonColors } from '@/theme/horizon';
 
 const RESEND_SECONDS = 30;
+const VERIFY_FIELD = 200;
+const GROUND_TOP = 22;
+const GROUND_GAP = 16;
+/** As tall as a button, so the screen does not jump when the countdown ends. */
+const RESEND_ROW = 54;
 
 export default function VerifyScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
+  const colors = horizonColors(theme.colors);
   const router = useRouter();
   const params = useLocalSearchParams<{ email?: string; token?: string }>();
   const email = typeof params.email === 'string' ? params.email : '';
@@ -31,6 +37,11 @@ export default function VerifyScreen() {
     const id = setInterval(() => setCooldown((c) => (c <= 1 ? 0 : c - 1)), 1000);
     return () => clearInterval(id);
   }, [cooldown]);
+
+  // The countdown is silent, so say once when Resend can be pressed.
+  useEffect(() => {
+    if (cooldown === 0) AccessibilityInfo.announceForAccessibility(t('horizonAuth.resendReady'));
+  }, [cooldown, t]);
 
   const submit = async () => {
     if (code.length < 6 || busy) return;
@@ -63,64 +74,65 @@ export default function VerifyScreen() {
     setCooldown(RESEND_SECONDS);
   };
 
+  // Back to the email step, to correct the address.
+  function leave() {
+    if (router.canGoBack()) router.back();
+    else router.replace({ pathname: '/email', params: token ? { token } : {} });
+  }
+
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-      <AmbientBackdrop />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.gutter }}
-          keyboardShouldPersistTaps="handled">
-          <Card elevated style={{ width: '100%', maxWidth: 448, alignItems: 'center', gap: spacing.md }}>
-            <View style={{ alignItems: 'center', gap: 4 }}>
-              <Text variant="h1" center>
-                {t('auth.verifyTitle')}
-              </Text>
-              <Text variant="footnote" color="mutedForeground" center>
-                {t('auth.verifyBodyPrefix')}
-              </Text>
-              <Text variant="title" weight="semibold" center>
-                {email}
-              </Text>
-            </View>
+    // The keyboard is handled as these screens always handled it, so the button stays in reach.
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: colors.ground }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <HorizonScreen
+      field={VERIFY_FIELD}
+      small
+      lines={[{ text: t('horizonAuth.verifyA') }, { text: t('horizonAuth.verifyB'), soft: true }]}
+      top={<FieldBack colors={colors} onPress={leave} />}
+      // The one thing to do here.
+      bridge={{ start: HORIZON_GUTTER, width: BRIDGE_WIDTH }}>
+      <View style={{ paddingHorizontal: HORIZON_GUTTER, paddingTop: GROUND_TOP, gap: GROUND_GAP }}>
+        {/* The address is on the ground, where a long one can wrap. */}
+        <View style={{ gap: 2 }}>
+          <Text variant="footnote" color="mutedForeground">
+            {t('auth.verifyBodyPrefix')}
+          </Text>
+          <Text variant="body" weight="semibold">
+            {email}
+          </Text>
+        </View>
 
-            <OtpBoxInput
-              value={code}
-              onChangeText={(v) => {
-                setError(null);
-                setCode(v);
-              }}
-              onSubmit={submit}
-            />
+        <OtpBoxInput
+          ruled
+          accessibilityLabel={t('horizonAuth.codeLabel')}
+          value={code}
+          onChangeText={(v) => {
+            setError(null);
+            setCode(v);
+          }}
+          onSubmit={submit}
+        />
 
-            {error ? (
-              <Text variant="footnote" color="danger" center>
-                {error}
-              </Text>
-            ) : null}
+        {error ? (
+          <Text variant="footnote" color="danger" accessibilityLiveRegion="polite">
+            {error}
+          </Text>
+        ) : null}
 
-            <Pressable onPress={resend} disabled={cooldown > 0} accessibilityRole="button" hitSlop={8}>
-              <Text variant="caption" weight="semibold" color={cooldown > 0 ? 'mutedForeground' : 'primary'} style={{ letterSpacing: 1.2, textTransform: 'uppercase' }}>
-                {t('auth.resend')} {cooldown > 0 ? `(0:${String(cooldown).padStart(2, '0')})` : ''}
-              </Text>
-            </Pressable>
+        <Cta title={t('auth.verify')} disabled={code.length < 6} busy={busy} onPress={() => void submit()} />
 
-            <Button
-              title={t('auth.verify')}
-              onPress={submit}
-              disabled={code.length < 6}
-              loading={busy}
-              fullWidth
-            />
-
-            <Pressable onPress={() => router.back()} accessibilityRole="button" style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Ionicons name={chevronBack()} size={14} color={theme.colors.mutedForeground} />
-              <Text variant="footnote" color="mutedForeground">
-                {t('auth.backToEmail')}
-              </Text>
-            </Pressable>
-          </Card>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+        {cooldown > 0 ? (
+          <View style={{ height: RESEND_ROW, alignItems: 'center', justifyContent: 'center' }}>
+            <Text variant="body" color="mutedForeground">
+              {t('horizonAuth.resendIn', { seconds: cooldown })}
+            </Text>
+          </View>
+        ) : (
+          <Cta kind="quiet" title={t('auth.resend')} onPress={() => void resend()} />
+        )}
+      </View>
+    </HorizonScreen>
+    </KeyboardAvoidingView>
   );
 }
