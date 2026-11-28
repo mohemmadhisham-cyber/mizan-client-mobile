@@ -30,10 +30,12 @@ import { AppLockScreen } from '@/components/support/app-lock-screen';
 import { UpdateRequiredScreen } from '@/components/support/update-required-screen';
 import { AppLockedContext, useAppLock } from '@/hooks/use-app-lock';
 import { useAuthGate } from '@/hooks/use-auth-gate';
+import { usePush } from '@/hooks/use-push';
 import { useUpdateRequired } from '@/hooks/use-update-required';
 import { syncAiConsent } from '@/lib/ai-consent';
 import { clearDashboardCache } from '@/services/client-data';
 import { wireOnlineManager } from '@/lib/online';
+import { configurePushHandling } from '@/lib/push';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { navigationTheme, ThemeProvider, useTheme } from '@/theme';
 import { horizonColors } from '@/theme/horizon';
@@ -61,6 +63,8 @@ const queryClient = new QueryClient({
 
 // Once, when the app starts: the data layer is told when the connection goes and returns.
 wireOnlineManager();
+// And how a notification that arrives while the app is open is shown.
+configurePushHandling();
 
 function RootNav() {
   const theme = useTheme();
@@ -93,6 +97,9 @@ function RootNav() {
   }, [userId]);
 
   const lock = useAppLock(userId, loading);
+
+  // Notifications on the phone: this phone is kept on the server's list, and a tap opens the list.
+  usePush(userId, !loading);
   // This version of the app may be older than the server still accepts.
   const update = useUpdateRequired();
   /** Something is drawn over the whole app: its screens are not to be reached or read out. */

@@ -1,5 +1,7 @@
 {
   "common": {
+    "on": "On",
+    "off": "Off",
     "appName": "Mizan Connect",
     "loading": "Loading…",
     "retry": "Try again",
@@ -627,6 +629,18 @@
     "noLink": "Open your phone's app store and update the app.",
     "openFailedTitle": "The store could not be opened"
   },
+  "push": {
+    "settingsTitle": "Notifications on this phone",
+    "settingsMeta": "Tells you when something needs you. Only a short title is shown.",
+    "channelName": "Notifications",
+    "deniedTitle": "Notifications are off for this app",
+    "deniedBody": "Allow notifications for Mizan Connect in your phone's settings, then turn this on.",
+    "openSettings": "Open settings",
+    "unavailableTitle": "Not available yet",
+    "unavailableBody": "Notifications on the phone are not available in this version of the app.",
+    "failedTitle": "This could not be changed",
+    "failedBody": "Your choice could not be saved. Check your connection and try again."
+  },
   "lock": {
     "titleB": "is locked.",
     "body": "Confirm it is you to carry on.",
@@ -635,8 +649,6 @@
     "refused": "That did not work. Try again, or sign out and sign in with a code.",
     "settingsTitle": "Lock the app",
     "settingsMeta": "Asks for Face ID, your fingerprint or the phone's passcode when you open the app.",
-    "on": "On",
-    "off": "Off",
     "unavailableTitle": "This phone cannot lock the app",
     "unavailableBody": "Set a passcode, a fingerprint or Face ID on this phone first, then turn the lock on.",
     "saveFailed": "Your choice could not be saved. Please try again."
