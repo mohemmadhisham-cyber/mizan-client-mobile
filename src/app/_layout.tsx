@@ -13,18 +13,28 @@ import {
 } from '@expo-google-fonts/manrope';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
-import { type ErrorBoundaryProps, Stack, ThemeProvider as NavigationThemeProvider } from 'expo-router';
+import {
+  type ErrorBoundaryProps,
+  Stack,
+  ThemeProvider as NavigationThemeProvider,
+  useRouter,
+  useSegments,
+} from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef } from 'react';
+import { StyleSheet, View } from 'react-native';
 
 import { IntroOverlay } from '@/components/horizon/intro-overlay';
 import { AppError } from '@/components/support/app-error';
+import { AppLockScreen } from '@/components/support/app-lock-screen';
+import { AppLockedContext, useAppLock } from '@/hooks/use-app-lock';
 import { useAuthGate } from '@/hooks/use-auth-gate';
 import { syncAiConsent } from '@/lib/ai-consent';
 import { clearDashboardCache } from '@/services/client-data';
 import { wireOnlineManager } from '@/lib/online';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { navigationTheme, ThemeProvider, useTheme } from '@/theme';
+import { horizonColors } from '@/theme/horizon';
 
 import '@/i18n';
 
@@ -52,7 +62,7 @@ wireOnlineManager();
 
 function RootNav() {
   const theme = useTheme();
-  const { loading, user } = useAuth();
+  const { loading, user, signOut } = useAuth();
   useAuthGate();
 
   // Everything read from the server is cached for a while. When the signed-in
@@ -80,6 +90,17 @@ function RootNav() {
     };
   }, [userId]);
 
+  const lock = useAppLock(userId, loading);
+  const hidden = lock.locked || lock.covered;
+
+  // The camera opens as a full-screen window, which iOS draws above everything else in the
+  // app, the lock included. It is closed when the app locks, so the lock is what is seen.
+  const router = useRouter();
+  const onCamera = useSegments()[0] === 'capture';
+  useEffect(() => {
+    if (lock.locked && onCamera && router.canGoBack()) router.back();
+  }, [lock.locked, onCamera, router]);
+
   useEffect(() => {
     // Hold the native splash until the session is resolved, so the auth gate
     // can route to the right place before anything renders (no flash of tabs).
@@ -88,17 +109,35 @@ function RootNav() {
 
   return (
     <NavigationThemeProvider value={navigationTheme(theme)}>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: theme.colors.background },
-        }}>
-        <Stack.Screen name="capture" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
-      </Stack>
+      {/* While the app is locked its screens are still there under the lock: a screen reader must not reach them. */}
+      <View
+        style={styles.app}
+        accessibilityElementsHidden={hidden}
+        importantForAccessibility={hidden ? 'no-hide-descendants' : 'auto'}>
+        <AppLockedContext.Provider value={lock.locked}>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: theme.colors.background },
+            }}>
+            <Stack.Screen name="capture" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
+          </Stack>
+        </AppLockedContext.Provider>
+      </View>
+      {lock.locked && userId ? (
+        <View style={StyleSheet.absoluteFill} accessibilityViewIsModal>
+          <AppLockScreen userId={userId} onUnlocked={lock.unlock} onSignOut={() => void signOut()} />
+        </View>
+      ) : lock.covered ? (
+        // Out of sight with the lock on: nothing of the app is drawn until the phone has been asked.
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: horizonColors(theme.colors).field }]} />
+      ) : null}
       <IntroOverlay ready={!loading} />
     </NavigationThemeProvider>
   );
 }
+
+const styles = StyleSheet.create({ app: { flex: 1 } });
 
 /** Expo Router shows this in place of a screen that threw. */
 export function ErrorBoundary(props: ErrorBoundaryProps) {

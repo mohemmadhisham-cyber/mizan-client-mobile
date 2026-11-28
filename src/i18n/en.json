@@ -620,6 +620,20 @@
     "statusOverdueSince": "Overdue since {{date}}",
     "stillToPay": "{{amount}} still to pay"
   },
+  "lock": {
+    "titleB": "is locked.",
+    "body": "Confirm it is you to carry on.",
+    "prompt": "Unlock Mizan Connect",
+    "unlock": "Unlock",
+    "refused": "That did not work. Try again, or sign out and sign in with a code.",
+    "settingsTitle": "Lock the app",
+    "settingsMeta": "Asks for Face ID, your fingerprint or the phone's passcode when you open the app.",
+    "on": "On",
+    "off": "Off",
+    "unavailableTitle": "This phone cannot lock the app",
+    "unavailableBody": "Set a passcode, a fingerprint or Face ID on this phone first, then turn the lock on.",
+    "saveFailed": "Your choice could not be saved. Please try again."
+  },
   "horizonMessages": {
     "title": "Your accountant",
     "sub": "Text, photos and voice messages."

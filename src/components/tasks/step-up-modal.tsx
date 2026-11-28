@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 
 import { OtpBoxInput } from '@/components/auth/otp-box-input';
 import { Button, Card, Text } from '@/components/ui';
+import { useAppLocked } from '@/hooks/use-app-lock';
 import i18n from '@/i18n';
 import { useAuth } from '@/lib/auth-context';
 import { issueStepUpOtp, verifyStepUpOtp } from '@/services/step-up';
@@ -31,6 +32,7 @@ export function StepUpModal({ visible, scope, title, actionLabel, note, onCancel
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
+  const appLocked = useAppLocked();
   const { user } = useAuth();
   const email = user?.email ?? '';
 
@@ -74,7 +76,8 @@ export function StepUpModal({ visible, scope, title, actionLabel, note, onCancel
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onCancel}>
+    // Closed while the app is locked: a sheet is drawn above the lock. It comes back as it was.
+    <Modal visible={visible && !appLocked} animationType="slide" transparent onRequestClose={onCancel}>
       <View style={{ flex: 1, backgroundColor: theme.colors.scrim, justifyContent: 'flex-end' }}>
         <Card
           elevated

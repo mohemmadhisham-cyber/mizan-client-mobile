@@ -4,6 +4,7 @@ import { I18nManager, KeyboardAvoidingView, Modal, Pressable, TextInput, View } 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Card, Text } from '@/components/ui';
+import { useAppLocked } from '@/hooks/use-app-lock';
 import { DECLINE_REASON_MAX } from '@/services/accountant-requests';
 import { radius, spacing, useTheme } from '@/theme';
 
@@ -19,6 +20,7 @@ interface DeclineSheetProps {
 export function DeclineSheet({ visible, busy, onCancel, onDecline }: DeclineSheetProps) {
   const { t } = useTranslation();
   const theme = useTheme();
+  const appLocked = useAppLocked();
   const insets = useSafeAreaInsets();
   const [reason, setReason] = useState('');
   const family = I18nManager.isRTL ? theme.fonts.arabic : theme.fonts.sans;
@@ -29,7 +31,8 @@ export function DeclineSheet({ visible, busy, onCancel, onDecline }: DeclineShee
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={close}>
+    // Closed while the app is locked: a sheet is drawn above the lock. It comes back as it was.
+    <Modal visible={visible && !appLocked} animationType="slide" transparent onRequestClose={close}>
       <KeyboardAvoidingView
         behavior={process.env.EXPO_OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1, backgroundColor: theme.colors.scrim, justifyContent: 'flex-end' }}>

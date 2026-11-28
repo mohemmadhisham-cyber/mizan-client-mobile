@@ -70,11 +70,17 @@ interface RuledRowProps {
   alert?: boolean;
   /** A sentence to read, not a thing to open: the title is set at reading weight. */
   plain?: boolean;
+  /**
+   * The row turns something on or off, and this is whether it is on. It is read as a switch,
+   * and has no arrow: tapping it changes something here, it does not open anything.
+   */
+  checked?: boolean;
 }
 
 /** One line of the ground: a title, a quieter line under it, a rule below. No card. */
-export function RuledRow({ title, meta, action, end, onPress, alert = false, plain = false }: RuledRowProps) {
+export function RuledRow({ title, meta, action, end, onPress, alert = false, plain = false, checked }: RuledRowProps) {
   const theme = useTheme();
+  const isSwitch = checked !== undefined;
   const body = (
     <>
       <View style={styles.rowText}>
@@ -95,7 +101,7 @@ export function RuledRow({ title, meta, action, end, onPress, alert = false, pla
               {action}
             </Text>
           ) : null}
-          <Ionicons name={chevronForward()} size={16} color={theme.colors.foreground} />
+          {isSwitch ? null : <Ionicons name={chevronForward()} size={16} color={theme.colors.foreground} />}
         </View>
       ) : null}
     </>
@@ -105,8 +111,10 @@ export function RuledRow({ title, meta, action, end, onPress, alert = false, pla
   if (!onPress) return <View style={frame}>{body}</View>;
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={[title, meta, action].filter(Boolean).join('. ')}
+      accessibilityRole={isSwitch ? 'switch' : 'button'}
+      accessibilityState={isSwitch ? { checked } : undefined}
+      // A switch says "on" or "off" itself, so the word on the row is not read a second time.
+      accessibilityLabel={[title, meta, isSwitch ? null : action].filter(Boolean).join('. ')}
       onPress={onPress}
       style={({ pressed }) => [frame, { opacity: pressed ? PRESSED_OPACITY : 1 }]}>
       {body}

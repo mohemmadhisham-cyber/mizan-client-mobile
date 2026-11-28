@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { Button, Card, Input, Text } from '@/components/ui';
+import { useAppLocked } from '@/hooks/use-app-lock';
 import type { CalendarEventKind, NewCalendarEvent } from '@/services/types';
 import { radius, spacing, useTheme } from '@/theme';
 
@@ -27,6 +28,7 @@ interface AddEventModalProps {
 export function AddEventModal({ visible, dateLabel, onCancel, onCreate }: AddEventModalProps) {
   const { t } = useTranslation();
   const theme = useTheme();
+  const appLocked = useAppLocked();
   const insets = useSafeAreaInsets();
   const [kind, setKind] = useState<CalendarEventKind>('meeting');
   const [title, setTitle] = useState('');
@@ -65,7 +67,8 @@ export function AddEventModal({ visible, dateLabel, onCancel, onCreate }: AddEve
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onCancel}>
+    // Closed while the app is locked: a sheet is drawn above the lock. It comes back as it was.
+    <Modal visible={visible && !appLocked} animationType="slide" transparent onRequestClose={onCancel}>
       <View style={{ flex: 1, backgroundColor: theme.colors.scrim, justifyContent: 'flex-end' }}>
         <Card
           elevated

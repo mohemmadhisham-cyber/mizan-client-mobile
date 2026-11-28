@@ -46,6 +46,12 @@
         }
       ],
       "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Mizan Connect uses Face ID to unlock the app when you have turned the app lock on."
+        }
+      ],
       "expo-localization",
       [
         "expo-camera",
