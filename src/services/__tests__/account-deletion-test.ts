@@ -33,7 +33,7 @@ describe('requestAccountDeletion', () => {
     await requestAccountDeletion();
 
     expect(mockInvoke).toHaveBeenCalledTimes(1);
-    expect(mockInvoke).toHaveBeenCalledWith('account-deletion', { body: { action: 'request' } });
+    expect(mockInvoke).toHaveBeenCalledWith('connect', { body: { action: 'deletion_request' } });
   });
 
   test('reports "not offered" when the server has no such function', async () => {

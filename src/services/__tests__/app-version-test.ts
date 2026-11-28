@@ -31,7 +31,7 @@ describe('asking the server whether this version may still be used', () => {
 
     await checkUpdateRequired('android', '1.0.0');
 
-    expect(mockInvoke).toHaveBeenCalledWith('app-version', { body: { platform: 'android' } });
+    expect(mockInvoke).toHaveBeenCalledWith('connect', { body: { action: 'app_version', platform: 'android' } });
   });
 
   test('an update is required when this version is older than the minimum', async () => {

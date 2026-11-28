@@ -6,7 +6,7 @@ import { assertSupabaseConfigured } from '@/lib/env';
 import { supabase } from '@/lib/supabase';
 
 /**
- * Asks the server (edge function `app-version`) for the lowest version of
+ * Asks the server (edge function `connect`, action `app_version`) for the lowest version of
  * this app it still accepts. Asked before anyone has signed in.
  *
  * The function may not exist yet on the server the app is talking to, and the
@@ -14,7 +14,7 @@ import { supabase } from '@/lib/supabase';
  * version is too old does.
  */
 
-const FUNCTION = 'app-version';
+const FUNCTION = 'connect';
 /** How long the server has to answer. A request that hangs must not stop the next try from being made. */
 export const ANSWER_TIMEOUT_MS = 10_000;
 
@@ -38,7 +38,7 @@ const answerSchema = z.object({
 async function ask(platform: StorePlatform, current: string | null): Promise<UpdateCheck> {
   try {
     assertSupabaseConfigured();
-    const { data, error } = await supabase.functions.invoke<unknown>(FUNCTION, { body: { platform } });
+    const { data, error } = await supabase.functions.invoke<unknown>(FUNCTION, { body: { action: 'app_version', platform } });
     if (error) return { status: 'unknown' };
     const answer = answerSchema.safeParse(data);
     if (!answer.success) return { status: 'unknown' };
