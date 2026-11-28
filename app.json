@@ -1,23 +1,26 @@
 {
   "expo": {
-    "name": "Mizan",
+    "name": "Mizan Connect",
     "slug": "mizan-client-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/mizan-mark.png",
+    "icon": "./assets/images/mizan-app-icon.png",
     "scheme": "mizan",
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.mizan.client",
       "buildNumber": "1",
-      "supportsTablet": true
+      "supportsTablet": false,
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.mizan.client",
       "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#F9F9FE",
-        "foregroundImage": "./assets/images/mizan-mark.png"
+        "backgroundColor": "#0B1412",
+        "foregroundImage": "./assets/images/mizan-app-icon.png"
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
@@ -37,9 +40,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#F9F9FE",
-          "image": "./assets/images/mizan-mark.png",
-          "imageWidth": 140
+          "backgroundColor": "#111816",
+          "image": "./assets/images/mizan-z-on-dark.png",
+          "imageWidth": 150
         }
       ],
       "expo-secure-store",
