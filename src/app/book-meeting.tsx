@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
@@ -64,16 +64,21 @@ export default function BookMeetingScreen() {
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
   const [sent, setSent] = useState<Sent | null>(null);
+  const inFlight = useRef(false);
 
   const day = days.find((d) => d.date === chosenDay) ?? days[0] ?? null;
+  // A time counts only while the day shown still offers it: after the slots are read again, an old choice is gone.
+  const start = day && chosenStart && day.slots.some((slot) => slot.start === chosenStart) ? chosenStart : null;
   const zone = value ? (ZONE_KEY[value.timeZone] ? t(ZONE_KEY[value.timeZone]) : value.timeZone) : '';
 
   async function send() {
-    if (!day || !chosenStart) return;
+    // Two taps in one frame both reach here before `sending` shows: the ref lets only the first through.
+    if (!day || !start || inFlight.current) return;
+    inFlight.current = true;
     setSending(true);
     setProblem(null);
     try {
-      const outcome = await bookMeeting({ date: day.date, start: chosenStart, note });
+      const outcome = await bookMeeting({ date: day.date, start, note });
       if (outcome.status === 'requested') {
         setSent({ date: outcome.date, start: outcome.start });
         // The calendar shows the request as waiting for the firm.
@@ -91,6 +96,7 @@ export default function BookMeetingScreen() {
     } catch {
       setProblem('failed');
     } finally {
+      inFlight.current = false;
       setSending(false);
     }
   }
@@ -155,7 +161,7 @@ export default function BookMeetingScreen() {
               <ChoiceRow
                 key={slot.start}
                 title={t('meetingScreen.slot', { start: slot.start, end: slot.end })}
-                selected={chosenStart === slot.start}
+                selected={start === slot.start}
                 onPress={() => {
                   setChosenStart(slot.start);
                   setProblem(null);
@@ -181,7 +187,7 @@ export default function BookMeetingScreen() {
             ) : null}
             <Cta
               title={t('meetingScreen.request')}
-              disabled={!chosenStart}
+              disabled={!start}
               busy={sending}
               onPress={() => void send()}
             />

@@ -168,7 +168,7 @@ export async function bookMeeting(request: MeetingRequest): Promise<BookingOutco
 /** The hosted page that takes the payment. Null for a token that is not of the shape the server makes. */
 export function payPageUrl(token: string | null): string | null {
   if (!token || !PAY_TOKEN.test(token)) return null;
-  return `${EXPO_PUBLIC_WEB_APP_URL}/pay/${token}`;
+  return `${EXPO_PUBLIC_WEB_APP_URL.replace(/\/+$/, '')}/pay/${token}`;
 }
 
 /** The days that have at least one free slot, in order, each with its slots. */
