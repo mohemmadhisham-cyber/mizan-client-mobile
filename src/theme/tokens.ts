@@ -40,10 +40,15 @@ export const spacing = {
 // keep the per-weight names and resolve them in the Text component.
 export const fonts = {
   sans: {
-    regular: 'Inter_400Regular',
-    medium: 'Inter_500Medium',
-    semibold: 'Inter_600SemiBold',
-    bold: 'Inter_700Bold',
+    regular: 'Manrope_400Regular',
+    medium: 'Manrope_500Medium',
+    semibold: 'Manrope_600SemiBold',
+    bold: 'Manrope_700Bold',
+  },
+  // Figures: amounts, dates, codes. One mono face, so columns of numbers line up.
+  mono: {
+    regular: 'IBMPlexMono_400Regular',
+    medium: 'IBMPlexMono_500Medium',
   },
   arabic: {
     regular: 'IBMPlexSansArabic_400Regular',
