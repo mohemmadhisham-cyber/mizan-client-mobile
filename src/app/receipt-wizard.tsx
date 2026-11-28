@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -8,7 +8,7 @@ import { Cta } from '@/components/horizon/cta';
 import { BRIDGE_WIDTH, FieldBack, HORIZON_GUTTER, HorizonScreen } from '@/components/horizon/horizon-screen';
 import { ChoiceRow, SectionLabel } from '@/components/horizon/ruled';
 import { Input, Text } from '@/components/ui';
-import { aiDeclinedThisRun, hasAiConsent, noteAiDeclined } from '@/lib/ai-consent';
+import { aiDeclinedThisRun, hasAiConsent, noteAiDeclined, setAiConsent } from '@/lib/ai-consent';
 import { useAuth } from '@/lib/auth-context';
 import { EXPENSE_CATEGORIES, extractReceipt, submitReceiptReview, type ExpenseCategory } from '@/services/receipts';
 import { useTheme } from '@/theme';
@@ -45,6 +45,7 @@ export default function ReceiptWizardScreen() {
   const userId = user?.id;
   // Reading the photo sends it to an outside AI provider, so it waits for the
   // person's agreement. Without it the form starts blank and is filled by hand.
+  const askedAgain = useRef(false);
   const [aiChoice, setAiChoice] = useState<AiChoice>(() => {
     if (isManual || !userId || aiDeclinedThisRun(userId)) return 'declined';
     return hasAiConsent(userId) ? 'agreed' : 'asking';
@@ -73,8 +74,16 @@ export default function ReceiptWizardScreen() {
         setLoading(false);
         return;
       }
-      const { extracted: e, ocrConfigured: configured } = await extractReceipt(id);
+      const { extracted: e, ocrConfigured: configured, consentRequired } = await extractReceipt(id);
       if (cancelled) return;
+      // The server has no agreement on record, though this phone thought so. The copy here is
+      // dropped and the person is asked, once: a second refusal fills the form in by hand.
+      if (consentRequired && userId && !askedAgain.current) {
+        askedAgain.current = true;
+        await setAiConsent(userId, false);
+        if (!cancelled) setAiChoice('asking');
+        return;
+      }
       setOcrConfigured(configured);
       if (e) {
         if (e.vendor) setVendor(e.vendor);
@@ -88,7 +97,7 @@ export default function ReceiptWizardScreen() {
     return () => {
       cancelled = true;
     };
-  }, [id, isManual, aiChoice]);
+  }, [id, isManual, aiChoice, userId]);
 
   function toMinor(v: string): number | null {
     const n = Number(v.replace(/,/g, ''));

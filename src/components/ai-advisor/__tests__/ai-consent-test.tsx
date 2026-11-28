@@ -1,16 +1,16 @@
 import { fireEvent, screen } from '@testing-library/react-native';
 
 import { AiConsent } from '@/components/ai-advisor/ai-consent';
-import { setAiConsent } from '@/lib/ai-consent';
+import { recordAiConsent } from '@/lib/ai-consent';
 import { renderInApp } from '@/test/render';
 
 jest.mock('expo-router', () => ({
   DefaultTheme: { colors: {}, fonts: {} },
   useRouter: () => ({ back: jest.fn(), canGoBack: () => true, replace: jest.fn() }),
 }));
-jest.mock('@/lib/ai-consent', () => ({ setAiConsent: jest.fn() }));
+jest.mock('@/lib/ai-consent', () => ({ recordAiConsent: jest.fn() }));
 
-const mockSave = setAiConsent as jest.MockedFunction<typeof setAiConsent>;
+const mockSave = recordAiConsent as jest.MockedFunction<typeof recordAiConsent>;
 
 beforeEach(() => {
   // An answer set in one test must not carry into the next.
