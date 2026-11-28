@@ -1,5 +1,6 @@
-import * as SecureStore from 'expo-secure-store';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+
+import { readDevicePref, writeDevicePref } from '@/lib/device-prefs';
 
 export type DashboardSection = 'cashFlow' | 'criticalTasks' | 'thisMonth' | 'whatChanged' | 'expenseTrend';
 
@@ -29,34 +30,31 @@ function isDashboardVisibility(value: unknown): value is DashboardVisibility {
   return Object.keys(DEFAULT_VISIBILITY).every((k) => typeof (value as Record<string, unknown>)[k] === 'boolean');
 }
 
-/** Local-only preference (not synced across devices) for which optional
- * dashboard sections are shown. Home always keeps the hero + quick actions. */
-export function useDashboardPrefs() {
-  const [visible, setVisibleState] = useState<DashboardVisibility>(DEFAULT_VISIBILITY);
-  const [loading, setLoading] = useState(true);
+/** What is stored on this device, or the defaults when nothing usable is. */
+function storedVisibility(): DashboardVisibility {
+  const raw = readDevicePref(STORAGE_KEY);
+  if (!raw) return DEFAULT_VISIBILITY;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return isDashboardVisibility(parsed) ? parsed : DEFAULT_VISIBILITY;
+  } catch {
+    // Corrupted/legacy value — fall back to defaults silently.
+    return DEFAULT_VISIBILITY;
+  }
+}
 
-  useEffect(() => {
-    let mounted = true;
-    SecureStore.getItemAsync(STORAGE_KEY).then((raw) => {
-      if (!mounted) return;
-      if (raw) {
-        try {
-          const parsed = JSON.parse(raw);
-          if (isDashboardVisibility(parsed)) setVisibleState(parsed);
-        } catch {
-          // Corrupted/legacy value — fall back to defaults silently.
-        }
-      }
-      setLoading(false);
-    });
-    return () => {
-      mounted = false;
-    };
-  }, []);
+/** Local-only preference (not synced across devices) for which optional
+ * dashboard sections are shown. Home always keeps the hero + quick actions.
+ *
+ * Read through device-prefs, which works on web too: calling SecureStore
+ * directly threw there and covered the app with an error. The read is
+ * synchronous, so the saved choice applies on the first frame. */
+export function useDashboardPrefs() {
+  const [visible, setVisibleState] = useState<DashboardVisibility>(storedVisibility);
 
   const setVisible = useCallback((next: DashboardVisibility) => {
     setVisibleState(next);
-    void SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(next));
+    void writeDevicePref(STORAGE_KEY, JSON.stringify(next));
   }, []);
 
   const toggle = useCallback(
@@ -66,5 +64,5 @@ export function useDashboardPrefs() {
     [visible, setVisible],
   );
 
-  return { visible, toggle, loading };
+  return { visible, toggle, loading: false };
 }

@@ -42,6 +42,11 @@ const ART_BOX = 900;
 /** If the intro never reveals the app, the screen shows itself after this long. */
 const REVEAL_FALLBACK_MS = 6000;
 
+/** Height of the field on screen: the status bar plus the field itself. */
+export function horizonFieldHeight(insetTop: number, field: number): number {
+  return insetTop + field;
+}
+
 export interface Bridge {
   /** Distance from the leading edge (left in English, right in Arabic). */
   start: number;
@@ -108,7 +113,7 @@ export function HorizonScreen({
   const motion = givenMotion ?? ownMotion;
   const colors = horizonColors(theme.colors);
   const rtl = I18nManager.isRTL;
-  const fieldHeight = insets.top + field;
+  const fieldHeight = horizonFieldHeight(insets.top, field);
   const bottomSpace = (safeBottom ? insets.bottom : 0) + bottomInset;
 
   useEffect(() => {
