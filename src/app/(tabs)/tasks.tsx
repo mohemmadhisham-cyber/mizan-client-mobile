@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { AppHeader } from '@/components/navigation/app-header';
 import { StepUpModal } from '@/components/tasks/step-up-modal';
 import { Badge, Card, Screen, Skeleton, Text } from '@/components/ui';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { chevronForward } from '@/lib/direction';
 import { tasksService } from '@/services/tasks';
 import type { ActionCenterTask } from '@/services/types';
@@ -24,6 +25,7 @@ export default function TasksScreen() {
   const urgent = useQuery({ queryKey: ['tasks-urgent'], queryFn: tasksService.getUrgent });
   const pending = useQuery({ queryKey: ['tasks-pending'], queryFn: tasksService.getPending });
   const completed = useQuery({ queryKey: ['tasks-completed-summary'], queryFn: tasksService.getCompletedSummary });
+  const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([urgent.refetch(), pending.refetch(), completed.refetch()]));
 
   const urgentTasks = (urgent.data ?? []).filter((t) => !approvedIds.has(t.id));
 
@@ -62,7 +64,7 @@ export default function TasksScreen() {
   }
 
   return (
-    <Screen scroll header={<AppHeader />}>
+    <Screen scroll header={<AppHeader />} refreshing={refreshing} onRefresh={onRefresh}>
       <View style={{ gap: 4, marginTop: spacing.sm, marginBottom: spacing.lg }}>
         <Text variant="h2" weight="semibold">
           {t('tasks.title')}

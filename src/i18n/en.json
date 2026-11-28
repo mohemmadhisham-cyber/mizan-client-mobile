@@ -27,7 +27,8 @@
     "close": "Close",
     "delete": "Delete",
     "you": "You",
-    "view": "View"
+    "view": "View",
+    "listLoadFailed": "Couldn't load this list"
   },
   "nav": {
     "home": "Home",

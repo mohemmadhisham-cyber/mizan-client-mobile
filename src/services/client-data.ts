@@ -36,11 +36,26 @@ export class DashboardUnavailableError extends Error {
 
 let cached: { at: number; data: MobileSummary } | null = null;
 
-async function fetchMobile(): Promise<MobileSummary> {
-  // Coalesce the five dashboard queries onto a single edge-function round trip
-  // (each getX below would otherwise re-invoke it). 30s window matches the
-  // app's query staleTime.
-  if (cached && Date.now() - cached.at < 30_000) return cached.data;
+/** Forget the cached summary so the next read goes to the server (pull to refresh). */
+export function clearDashboardCache(): void {
+  cached = null;
+}
+
+let inflight: Promise<MobileSummary> | null = null;
+
+// Coalesce the five dashboard queries onto a single edge-function round trip
+// (each getX below would otherwise re-invoke it). 30s window matches the
+// app's query staleTime. Callers that arrive while a request is in the air
+// share it, so a cold start or a pull to refresh is still one call, not five.
+function fetchMobile(): Promise<MobileSummary> {
+  if (cached && Date.now() - cached.at < 30_000) return Promise.resolve(cached.data);
+  inflight ??= loadMobile().finally(() => {
+    inflight = null;
+  });
+  return inflight;
+}
+
+async function loadMobile(): Promise<MobileSummary> {
   const { data, error } = await supabase.functions.invoke('client-dashboard');
   if (error || !data) throw new DashboardUnavailableError('network_error');
   if (!data.ok) throw new DashboardUnavailableError(data.error ?? 'unavailable');

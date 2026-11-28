@@ -1,13 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
+import { FlatList, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { DetailHeader } from '@/components/navigation/detail-header';
-import { Card, EmptyState, Skeleton, Text } from '@/components/ui';
-import { notificationsService } from '@/services/notifications';
+import { AppRefreshControl, Card, EmptyState, Skeleton, Text } from '@/components/ui';
+import { usePagedList } from '@/hooks/use-paged-list';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
+import { NOTIFICATIONS_PAGE_SIZE, notificationsService } from '@/services/notifications';
 import type { NotificationCategory, NotificationItem } from '@/services/types';
 import { radius, softTone, spacing, useTheme } from '@/theme';
 
@@ -32,6 +34,11 @@ const CATEGORY_ICON: Record<NotificationCategory, keyof typeof Ionicons.glyphMap
   ai_advisor: 'sparkles',
 };
 
+const notificationId = (n: NotificationItem): string => n.id;
+
+/** A filtered view keeps loading pages until it shows at least this many rows. */
+const MIN_FILTERED_ROWS = 8;
+
 export default function NotificationsScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -40,12 +47,27 @@ export default function NotificationsScreen() {
   const [filter, setFilter] = useState<Filter>('all');
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
 
-  const { data } = useQuery({ queryKey: ['notifications'], queryFn: notificationsService.getAll });
+  const { items: loaded, isLoading, isError, isFetchingMore, hasMore, loadMore, refetch } = usePagedList(
+    ['notifications', 'pages'],
+    notificationsService.getPage,
+    NOTIFICATIONS_PAGE_SIZE,
+    notificationId,
+  );
+  const { refreshing, onRefresh } = usePullToRefresh(refetch);
 
   const items = useMemo(() => {
-    const base = (data ?? []).map((n) => (readIds.has(n.id) ? { ...n, read: true } : n));
+    const base = loaded.map((n) => (readIds.has(n.id) ? { ...n, read: true } : n));
     return filter === 'all' ? base : base.filter((n) => n.category === filter);
-  }, [data, filter, readIds]);
+  }, [loaded, filter, readIds]);
+
+  // The category filter runs on the rows already loaded (the category is worked
+  // out on the device from the notification type). Keep loading until the view
+  // has a screenful or the list ends, so a rare category never looks empty
+  // while older rows exist on the server.
+  useEffect(() => {
+    if (filter !== 'all' && items.length < MIN_FILTERED_ROWS && hasMore && !isFetchingMore) loadMore();
+  }, [filter, items.length, hasMore, isFetchingMore, loadMore]);
+  const stillSearching = items.length === 0 && filter !== 'all' && hasMore;
 
   // Optimistically flip locally for instant feedback, then persist to the
   // notifications table and refetch so the state survives a reload.
@@ -58,7 +80,7 @@ export default function NotificationsScreen() {
   }
 
   function markAllRead() {
-    setReadIds(new Set((data ?? []).map((n) => n.id)));
+    setReadIds(new Set(loaded.map((n) => n.id)));
     notificationsService
       .markAllRead()
       .then(() => queryClient.invalidateQueries({ queryKey: ['notifications'] }))
@@ -106,25 +128,37 @@ export default function NotificationsScreen() {
         })}
       </ScrollView>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.gutter, paddingBottom: insets.bottom + spacing.xl, gap: spacing.md }}>
-        {!data ? (
-          <>
-            <Skeleton height={100} radius={radius.lg} />
-            <Skeleton height={100} radius={radius.lg} />
-          </>
-        ) : items.length === 0 ? (
-          <EmptyState icon="notifications-outline" title={t('notificationsScreen.emptyTitle')} message={t('notificationsScreen.emptyBody')} />
-        ) : (
-          items.map((n) => (
-            <NotificationRow
-              key={n.id}
-              item={n}
-              onPress={() => markOneRead(n.id)}
-              onAction={() => markOneRead(n.id)}
-            />
-          ))
+      <FlatList
+        data={items}
+        keyExtractor={notificationId}
+        renderItem={({ item }) => (
+          <NotificationRow item={item} onPress={() => markOneRead(item.id)} onAction={() => markOneRead(item.id)} />
         )}
-      </ScrollView>
+        contentContainerStyle={{ paddingHorizontal: spacing.gutter, paddingBottom: insets.bottom + spacing.xl, gap: spacing.md }}
+        showsVerticalScrollIndicator={false}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        refreshControl={<AppRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        ListEmptyComponent={
+          isLoading || stillSearching ? (
+            <View style={{ gap: spacing.md }}>
+              <Skeleton height={100} radius={radius.lg} />
+              <Skeleton height={100} radius={radius.lg} />
+            </View>
+          ) : isError ? (
+            <EmptyState
+              icon="cloud-offline-outline"
+              title={t('common.listLoadFailed')}
+              message={t('home.loadErrorBody')}
+              actionLabel={t('common.retry')}
+              onAction={onRefresh}
+            />
+          ) : (
+            <EmptyState icon="notifications-outline" title={t('notificationsScreen.emptyTitle')} message={t('notificationsScreen.emptyBody')} />
+          )
+        }
+        ListFooterComponent={isFetchingMore ? <Skeleton height={100} radius={radius.lg} /> : null}
+      />
     </View>
   );
 }

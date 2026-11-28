@@ -59,13 +59,18 @@ function toItem(r: Row): NotificationItem {
   };
 }
 
+export const NOTIFICATIONS_PAGE_SIZE = 30;
+
 export const notificationsService = {
-  async getAll(): Promise<NotificationItem[]> {
+  /** One page, newest first. `offset` is the number of rows already loaded. */
+  async getPage(offset: number): Promise<NotificationItem[]> {
     const { data, error } = await supabase
       .from('notifications')
       .select('id, type, title, body, link, read, created_at')
       .order('created_at', { ascending: false })
-      .limit(50);
+      // Second sort key: rows created in the same instant keep one order across pages.
+      .order('id', { ascending: false })
+      .range(offset, offset + NOTIFICATIONS_PAGE_SIZE - 1);
     if (error) throw error;
     return ((data ?? []) as Row[]).map(toItem);
   },

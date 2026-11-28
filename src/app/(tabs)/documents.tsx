@@ -1,13 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { AppHeader } from '@/components/navigation/app-header';
-import { Badge, Card, EmptyState, Screen, Skeleton, Text } from '@/components/ui';
+import { Badge, Card, EmptyState, ScreenList, Skeleton, Text } from '@/components/ui';
+import { usePagedList } from '@/hooks/use-paged-list';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { type Currency, formatMoneyMinor, localeTag } from '@/lib/format';
-import { expenseCategoryKey, listMyReceipts, type MyReceipt, type ReceiptStatus } from '@/services/receipts';
+import {
+  expenseCategoryKey,
+  listMyReceiptsPage,
+  RECEIPTS_PAGE_SIZE,
+  type MyReceipt,
+  type ReceiptStatus,
+} from '@/services/receipts';
 import { radius, softTone, spacing, useTheme, type SoftTone } from '@/theme';
 
 /** Client-facing status labels + tints. Internal machine states
@@ -23,64 +30,83 @@ const STATUS_META: Record<ReceiptStatus, { labelKey: string; tone: SoftTone }> =
   rejected: { labelKey: 'receipts.statusRejected', tone: 'danger' },
 };
 
+const receiptId = (r: MyReceipt): string => r.id;
+
 export default function DocumentsScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
   const router = useRouter();
-  const { data, isLoading } = useQuery({ queryKey: ['my-receipts'], queryFn: listMyReceipts });
-
-  const receipts = data ?? [];
+  const {
+    items: receipts,
+    isLoading,
+    isError,
+    isFetchingMore,
+    loadMore,
+    refetch,
+  } = usePagedList(['my-receipts', 'pages'], listMyReceiptsPage, RECEIPTS_PAGE_SIZE, receiptId);
+  const { refreshing, onRefresh } = usePullToRefresh(refetch);
 
   return (
-    <Screen scroll header={<AppHeader />}>
-      <View style={{ gap: 4, marginTop: spacing.sm, marginBottom: spacing.lg }}>
-        <Text variant="h2" weight="semibold">
-          {t('receipts.title')}
-        </Text>
-        <Text variant="body" color="mutedForeground">
-          {t('receipts.subtitle')}
-        </Text>
-      </View>
+    <ScreenList
+      header={<AppHeader />}
+      data={receipts}
+      keyExtractor={receiptId}
+      renderItem={(r) => <ReceiptRow receipt={r} />}
+      onEndReached={loadMore}
+      loadingMore={isFetchingMore}
+      refreshing={refreshing}
+      onRefresh={onRefresh}
+      listHeader={
+        // The list adds `spacing.sm` under the header; the margin makes up the rest of `spacing.lg`.
+        <View style={{ marginBottom: spacing.lg - spacing.sm }}>
+          <View style={{ gap: 4, marginTop: spacing.sm, marginBottom: spacing.lg }}>
+            <Text variant="h2" weight="semibold">
+              {t('receipts.title')}
+            </Text>
+            <Text variant="body" color="mutedForeground">
+              {t('receipts.subtitle')}
+            </Text>
+          </View>
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('receipts.photograph')}
-        onPress={() => router.push('/capture')}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: spacing.sm,
-          backgroundColor: theme.colors.primary,
-          borderRadius: radius.lg,
-          paddingVertical: spacing.base,
-          marginBottom: spacing.lg,
-        }}>
-        <Ionicons name="camera" size={20} color={theme.colors.primaryForeground} />
-        <Text variant="callout" weight="semibold" style={{ color: theme.colors.primaryForeground }}>
-          {t('receipts.photograph')}
-        </Text>
-      </Pressable>
-
-      {isLoading ? (
-        <View style={{ gap: spacing.md }}>
-          <Skeleton height={72} radius={radius.lg} />
-          <Skeleton height={72} radius={radius.lg} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('receipts.photograph')}
+            onPress={() => router.push('/capture')}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: spacing.sm,
+              backgroundColor: theme.colors.primary,
+              borderRadius: radius.lg,
+              paddingVertical: spacing.base,
+            }}>
+            <Ionicons name="camera" size={20} color={theme.colors.primaryForeground} />
+            <Text variant="callout" weight="semibold" style={{ color: theme.colors.primaryForeground }}>
+              {t('receipts.photograph')}
+            </Text>
+          </Pressable>
         </View>
-      ) : receipts.length === 0 ? (
-        <EmptyState
-          icon="receipt-outline"
-          title={t('receipts.emptyTitle')}
-          message={t('receipts.emptyBody')}
-        />
-      ) : (
-        <View style={{ gap: spacing.sm }}>
-          {receipts.map((r) => (
-            <ReceiptRow key={r.id} receipt={r} />
-          ))}
-        </View>
-      )}
-    </Screen>
+      }
+      listEmpty={
+        isLoading ? (
+          <View style={{ gap: spacing.md }}>
+            <Skeleton height={72} radius={radius.lg} />
+            <Skeleton height={72} radius={radius.lg} />
+          </View>
+        ) : isError ? (
+          <EmptyState
+            icon="cloud-offline-outline"
+            title={t('common.listLoadFailed')}
+            message={t('home.loadErrorBody')}
+            actionLabel={t('common.retry')}
+            onAction={onRefresh}
+          />
+        ) : (
+          <EmptyState icon="receipt-outline" title={t('receipts.emptyTitle')} message={t('receipts.emptyBody')} />
+        )
+      }
+    />
   );
 }
 

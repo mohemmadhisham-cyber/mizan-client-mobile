@@ -12,11 +12,12 @@ import { KpiCard } from '@/components/dashboard/kpi-card';
 import { QuickActionButton } from '@/components/dashboard/quick-action-button';
 import { AppHeader } from '@/components/navigation/app-header';
 import { Card, EmptyState, Screen, Skeleton, Text } from '@/components/ui';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useAuth } from '@/lib/auth-context';
 import { useDashboardPrefs } from '@/lib/dashboard-prefs';
 import { chevronForward } from '@/lib/direction';
 import { daysUntil, formatMoneyMinor, pctChange } from '@/lib/format';
-import { clientDataService } from '@/services/client-data';
+import { clearDashboardCache, clientDataService } from '@/services/client-data';
 import type { InsightCard, Severity } from '@/services/types';
 import { radius, softTone, spacing, useTheme, type ColorTokens, type SoftToneColors } from '@/theme';
 
@@ -48,6 +49,11 @@ export default function HomeScreen() {
   const exp = useQuery({ queryKey: ['exp', companyKey], queryFn: clientDataService.getExpenseSeries });
   const ins = useQuery({ queryKey: ['ins', companyKey], queryFn: clientDataService.getInsights });
   const acts = useQuery({ queryKey: ['acts', companyKey], queryFn: clientDataService.getActions });
+  const { refreshing, onRefresh } = usePullToRefresh(() => {
+    // The summary is cached for 30 s; a pull must reach the server.
+    clearDashboardCache();
+    return Promise.all([kpis.refetch(), rev.refetch(), exp.refetch(), ins.refetch(), acts.refetch()]);
+  });
 
   if (kpis.isError) {
     return (
@@ -84,7 +90,7 @@ export default function HomeScreen() {
 
   return (
     <>
-      <Screen scroll header={<AppHeader />}>
+      <Screen scroll header={<AppHeader />} refreshing={refreshing} onRefresh={onRefresh}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginTop: spacing.sm, marginBottom: spacing.lg }}>
         <View style={{ gap: spacing.xs, flex: 1 }}>
           <Text variant="h1">{t('home.greeting', { name })}</Text>

@@ -7,6 +7,7 @@ import { Pressable, View } from 'react-native';
 import { TrendChart } from '@/components/charts/trend-chart';
 import { AppHeader } from '@/components/navigation/app-header';
 import { Card, Screen, Skeleton, Text } from '@/components/ui';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { formatMoneyMinor } from '@/lib/format';
 import { reportsService } from '@/services/reports';
 import type { Report } from '@/services/types';
@@ -20,10 +21,12 @@ export default function ReportsScreen() {
 
   const metrics = useQuery({ queryKey: ['reports-key-metrics'], queryFn: reportsService.getKeyMetrics });
   const pl = useQuery({ queryKey: ['reports-monthly-pl'], queryFn: reportsService.getMonthlyPL });
-  const insights = useQuery({ queryKey: ['reports-insights'], queryFn: () => reportsService.getRecentInsights(2) });
+  // The count is part of the key: the Activity tab asks for 10 under the same name.
+  const insights = useQuery({ queryKey: ['reports-insights', 2], queryFn: () => reportsService.getRecentInsights(2) });
+  const { refreshing, onRefresh } = usePullToRefresh(() => Promise.all([metrics.refetch(), pl.refetch(), insights.refetch()]));
 
   return (
-    <Screen scroll header={<AppHeader />}>
+    <Screen scroll header={<AppHeader />} refreshing={refreshing} onRefresh={onRefresh}>
       <View style={{ gap: 4, marginTop: spacing.sm, marginBottom: spacing.lg }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
           <View>
