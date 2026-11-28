@@ -546,5 +546,12 @@
     "vatOverdue": "Overdue by {{days}} days",
     "vatToday": "Due today",
     "waitingError": "We could not check what is waiting for you."
+  },
+  "horizonRequests": {
+    "waiting_one": "One waiting.",
+    "waiting_other": "{{count}} waiting.",
+    "noneWaiting": "Nothing is waiting.",
+    "review": "Review",
+    "checkFailed": "Could not check."
   }
 }

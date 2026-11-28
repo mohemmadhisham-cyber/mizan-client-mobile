@@ -1,20 +1,29 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type Href, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { Alert, View } from 'react-native';
 
-import { AppHeader } from '@/components/navigation/app-header';
-import { RequestCard } from '@/components/requests/request-card';
+import type { HeadlineLine } from '@/components/horizon/headline';
+import { BRIDGE_WIDTH, FieldMark, HORIZON_GUTTER, HorizonScreen } from '@/components/horizon/horizon-screen';
+import { RuledRow, SectionLabel } from '@/components/horizon/ruled';
+import { requestOneLine, requestSentLine, requestTitle } from '@/components/requests/request-text';
 import { StepUpModal } from '@/components/tasks/step-up-modal';
-import { Badge, Card, Screen, Skeleton, Text } from '@/components/ui';
+import { Text } from '@/components/ui';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
-import { chevronForward } from '@/lib/direction';
 import { listPendingRequests, REQUESTS_QUERY_KEY } from '@/services/accountant-requests';
 import { tasksService } from '@/services/tasks';
 import type { ActionCenterTask } from '@/services/types';
-import { radius, spacing, useTheme } from '@/theme';
+import { useTheme } from '@/theme';
+
+/** Height of the field: a one-line sentence and up to two quiet lines under it. */
+const REQUESTS_FIELD = 200;
+
+/** The lines under a row's title: only the parts that exist, one per line. */
+function metaLines(...parts: (string | undefined)[]): string | undefined {
+  const present = parts.filter((part): part is string => Boolean(part));
+  return present.length > 0 ? present.join('\n') : undefined;
+}
 
 export default function TasksScreen() {
   const { t } = useTranslation();
@@ -32,7 +41,14 @@ export default function TasksScreen() {
     Promise.all([requests.refetch(), urgent.refetch(), pending.refetch(), completed.refetch()]),
   );
 
-  const urgentTasks = (urgent.data ?? []).filter((t) => !approvedIds.has(t.id));
+  const urgentTasks = (urgent.data ?? []).filter((task) => !approvedIds.has(task.id));
+  const fromAccountant = requests.data?.requests ?? [];
+  const unreadable = requests.data?.unreadable ?? 0;
+  // A request the app cannot show still waits for the client, so it counts.
+  const waiting = fromAccountant.length + unreadable + urgentTasks.length;
+  const counted = urgent.data !== undefined && requests.data !== undefined;
+  // Never say "nothing is waiting" when one of the two lists could not be read.
+  const checkFailed = (requests.isError && !requests.data) || (urgent.isError && !urgent.data);
 
   function handleAction(task: ActionCenterTask) {
     if (task.actionKind === 'upload-receipt') {
@@ -68,115 +84,105 @@ export default function TasksScreen() {
       });
   }
 
+  // The sentence the screen opens with: how many things are waiting for the client.
+  const lines: HeadlineLine[] = checkFailed
+    ? [{ text: t('horizonRequests.checkFailed') }]
+    : !counted
+      ? [{ text: t('common.loading'), soft: true }]
+      : waiting === 0
+        ? [{ text: t('horizonRequests.noneWaiting') }]
+        : [{ text: t('horizonRequests.waiting', { count: waiting }) }];
+
   return (
-    <Screen scroll header={<AppHeader />} refreshing={refreshing} onRefresh={onRefresh}>
-      <View style={{ gap: 4, marginTop: spacing.sm, marginBottom: spacing.lg }}>
-        <Text variant="h2" weight="semibold">
-          {t('tasks.title')}
-        </Text>
-        <Text variant="body" color="mutedForeground">
-          {t('tasks.subtitle')}
-        </Text>
-      </View>
-
-      {requests.isError ? (
-        <Text variant="footnote" color="mutedForeground" accessibilityLiveRegion="polite" style={{ marginBottom: spacing.lg }}>
-          {t('requests.loadFailed')}
-        </Text>
-      ) : requests.data && (requests.data.requests.length > 0 || requests.data.unreadable > 0) ? (
-        <View style={{ gap: spacing.sm, marginBottom: spacing.lg }}>
-          <Text variant="title">{t('requests.sectionTitle')}</Text>
-          {requests.data.requests.map((request) => (
-            <RequestCard key={request.id} request={request} onPress={() => router.push(`/approvals/${request.id}` as Href)} />
-          ))}
-          {requests.data.unreadable > 0 ? (
-            <Text variant="footnote" style={{ color: theme.colors.warningSoftForeground }}>
-              {t('requests.unreadable', { count: requests.data.unreadable })}
-            </Text>
-          ) : null}
-        </View>
-      ) : null}
-
-      <Card padded={false} elevated style={{ marginBottom: spacing.lg, overflow: 'hidden' }}>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            paddingHorizontal: spacing.base,
-            paddingVertical: spacing.md,
-            borderBottomWidth: 1,
-            borderBottomColor: theme.colors.border,
-          }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-            <View style={{ width: 4, height: 18, borderRadius: 2, backgroundColor: theme.colors.danger }} />
-            <Text variant="title">{t('tasks.requiresAttention')}</Text>
+    <>
+      <HorizonScreen
+        field={REQUESTS_FIELD}
+        small
+        lines={lines}
+        sub={t('tasks.subtitle')}
+        top={<FieldMark />}
+        // The bridge marks the place to act: it shows only when something is waiting.
+        bridge={waiting > 0 ? { start: HORIZON_GUTTER, width: BRIDGE_WIDTH } : null}
+        safeBottom={false}
+        refreshing={refreshing}
+        onRefresh={onRefresh}>
+        {requests.isError && !requests.data ? (
+          <View accessibilityLiveRegion="polite">
+            <RuledRow
+              title={t('requests.loadFailed')}
+              action={t('common.retry')}
+              onPress={() => void requests.refetch()}
+            />
           </View>
-          <Badge label={t('tasks.urgentCount', { count: urgentTasks.length })} bg={theme.colors.dangerSoft} fg={theme.colors.dangerSoftForeground} />
-        </View>
+        ) : fromAccountant.length > 0 || unreadable > 0 ? (
+          <>
+            <SectionLabel>{t('requests.sectionTitle')}</SectionLabel>
+            {fromAccountant.map((request) => (
+              <RuledRow
+                key={request.id}
+                title={requestTitle(request)}
+                meta={metaLines(requestOneLine(request, t), requestSentLine(request, t))}
+                action={t('horizonRequests.review')}
+                onPress={() => router.push(`/approvals/${request.id}` as Href)}
+              />
+            ))}
+            {unreadable > 0 ? (
+              <View style={{ paddingHorizontal: HORIZON_GUTTER, paddingTop: 12 }}>
+                <Text variant="footnote" style={{ color: theme.colors.warningSoftForeground }}>
+                  {t('requests.unreadable', { count: unreadable })}
+                </Text>
+              </View>
+            ) : null}
+          </>
+        ) : null}
 
-        {!urgent.data ? (
-          <View style={{ padding: spacing.base, gap: spacing.md }}>
-            <Skeleton height={100} radius={radius.md} />
-          </View>
+        <SectionLabel>{t('tasks.requiresAttention')}</SectionLabel>
+        {urgent.isError && !urgent.data ? (
+          <RuledRow title={t('common.listLoadFailed')} action={t('common.retry')} onPress={() => void urgent.refetch()} />
+        ) : !urgent.data ? (
+          <RuledRow title={t('common.loading')} />
         ) : urgentTasks.length === 0 ? (
-          <View style={{ padding: spacing.base }}>
-            <Text variant="callout" color="mutedForeground">
-              {t('home.allCaughtUp')}
-            </Text>
-          </View>
+          <RuledRow title={t('home.allCaughtUp')} />
         ) : (
-          urgentTasks.map((task, i) => (
-            <UrgentTaskRow key={task.id} task={task} isLast={i === urgentTasks.length - 1} onAction={() => handleAction(task)} />
+          urgentTasks.map((task) => (
+            <RuledRow
+              key={task.id}
+              title={task.title}
+              meta={metaLines(task.badgeLabel, task.description, task.metaLabel)}
+              alert
+              action={task.actionLabel}
+              onPress={() => handleAction(task)}
+            />
           ))
         )}
-      </Card>
 
-      <Card padded={false} elevated style={{ marginBottom: spacing.lg, overflow: 'hidden' }}>
-        <View
-          style={{
-            paddingHorizontal: spacing.base,
-            paddingVertical: spacing.md,
-            borderBottomWidth: 1,
-            borderBottomColor: theme.colors.border,
-          }}>
-          <Text variant="title">{t('tasks.pendingReview')}</Text>
-        </View>
         {!pending.data ? (
-          <View style={{ padding: spacing.base }}>
-            <Skeleton height={80} radius={radius.md} />
-          </View>
-        ) : (
-          <View style={{ padding: spacing.xs }}>
+          <>
+            <SectionLabel>{t('tasks.pendingReview')}</SectionLabel>
+            {pending.isError ? (
+              <RuledRow title={t('common.listLoadFailed')} action={t('common.retry')} onPress={() => void pending.refetch()} />
+            ) : (
+              <RuledRow title={t('common.loading')} />
+            )}
+          </>
+        ) : pending.data.length > 0 ? (
+          <>
+            <SectionLabel>{t('tasks.pendingReview')}</SectionLabel>
             {pending.data.map((task) => (
-              <PendingTaskRow key={task.id} task={task} onAction={() => handleAction(task)} />
+              <RuledRow
+                key={task.id}
+                title={task.title}
+                meta={metaLines(task.description, task.badgeLabel)}
+                action={task.actionLabel}
+                onPress={() => handleAction(task)}
+              />
             ))}
-          </View>
-        )}
-      </Card>
+          </>
+        ) : null}
 
-      <Card style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-          <View
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: radius.full,
-              backgroundColor: theme.colors.secondary,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-            <Ionicons name="checkmark-done" size={20} color={theme.colors.mutedForeground} />
-          </View>
-          <View>
-            <Text variant="title">{t('tasks.recentlyCompleted')}</Text>
-            <Text variant="footnote" color="mutedForeground">
-              {completed.data?.label ?? '—'}
-            </Text>
-          </View>
-        </View>
-        <Ionicons name={chevronForward()} size={16} color={theme.colors.mutedForeground} />
-      </Card>
+        <SectionLabel>{t('tasks.recentlyCompleted')}</SectionLabel>
+        <RuledRow title={completed.data?.label ?? (completed.isError ? t('common.listLoadFailed') : t('common.loading'))} />
+      </HorizonScreen>
 
       <StepUpModal
         visible={Boolean(stepUpTask)}
@@ -185,79 +191,6 @@ export default function TasksScreen() {
         onCancel={() => setStepUpTask(null)}
         onVerified={handleVerified}
       />
-    </Screen>
-  );
-}
-
-function UrgentTaskRow({ task, isLast, onAction }: { task: ActionCenterTask; isLast: boolean; onAction: () => void }) {
-  const theme = useTheme();
-  const isPrimary = task.actionKind === 'approve';
-  return (
-    <View
-      style={{
-        padding: spacing.base,
-        gap: spacing.md,
-        borderBottomWidth: isLast ? 0 : 1,
-        borderBottomColor: theme.colors.border,
-      }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <View style={{ flex: 1, gap: 4, paddingRight: spacing.md }}>
-          <Text variant="title">{task.title}</Text>
-          <Text variant="footnote" color="mutedForeground">
-            {task.description}
-          </Text>
-        </View>
-        <Badge label={task.badgeLabel} bg={theme.colors.dangerSoft} fg={theme.colors.dangerSoftForeground} />
-      </View>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        {task.metaLabel ? (
-          <Text variant="caption" color="mutedForeground">
-            {task.metaLabel}
-          </Text>
-        ) : (
-          <View />
-        )}
-        <Pressable
-          accessibilityRole="button"
-          onPress={onAction}
-          style={{
-            paddingHorizontal: spacing.base,
-            paddingVertical: spacing.sm,
-            borderRadius: radius.sm,
-            backgroundColor: isPrimary ? theme.colors.primary : 'transparent',
-            borderWidth: isPrimary ? 0 : 1,
-            borderColor: theme.colors.primary,
-          }}>
-          <Text
-            variant="caption"
-            weight="semibold"
-            style={{ color: isPrimary ? theme.colors.primaryForeground : theme.colors.primary, letterSpacing: 0.6 }}>
-            {task.actionLabel}
-          </Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
-function PendingTaskRow({ task, onAction }: { task: ActionCenterTask; onAction: () => void }) {
-  const theme = useTheme();
-  return (
-    <View style={{ padding: spacing.sm, gap: 4 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text variant="callout" weight="semibold">
-          {task.title}
-        </Text>
-        <Badge label={task.badgeLabel} bg={theme.colors.successSoft} fg={theme.colors.successSoftForeground} />
-      </View>
-      <Text variant="footnote" color="mutedForeground">
-        {task.description}
-      </Text>
-      <Pressable accessibilityRole="button" onPress={onAction} style={{ alignSelf: 'flex-end', paddingTop: spacing.xs }}>
-        <Text variant="caption" weight="semibold" color="primary" style={{ letterSpacing: 0.6 }}>
-          {task.actionLabel}
-        </Text>
-      </Pressable>
-    </View>
+    </>
   );
 }

@@ -614,5 +614,16 @@
     "vatOverdue": "متأخر {{days}} يومًا",
     "vatToday": "يستحق اليوم",
     "waitingError": "تعذّر التحقق مما ينتظرك."
+  },
+  "horizonRequests": {
+    "waiting_zero": "لا شيء بانتظارك.",
+    "waiting_one": "أمر واحد بانتظارك.",
+    "waiting_two": "أمران بانتظارك.",
+    "waiting_few": "{{count}} أمور بانتظارك.",
+    "waiting_many": "{{count}} أمرًا بانتظارك.",
+    "waiting_other": "{{count}} أمر بانتظارك.",
+    "noneWaiting": "لا شيء بانتظارك.",
+    "review": "مراجعة",
+    "checkFailed": "تعذّر التحقق."
   }
 }
