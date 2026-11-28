@@ -11,6 +11,7 @@ import { HORIZON_GUTTER } from './horizon-screen';
 
 const ROW_PADDING = 16;
 const PRESSED_OPACITY = 0.6;
+const CHOICE_TICK = 20;
 
 /** A quiet label that opens a group of rows on the ground. */
 export function SectionLabel({ children }: { children: string }) {
@@ -109,6 +110,39 @@ export function RuledRow({ title, meta, action, end, onPress, alert = false, pla
       onPress={onPress}
       style={({ pressed }) => [frame, { opacity: pressed ? PRESSED_OPACITY : 1 }]}>
       {body}
+    </Pressable>
+  );
+}
+
+interface ChoiceRowProps {
+  title: string;
+  selected: boolean;
+  onPress: () => void;
+}
+
+/**
+ * One option of a set where exactly one is chosen (language, appearance). The
+ * chosen one carries an ink tick and a heavier title. The whole row is the
+ * target. Put the options in a view with the role `radiogroup`.
+ */
+export function ChoiceRow({ title, selected, onPress }: ChoiceRowProps) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selected }}
+      accessibilityLabel={title}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.row,
+        { borderBottomColor: theme.colors.border, opacity: pressed ? PRESSED_OPACITY : 1 },
+      ]}>
+      <View style={styles.rowText}>
+        <Text variant="body" weight={selected ? 'semibold' : 'regular'}>
+          {title}
+        </Text>
+      </View>
+      {selected ? <Ionicons name="checkmark" size={CHOICE_TICK} color={theme.colors.foreground} /> : null}
     </Pressable>
   );
 }

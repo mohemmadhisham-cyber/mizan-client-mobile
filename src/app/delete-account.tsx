@@ -85,6 +85,7 @@ export default function DeleteAccountScreen() {
       animateKey={stage}
       lines={lines}
       sub={user?.email ?? undefined}
+      subLines={1}
       top={<FieldBack colors={colors} onPress={leave} />}
       bridge={stage === 'explain' ? { start: HORIZON_GUTTER, width: BRIDGE_WIDTH } : null}>
       {stage === 'requested' ? (

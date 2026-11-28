@@ -1,106 +1,91 @@
-import { Ionicons } from '@expo/vector-icons';
 import { type Href, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
-import { Button, Card, Screen, Text } from '@/components/ui';
+import { Cta } from '@/components/horizon/cta';
+import { FieldMark, HORIZON_GUTTER, HorizonScreen } from '@/components/horizon/horizon-screen';
+import { RuledRow, SectionLabel } from '@/components/horizon/ruled';
 import { useAuth } from '@/lib/auth-context';
-import { chevronForward } from '@/lib/direction';
-import { radius, spacing, useTheme } from '@/theme';
 
-type IconName = keyof typeof Ionicons.glyphMap;
+const MORE_FIELD = 200;
+const SIGN_OUT_SPACE_ABOVE = 28;
+const SIGN_OUT_SPACE_BELOW = 24;
 
 interface MoreItem {
-  icon: IconName;
   /** Translation key of the row label. */
   labelKey: string;
-  href?: Href;
+  href: Href;
 }
 
-const ITEMS: MoreItem[] = [
-  { icon: 'bar-chart-outline', labelKey: 'nav.reports', href: '/reports' },
-  { icon: 'folder-open-outline', labelKey: 'nav.documents', href: '/documents' },
-  { icon: 'pulse-outline', labelKey: 'nav.activity', href: '/activity' },
-  { icon: 'sparkles-outline', labelKey: 'more.askAi', href: '/ai-advisor' },
-  { icon: 'card-outline', labelKey: 'more.billing', href: '/billing' },
-  { icon: 'people-outline', labelKey: 'more.team', href: { pathname: '/companies', params: { tab: 'team' } } },
-  { icon: 'business-outline', labelKey: 'more.companies', href: '/companies' },
-  { icon: 'notifications-outline', labelKey: 'more.notifications', href: '/notifications' },
-  { icon: 'settings-outline', labelKey: 'more.settings', href: '/settings' },
-  { icon: 'help-circle-outline', labelKey: 'support.helpTitle', href: '/help' },
+interface MoreGroup {
+  /** Translation key of the group's label. */
+  titleKey: string;
+  items: MoreItem[];
+}
+
+// Grouped by what the person is looking for, not listed as one long menu.
+const GROUPS: MoreGroup[] = [
+  {
+    titleKey: 'more.groupBooks',
+    items: [
+      { labelKey: 'nav.reports', href: '/reports' },
+      { labelKey: 'nav.documents', href: '/documents' },
+      { labelKey: 'nav.activity', href: '/activity' },
+      { labelKey: 'more.askAi', href: '/ai-advisor' },
+    ],
+  },
+  {
+    titleKey: 'more.groupCompany',
+    items: [
+      { labelKey: 'more.billing', href: '/billing' },
+      { labelKey: 'more.team', href: { pathname: '/companies', params: { tab: 'team' } } },
+      { labelKey: 'more.companies', href: '/companies' },
+    ],
+  },
+  {
+    titleKey: 'more.groupApp',
+    items: [
+      { labelKey: 'more.notifications', href: '/notifications' },
+      { labelKey: 'more.settings', href: '/settings' },
+      { labelKey: 'support.helpTitle', href: '/help' },
+    ],
+  },
 ];
 
-function Row({ item, isLast, onPress }: { item: MoreItem; isLast: boolean; onPress: () => void }) {
-  const { t } = useTranslation();
-  const theme = useTheme();
-  const chevron = chevronForward();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={t(item.labelKey)}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.row,
-        {
-          borderBottomColor: theme.colors.border,
-          borderBottomWidth: isLast ? 0 : StyleSheet.hairlineWidth,
-          opacity: pressed ? 0.6 : 1,
-        },
-      ]}>
-      <View style={[styles.iconWrap, { backgroundColor: theme.colors.accent }]}>
-        <Ionicons name={item.icon} size={18} color={theme.colors.primary} />
-      </View>
-      <Text variant="body" weight="medium" style={{ flex: 1 }}>
-        {t(item.labelKey)}
-      </Text>
-      <Ionicons name={chevron} size={18} color={theme.colors.mutedForeground} />
-    </Pressable>
-  );
-}
-
+/** Everything that is not one of the four main tabs, in three plain groups. */
 export default function MoreScreen() {
   const { t } = useTranslation();
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const router = useRouter();
 
-  function handlePress(item: MoreItem) {
-    if (item.href) {
-      router.push(item.href);
-    } else {
-      Alert.alert(t('common.comingSoon'), t('common.notAvailableYet', { name: t(item.labelKey) }));
-    }
-  }
-
   return (
-    <Screen scroll>
-      <Text variant="h1" style={{ marginTop: spacing.sm, marginBottom: spacing.lg }}>
-        {t('nav.more')}
-      </Text>
-      <Card padded={false}>
-        {ITEMS.map((item, index) => (
-          <Row key={item.labelKey} item={item} isLast={index === ITEMS.length - 1} onPress={() => handlePress(item)} />
-        ))}
-      </Card>
-      <View style={{ marginTop: spacing.xl }}>
-        <Button title={t('auth.signOut')} variant="secondary" icon="log-out-outline" onPress={signOut} fullWidth />
+    <HorizonScreen
+      field={MORE_FIELD}
+      small
+      lines={[{ text: t('more.titleA') }, { text: t('more.titleB'), soft: true }]}
+      sub={user?.email ?? undefined}
+      subLines={1}
+      top={<FieldMark />}
+      // Nothing on this screen is waiting for the person.
+      bridge={null}
+      safeBottom={false}>
+      {GROUPS.map((group) => (
+        <View key={group.titleKey}>
+          <SectionLabel>{t(group.titleKey)}</SectionLabel>
+          {group.items.map((item) => (
+            <RuledRow key={item.labelKey} title={t(item.labelKey)} onPress={() => router.push(item.href)} />
+          ))}
+        </View>
+      ))}
+
+      <View
+        style={{
+          paddingHorizontal: HORIZON_GUTTER,
+          paddingTop: SIGN_OUT_SPACE_ABOVE,
+          paddingBottom: SIGN_OUT_SPACE_BELOW,
+        }}>
+        <Cta kind="outline" title={t('auth.signOut')} onPress={() => void signOut()} />
       </View>
-    </Screen>
+    </HorizonScreen>
   );
 }
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.md,
-  },
-  iconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
