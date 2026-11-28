@@ -1,17 +1,27 @@
 import { useQuery } from '@tanstack/react-query';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 
 import type { HeadlineLine } from '@/components/horizon/headline';
 import { FieldBack, HORIZON_GUTTER, HorizonScreen } from '@/components/horizon/horizon-screen';
 import { Figure, RuledRow, SectionLabel } from '@/components/horizon/ruled';
+import { WordTabs } from '@/components/horizon/word-tabs';
 import { Text } from '@/components/ui';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useAuth } from '@/lib/auth-context';
 import { formatDate, formatMinorUnits, formatMoneyMinor } from '@/lib/format';
 import { clearDashboardCache, clientDataService } from '@/services/client-data';
 import { type FigureDetail, getFigureDetail } from '@/services/figure-detail';
+import {
+  type CashView,
+  getCashView,
+  getPeriodView,
+  PERIOD_KEYS,
+  type PeriodKey,
+  type PeriodView,
+} from '@/services/figure-views';
 import { useTheme } from '@/theme';
 import { horizonColors } from '@/theme/horizon';
 
@@ -48,13 +58,26 @@ export default function FigureScreen() {
   const { firmId } = useAuth();
   const companyKey = firmId ?? 'none';
   const { key } = useLocalSearchParams<{ key: string }>();
+  const [period, setPeriod] = useState<PeriodKey>('this_month');
 
   // The same query as Home, so the figure in the field is the one that was tapped.
   const kpis = useQuery({ queryKey: ['kpis', companyKey], queryFn: clientDataService.getKpis });
   const detail = useQuery({ queryKey: ['figure-detail', companyKey], queryFn: getFigureDetail });
+  // Asked only on the screen that shows it. A server that does not know the view answers null.
+  const periodView = useQuery({
+    queryKey: ['figure-period', companyKey, period],
+    queryFn: () => getPeriodView(period),
+    enabled: key === 'out',
+  });
+  const cashView = useQuery({ queryKey: ['figure-cash', companyKey], queryFn: getCashView, enabled: key === 'cash' });
   const { refreshing, onRefresh } = usePullToRefresh(() => {
     clearDashboardCache();
-    return Promise.all([kpis.refetch(), detail.refetch()]);
+    return Promise.all([
+      kpis.refetch(),
+      detail.refetch(),
+      key === 'out' ? periodView.refetch() : null,
+      key === 'cash' ? cashView.refetch() : null,
+    ]);
   });
 
   // The key comes from a link: anything but the four figures goes Home.
@@ -63,7 +86,11 @@ export default function FigureScreen() {
   const k = kpis.data;
   const d = detail.data;
   const currency = k?.currency ?? 'AED';
-  const amount = k ? { in: k.moneyIn, out: k.moneyOut, cash: k.cash, vat: k.vatDue }[key] : null;
+  // Money out shows the chosen period's own figure once it has come, so it agrees with the parts
+  // under it. Until then this month falls back to the figure Home showed; another period waits.
+  const fromHome = k ? { in: k.moneyIn, out: k.moneyOut, cash: k.cash, vat: k.vatDue }[key] : null;
+  const amount =
+    key === 'out' ? (periodView.data?.moneyOut ?? (period === 'this_month' ? fromHome : null)) : fromHome;
 
   const lines: HeadlineLine[] = [
     { text: t(LABEL_KEY[key]), soft: true },
@@ -75,12 +102,25 @@ export default function FigureScreen() {
       field={FIGURE_FIELD}
       small
       lines={lines}
-      sub={t(`figures.${key}Sub`)}
+      sub={key === 'out' ? t(`figures.outSubPeriod.${period}`) : t(`figures.${key}Sub`)}
       top={<FieldBack colors={colors} />}
       // Something to read: nothing here is waiting for the person.
       bridge={null}
       refreshing={refreshing}
       onRefresh={onRefresh}>
+      {/* These two come from their own questions to the server, so they do not wait for the rest. */}
+      {key === 'out' ? (
+        <MoneyOut
+          period={period}
+          onPeriod={setPeriod}
+          view={periodView.data}
+          failed={periodView.isError}
+          onRetry={() => void periodView.refetch()}
+        />
+      ) : null}
+      {key === 'cash' ? (
+        <CashAccounts view={cashView.data} failed={cashView.isError} onRetry={() => void cashView.refetch()} />
+      ) : null}
       {detail.isError && !d ? (
         <RuledRow title={t('common.listLoadFailed')} action={t('common.retry')} onPress={onRefresh} />
       ) : !d ? (
@@ -91,7 +131,7 @@ export default function FigureScreen() {
           {key === 'out' ? <Months detail={d} pick="moneyOut" /> : null}
           {key === 'cash' ? <Cash detail={d} /> : null}
           {key === 'vat' ? <Vat dueDate={k?.vatDueDate} /> : null}
-          {d.unreadable > 0 ? (
+          {d.unreadable > 0 || (key === 'cash' && (cashView.data?.unreadable ?? 0) > 0) ? (
             <View style={{ paddingHorizontal: HORIZON_GUTTER, paddingTop: NOTE_SPACE }}>
               <Text variant="footnote" color="mutedForeground">
                 {t('figures.unreadable')}
@@ -125,6 +165,66 @@ function Months({ detail, pick }: { detail: FigureDetail; pick: 'moneyIn' | 'mon
   );
 }
 
+interface MoneyOutProps {
+  period: PeriodKey;
+  onPeriod: (period: PeriodKey) => void;
+  /** Undefined while it is on its way. Null when the server does not offer it. */
+  view: PeriodView | null | undefined;
+  failed: boolean;
+  onRetry: () => void;
+}
+
+/**
+ * What money out is made of, for a chosen period: the largest costs by
+ * account, and the rest together. Shown only by a server that sends it; with
+ * an older one this draws nothing and the screen is as it was.
+ */
+function MoneyOut({ period, onPeriod, view, failed, onRetry }: MoneyOutProps) {
+  const { t } = useTranslation();
+  // Not offered: nothing is drawn and the screen is as it was. Judged on the first period asked
+  // only. Once the line of periods is up it stays up, so the person can always choose another.
+  if (view === null && period === 'this_month') return null;
+  return (
+    <>
+      <WordTabs
+        accessibilityLabel={t('figures.periodLabel')}
+        options={PERIOD_KEYS.map((key) => ({ key, label: t(`figures.period.${key}`) }))}
+        value={period}
+        onChange={onPeriod}
+      />
+      <SectionLabel>{t('figures.madeOf')}</SectionLabel>
+      {(failed && !view) || view === null ? (
+        <RuledRow title={t('common.listLoadFailed')} action={t('common.retry')} onPress={onRetry} />
+      ) : !view || view.period !== period ? (
+        <RuledRow title={t('common.loading')} />
+      ) : view.groups === null ? (
+        <RuledRow title={t('figures.tooMuchToBreakDown')} plain />
+      ) : view.groups.length === 0 && view.otherMinor === 0 ? (
+        <RuledRow title={t('figures.nothingInPeriod')} plain />
+      ) : (
+        <>
+          {view.groups.map((group, index) => (
+            <RuledRow
+              // Two accounts can share a name, and the server sends no id: the place in the list is the key.
+              key={index}
+              title={group.name}
+              plain
+              end={<Figure>{formatMinorUnits(group.amountMinor, view.currency)}</Figure>}
+            />
+          ))}
+          {view.otherMinor !== 0 ? (
+            <RuledRow
+              title={t('figures.everythingElse')}
+              plain
+              end={<Figure>{formatMinorUnits(view.otherMinor, view.currency)}</Figure>}
+            />
+          ) : null}
+        </>
+      )}
+    </>
+  );
+}
+
 function MoneyIn({ detail, onInvoices }: { detail: FigureDetail; onInvoices: () => void }) {
   const { t } = useTranslation();
   return (
@@ -151,6 +251,43 @@ function MoneyIn({ detail, onInvoices }: { detail: FigureDetail; onInvoices: () 
       ) : null}
       <SectionLabel>{t('figures.invoicesSection')}</SectionLabel>
       <RuledRow title={t('invoicesScreen.title')} onPress={onInvoices} />
+    </>
+  );
+}
+
+interface CashAccountsProps {
+  /** Undefined while it is on its way. Null when the server does not offer it. */
+  view: CashView | null | undefined;
+  failed: boolean;
+  onRetry: () => void;
+}
+
+/** Each cash and bank account and what is in it today. Draws nothing until a server that knows the view has answered. */
+function CashAccounts({ view, failed, onRetry }: CashAccountsProps) {
+  const { t } = useTranslation();
+  if (failed && !view) {
+    return (
+      <>
+        <SectionLabel>{t('figures.cashAccounts')}</SectionLabel>
+        <RuledRow title={t('common.listLoadFailed')} action={t('common.retry')} onPress={onRetry} />
+      </>
+    );
+  }
+  if (!view || view.accounts.length === 0) return null;
+  return (
+    <>
+      <SectionLabel>{t('figures.cashAccounts')}</SectionLabel>
+      {view.accounts.map((account, index) => (
+        <RuledRow
+          key={index}
+          title={account.name}
+          plain
+          // An overdrawn account is the one to notice.
+          alert={account.balanceMinor < 0}
+          meta={account.balanceMinor < 0 ? t('figures.overdrawn') : undefined}
+          end={<Figure>{formatMinorUnits(account.balanceMinor, view.currency)}</Figure>}
+        />
+      ))}
     </>
   );
 }

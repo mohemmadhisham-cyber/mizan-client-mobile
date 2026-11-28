@@ -26,7 +26,7 @@ const SERVER_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', '
 
 /** Characters that can reorder the text around them: removed from anything the server sends for display. */
 const DIRECTION_OVERRIDES = /[‪-‮⁦-⁩]/g;
-const text = (max: number) =>
+export const displayText = (max: number) =>
   z
     .string()
     .max(max)
@@ -41,7 +41,7 @@ const major = z
   .refine((minor) => Number.isSafeInteger(minor));
 
 /** A real calendar date as YYYY-MM-DD. */
-const day = z
+export const calendarDay = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/)
   .refine((value) => {
@@ -50,13 +50,13 @@ const day = z
   });
 
 const monthSchema = z.object({ month: z.string().max(12), revenue: major, expenses: major, profit: major });
-const customerSchema = z.object({ name: text(NAME_MAX), amount: major });
+const customerSchema = z.object({ name: displayText(NAME_MAX), amount: major });
 const invoiceSchema = z.object({
   id: z.string().min(1).max(40),
-  number: text(60),
-  customer: text(NAME_MAX),
-  date: day,
-  due: day,
+  number: displayText(60),
+  customer: displayText(NAME_MAX),
+  date: calendarDay,
+  due: calendarDay,
   amount: major,
   /** What is still to be paid, when the server says. Older servers do not send it. */
   residual: major.nullish(),
