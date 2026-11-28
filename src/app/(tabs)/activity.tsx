@@ -3,9 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AppHeader } from '@/components/navigation/app-header';
 import { Card, EmptyState, Screen, Skeleton, Text } from '@/components/ui';
+import { localeTag } from '@/lib/format';
 import { listMyReceipts, type MyReceipt } from '@/services/receipts';
 import { reportsService } from '@/services/reports';
 import { radius, spacing, useTheme } from '@/theme';
@@ -19,14 +21,14 @@ type ActivityItem = {
   reportId?: string;
 };
 
-const RECEIPT_TITLE: Record<MyReceipt['status'], string> = {
-  uploaded: 'Receipt uploaded',
-  extracting: 'Receipt uploaded',
-  extracted: 'Receipt read, ready to send',
-  needs_review: 'Receipt sent to your accountant',
-  approved: 'Receipt approved',
-  posted: 'Receipt booked to your accounts',
-  rejected: 'Receipt returned by your accountant',
+const RECEIPT_TITLE_KEY: Record<MyReceipt['status'], string> = {
+  uploaded: 'activity.receiptUploaded',
+  extracting: 'activity.receiptUploaded',
+  extracted: 'activity.receiptExtracted',
+  needs_review: 'activity.receiptNeedsReview',
+  approved: 'activity.receiptApproved',
+  posted: 'activity.receiptPosted',
+  rejected: 'activity.receiptRejected',
 };
 
 /** A unified timeline of the client's own account activity — the receipts they
@@ -34,6 +36,7 @@ const RECEIPT_TITLE: Record<MyReceipt['status'], string> = {
  * notification bell (push-style alerts); this is a durable history of what
  * actually happened on the account. Both sources are real and RLS-scoped. */
 export default function ActivityScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const router = useRouter();
 
@@ -44,20 +47,20 @@ export default function ActivityScreen() {
     const r: ActivityItem[] = (receipts.data ?? []).map((rec) => ({
       id: `receipt-${rec.id}`,
       icon: rec.status === 'rejected' ? 'alert-circle-outline' : 'receipt-outline',
-      title: RECEIPT_TITLE[rec.status],
-      subtitle: rec.vendorName ?? 'Receipt',
+      title: t(RECEIPT_TITLE_KEY[rec.status]),
+      subtitle: rec.vendorName ?? t('common.receipt'),
       at: new Date(rec.createdAt).getTime(),
     }));
     const rep: ActivityItem[] = (reports.data ?? []).map((rp) => ({
       id: `report-${rp.id}`,
       icon: 'document-text-outline',
-      title: 'New report published',
+      title: t('activity.reportPublished'),
       subtitle: rp.title,
       at: new Date(rp.publishedAt).getTime(),
       reportId: rp.id,
     }));
     return [...r, ...rep].sort((a, b) => b.at - a.at);
-  }, [receipts.data, reports.data]);
+  }, [receipts.data, reports.data, t]);
 
   const loading = receipts.isLoading || reports.isLoading;
 
@@ -65,10 +68,10 @@ export default function ActivityScreen() {
     <Screen scroll header={<AppHeader />}>
       <View style={{ gap: 4, marginTop: spacing.sm, marginBottom: spacing.lg }}>
         <Text variant="h2" weight="semibold">
-          Activity
+          {t('activity.title')}
         </Text>
         <Text variant="body" color="mutedForeground">
-          A history of your receipts and reports.
+          {t('activity.subtitle')}
         </Text>
       </View>
 
@@ -81,8 +84,8 @@ export default function ActivityScreen() {
       ) : items.length === 0 ? (
         <EmptyState
           icon="pulse-outline"
-          title="Nothing yet"
-          message="When you capture receipts and your accountant publishes reports, they’ll show up here."
+          title={t('activity.emptyTitle')}
+          message={t('activity.emptyBody')}
         />
       ) : (
         <View style={{ gap: spacing.sm }}>
@@ -110,7 +113,7 @@ export default function ActivityScreen() {
                     </Text>
                   </View>
                   <Text variant="caption" color="mutedForeground">
-                    {new Date(it.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                    {new Date(it.at).toLocaleDateString(localeTag(), { day: 'numeric', month: 'short' })}
                   </Text>
                 </View>
               </Card>

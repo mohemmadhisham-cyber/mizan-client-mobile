@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { OtpBoxInput } from '@/components/auth/otp-box-input';
 import { Button, Card, Text } from '@/components/ui';
+import i18n from '@/i18n';
 import { useAuth } from '@/lib/auth-context';
 import { issueStepUpOtp, verifyStepUpOtp } from '@/services/step-up';
 import { spacing, useTheme } from '@/theme';
@@ -22,6 +24,7 @@ interface StepUpModalProps {
  * short-lived step_up_grants row server-side (see services/step-up.ts).
  */
 export function StepUpModal({ visible, scope, title, onCancel, onVerified }: StepUpModalProps) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
   const { user } = useAuth();
@@ -43,7 +46,7 @@ export function StepUpModal({ visible, scope, title, onCancel, onVerified }: Ste
       const res = await issueStepUpOtp(email);
       if (cancelled) return;
       setSending(false);
-      if (!res.ok) setError(res.error ?? 'Could not send a code.');
+      if (!res.ok) setError(res.error ?? i18n.t('stepUp.sendFailed'));
     }
 
     void sendCode();
@@ -60,7 +63,7 @@ export function StepUpModal({ visible, scope, title, onCancel, onVerified }: Ste
     setBusy(false);
     if (!res.ok || !res.granted) {
       setCode('');
-      setError(res.error ?? 'Verification failed. Try again.');
+      setError(res.error ?? t('stepUp.verifyFailed'));
       return;
     }
     onVerified();
@@ -79,11 +82,10 @@ export function StepUpModal({ visible, scope, title, onCancel, onVerified }: Ste
             alignItems: 'center',
           }}>
           <Text variant="title" center>
-            Verify it&apos;s you
+            {t('stepUp.title')}
           </Text>
           <Text variant="footnote" color="mutedForeground" center>
-            {sending ? 'Sending a code to ' : 'Enter the 6-digit code sent to '}
-            {email}
+            {sending ? t('stepUp.sendingTo', { email }) : t('stepUp.enterCodeSentTo', { email })}
           </Text>
 
           <OtpBoxInput
@@ -101,10 +103,10 @@ export function StepUpModal({ visible, scope, title, onCancel, onVerified }: Ste
             </Text>
           ) : null}
 
-          <Button title={`Verify — ${title}`} onPress={submit} disabled={code.length < 6} loading={busy} fullWidth />
+          <Button title={t('stepUp.verifyAction', { title })} onPress={submit} disabled={code.length < 6} loading={busy} fullWidth />
           <Pressable accessibilityRole="button" onPress={onCancel}>
             <Text variant="footnote" color="mutedForeground">
-              Cancel
+              {t('common.cancel')}
             </Text>
           </Pressable>
         </Card>

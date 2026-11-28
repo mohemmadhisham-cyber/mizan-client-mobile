@@ -33,7 +33,7 @@ interface ChatMessage {
   text: string;
 }
 
-const PROMPT_PILLS = ['Check burn rate', 'Summarize reports', 'Forecast Q4'];
+const PROMPT_PILL_KEYS = ['aiAdvisorScreen.pillBurnRate', 'aiAdvisorScreen.pillSummarize', 'aiAdvisorScreen.pillForecast'];
 
 let msgCounter = 0;
 function nextId(): string {
@@ -71,10 +71,10 @@ export default function AiAdvisorScreen() {
 
     if (!res.ok) {
       const notice = res.insufficientTokens
-        ? "You've used all your AI credits for this period. Ask your accountant to top up."
+        ? t('aiAdvisorScreen.outOfCredits')
         : res.accountLocked
-          ? 'Your AI access is currently locked. Contact your accountant for help.'
-          : (res.error ?? 'Mizan could not respond right now.');
+          ? t('aiAdvisorScreen.locked')
+          : (res.error ?? t('aiAdvisorScreen.noResponse'));
       setMessages((m) => [...m, { id: nextId(), role: 'system', text: notice }]);
       return;
     }
@@ -87,18 +87,18 @@ export default function AiAdvisorScreen() {
   // real receipts pipeline (same as Capture) and confirms in the thread.
   async function attachDocument() {
     if (!firmId || !clientId || !user) {
-      Alert.alert('Not linked yet', 'Your account is not linked to a company yet. Ask your accountant to check your invite.');
+      Alert.alert(t('common.notLinkedTitle'), t('common.notLinkedBody'));
       return;
     }
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Photo access needed', 'Enable photo access to attach a document.');
+      Alert.alert(t('common.photoAccessTitle'), t('aiAdvisorScreen.photoAccessBody'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'images', quality: 0.8 });
     if (result.canceled || !result.assets?.[0]) return;
     const asset = result.assets[0];
-    setMessages((m) => [...m, { id: nextId(), role: 'system', text: 'Uploading your document…' }]);
+    setMessages((m) => [...m, { id: nextId(), role: 'system', text: t('aiAdvisorScreen.uploading') }]);
     const res = await uploadReceipt({ uri: asset.uri, mimeType: asset.mimeType ?? 'image/jpeg' }, firmId, clientId, user.id);
     setMessages((m) => [
       ...m,
@@ -106,8 +106,8 @@ export default function AiAdvisorScreen() {
         id: nextId(),
         role: 'system',
         text: res.ok
-          ? 'Document sent to your accountant to review. Add the details any time from Capture.'
-          : `Could not attach that document: ${res.error ?? 'please try again'}.`,
+          ? t('aiAdvisorScreen.documentSent')
+          : t('aiAdvisorScreen.attachFailed', { reason: res.error ?? t('aiAdvisorScreen.attachFailedReason') }),
       },
     ]);
   }
@@ -120,7 +120,7 @@ export default function AiAdvisorScreen() {
       const res = await transcribeRecording(recording.uri);
       setTranscribing(false);
       if (!res.ok) {
-        Alert.alert('Could not transcribe', res.error ?? 'Try again, or type your question instead.');
+        Alert.alert(t('aiAdvisorScreen.transcribeFailedTitle'), res.error ?? t('aiAdvisorScreen.transcribeFailedBody'));
         return;
       }
       if (res.text) setInput((prev) => (prev ? `${prev} ${res.text}` : (res.text ?? '')));
@@ -133,8 +133,8 @@ export default function AiAdvisorScreen() {
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <AppHeader />
       <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: theme.colors.border }}>
-        <TabButton label="AI Advisor" active={tab === 'advisor'} onPress={() => setTab('advisor')} />
-        <TabButton label="Accountant Queries" active={tab === 'queries'} onPress={() => setTab('queries')} />
+        <TabButton label={t('aiAdvisorScreen.tabAdvisor')} active={tab === 'advisor'} onPress={() => setTab('advisor')} />
+        <TabButton label={t('aiAdvisorScreen.tabQueries')} active={tab === 'queries'} onPress={() => setTab('queries')} />
       </View>
 
       {tab === 'queries' ? (
@@ -152,7 +152,7 @@ export default function AiAdvisorScreen() {
               <View style={{ alignItems: 'center', paddingVertical: spacing['2xl'], gap: spacing.sm }}>
                 <Ionicons name="sparkles" size={32} color={theme.colors.primary} />
                 <Text variant="footnote" color="mutedForeground" center style={{ maxWidth: 240 }}>
-                  Good morning. How can Mizan assist with your financial intelligence today?
+                  {t('aiAdvisorScreen.greeting')}
                 </Text>
               </View>
             ) : null}
@@ -166,7 +166,7 @@ export default function AiAdvisorScreen() {
 
           <View style={{ paddingHorizontal: spacing.gutter, paddingBottom: insets.bottom + spacing.sm, gap: spacing.md }}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
-              {PROMPT_PILLS.map((p) => (
+              {PROMPT_PILL_KEYS.map((key) => t(key)).map((p) => (
                 <Pressable
                   key={p}
                   accessibilityRole="button"
@@ -190,12 +190,12 @@ export default function AiAdvisorScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.danger }} />
                 <Text variant="footnote" color="mutedForeground">
-                  Recording… {Math.round(voice.durationMillis / 1000)}s — tap the mic to transcribe
+                  {t('aiAdvisorScreen.recording', { seconds: Math.round(voice.durationMillis / 1000) })}
                 </Text>
               </View>
             ) : transcribing ? (
               <Text variant="footnote" color="mutedForeground">
-                Transcribing…
+                {t('aiAdvisorScreen.transcribing')}
               </Text>
             ) : null}
 
@@ -224,7 +224,7 @@ export default function AiAdvisorScreen() {
               />
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Attach"
+                accessibilityLabel={t('common.attach')}
                 onPress={attachDocument}
                 style={{ padding: spacing.sm }}
                 disabled={voice.isRecording}>
@@ -232,7 +232,7 @@ export default function AiAdvisorScreen() {
               </Pressable>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={voice.isRecording ? 'Stop and transcribe' : 'Record a voice question'}
+                accessibilityLabel={voice.isRecording ? t('aiAdvisorScreen.stopAndTranscribe') : t('aiAdvisorScreen.recordQuestion')}
                 onPress={handleMicPress}
                 disabled={transcribing}
                 style={{ padding: spacing.sm }}>
@@ -244,7 +244,7 @@ export default function AiAdvisorScreen() {
               </Pressable>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Send"
+                accessibilityLabel={t('common.send')}
                 disabled={!input.trim() || busy}
                 onPress={() => send(input)}
                 style={{

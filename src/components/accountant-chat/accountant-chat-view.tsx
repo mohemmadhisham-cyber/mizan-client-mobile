@@ -4,9 +4,11 @@ import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { EmptyState, Text } from '@/components/ui';
 import { useVoiceRecorder } from '@/hooks/use-voice-recorder';
+import { localeTag } from '@/lib/format';
 import { accountantChatService, isAudioMime, type ChatAttachment, type ChatMessage } from '@/services/accountant-chat';
 import { radius, spacing, useTheme } from '@/theme';
 
@@ -17,6 +19,7 @@ interface AccountantChatViewProps {
 }
 
 export function AccountantChatView({ clientId, firmId, userId }: AccountantChatViewProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState<ChatMessage[] | null>(null);
@@ -48,7 +51,7 @@ export function AccountantChatView({ clientId, firmId, userId }: AccountantChatV
   async function pickAttachment() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Photo access needed', 'Enable photo library access in Settings to attach a file.');
+      Alert.alert(t('common.photoAccessTitle'), t('chat.photoAccessBody'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'images', quality: 0.8 });
@@ -59,14 +62,14 @@ export function AccountantChatView({ clientId, firmId, userId }: AccountantChatV
 
   async function sendWith(attachment: ChatAttachment | null, body: string) {
     if (!clientId || !firmId || !userId) {
-      Alert.alert('Not linked yet', 'Your account is not linked to a company yet.');
+      Alert.alert(t('common.notLinkedTitle'), t('chat.notLinkedShort'));
       return;
     }
     setBusy(true);
     const res = await accountantChatService.sendMessage(clientId, firmId, userId, body, attachment ?? undefined);
     setBusy(false);
     if (!res.ok) {
-      Alert.alert('Could not send', res.error ?? 'Try again.');
+      Alert.alert(t('chat.couldNotSend'), res.error ?? t('common.tryAgainShort'));
       return;
     }
     setInput('');
@@ -82,7 +85,7 @@ export function AccountantChatView({ clientId, firmId, userId }: AccountantChatV
   async function handleMicPress() {
     if (voice.isRecording) {
       const recording = await voice.stop();
-      if (recording) await sendWith({ uri: recording.uri, mimeType: 'audio/m4a' }, 'Voice message');
+      if (recording) await sendWith({ uri: recording.uri, mimeType: 'audio/m4a' }, t('chat.voiceMessage'));
       return;
     }
     await voice.start();
@@ -92,8 +95,8 @@ export function AccountantChatView({ clientId, firmId, userId }: AccountantChatV
     return (
       <EmptyState
         icon="chatbubbles-outline"
-        title="Accountant Queries"
-        message="Your account isn't linked to a company yet, so there's no one to message."
+        title={t('aiAdvisorScreen.tabQueries')}
+        message={t('chat.notLinkedBody')}
       />
     );
   }
@@ -108,7 +111,7 @@ export function AccountantChatView({ clientId, firmId, userId }: AccountantChatV
           <View style={{ alignItems: 'center', paddingVertical: spacing['2xl'], gap: spacing.sm }}>
             <Ionicons name="chatbubbles-outline" size={32} color={theme.colors.primary} />
             <Text variant="footnote" color="mutedForeground" center style={{ maxWidth: 240 }}>
-              {"Message your accountant here. They'll see it and can reply directly."}
+              {t('chat.empty')}
             </Text>
           </View>
         ) : (
@@ -121,7 +124,7 @@ export function AccountantChatView({ clientId, firmId, userId }: AccountantChatV
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
             <Image source={{ uri: pending.uri }} style={{ width: 40, height: 40, borderRadius: radius.sm }} />
             <Text variant="footnote" color="mutedForeground" style={{ flex: 1 }}>
-              Attachment ready to send
+              {t('chat.attachmentReady')}
             </Text>
             <Pressable accessibilityRole="button" onPress={() => setPending(null)} hitSlop={8}>
               <Ionicons name="close-circle" size={20} color={theme.colors.mutedForeground} />
@@ -133,7 +136,7 @@ export function AccountantChatView({ clientId, firmId, userId }: AccountantChatV
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
             <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.danger }} />
             <Text variant="footnote" color="mutedForeground">
-              Recording… {Math.round(voice.durationMillis / 1000)}s — tap the mic to send
+              {t('chat.recording', { seconds: Math.round(voice.durationMillis / 1000) })}
             </Text>
           </View>
         ) : null}
@@ -153,25 +156,25 @@ export function AccountantChatView({ clientId, firmId, userId }: AccountantChatV
           <TextInput
             value={input}
             onChangeText={setInput}
-            placeholder="Message your accountant..."
+            placeholder={t('chat.placeholder')}
             placeholderTextColor={theme.colors.mutedForeground}
             style={{ flex: 1, color: theme.colors.foreground, fontSize: 16, paddingVertical: spacing.sm }}
             multiline
             editable={!voice.isRecording}
           />
-          <Pressable accessibilityRole="button" accessibilityLabel="Attach" onPress={pickAttachment} style={{ padding: spacing.sm }} disabled={voice.isRecording}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t('common.attach')} onPress={pickAttachment} style={{ padding: spacing.sm }} disabled={voice.isRecording}>
             <Ionicons name="attach-outline" size={20} color={theme.colors.mutedForeground} />
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={voice.isRecording ? 'Stop and send recording' : 'Record voice message'}
+            accessibilityLabel={voice.isRecording ? t('chat.stopAndSend') : t('chat.recordVoice')}
             onPress={handleMicPress}
             style={{ padding: spacing.sm }}>
             <Ionicons name={voice.isRecording ? 'stop-circle' : 'mic-outline'} size={20} color={voice.isRecording ? theme.colors.danger : theme.colors.mutedForeground} />
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Send"
+            accessibilityLabel={t('common.send')}
             disabled={(!input.trim() && !pending) || busy}
             onPress={send}
             style={{
@@ -230,25 +233,26 @@ function MessageBubble({ message, isSelf }: { message: ChatMessage; isSelf: bool
         ) : null}
       </View>
       <Text variant="caption" color="mutedForeground" style={{ alignSelf: isSelf ? 'flex-end' : 'flex-start' }}>
-        {new Date(message.createdAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+        {new Date(message.createdAt).toLocaleTimeString(localeTag(), { hour: 'numeric', minute: '2-digit' })}
       </Text>
     </View>
   );
 }
 
 function VoiceMessagePlayer({ uri, tint }: { uri: string; tint: string }) {
+  const { t } = useTranslation();
   const player = useAudioPlayer(uri);
   const status = useAudioPlayerStatus(player);
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={status.playing ? 'Pause voice message' : 'Play voice message'}
+      accessibilityLabel={status.playing ? t('chat.pauseVoice') : t('chat.playVoice')}
       onPress={() => (status.playing ? player.pause() : player.play())}
       style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minWidth: 140 }}>
       <Ionicons name={status.playing ? 'pause-circle' : 'play-circle'} size={32} color={tint} />
       <Text variant="footnote" style={{ color: tint }}>
-        {status.duration ? `${Math.round((status.playing ? status.duration - status.currentTime : status.duration))}s` : 'Voice message'}
+        {status.duration ? t('chat.seconds', { seconds: Math.round(status.playing ? status.duration - status.currentTime : status.duration) }) : t('chat.voiceMessage')}
       </Text>
     </Pressable>
   );

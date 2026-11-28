@@ -1,8 +1,9 @@
 import { Modal, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { Button, Card, Text } from '@/components/ui';
-import { DASHBOARD_SECTION_LABEL, type DashboardSection, type DashboardVisibility } from '@/lib/dashboard-prefs';
+import { DASHBOARD_SECTION_LABEL_KEY, type DashboardSection, type DashboardVisibility } from '@/lib/dashboard-prefs';
 import { spacing, useTheme } from '@/theme';
 
 const SECTIONS: DashboardSection[] = ['cashFlow', 'criticalTasks', 'thisMonth', 'whatChanged', 'expenseTrend'];
@@ -15,6 +16,7 @@ interface EditDashboardModalProps {
 }
 
 export function EditDashboardModal({ visible, sectionVisibility, onToggle, onDone }: EditDashboardModalProps) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -26,9 +28,9 @@ export function EditDashboardModal({ visible, sectionVisibility, onToggle, onDon
           padded={false}
           style={{ borderBottomLeftRadius: 0, borderBottomRightRadius: 0, paddingBottom: insets.bottom + spacing.lg }}>
           <View style={{ padding: spacing.base, gap: 2 }}>
-            <Text variant="title">Edit Dashboard</Text>
+            <Text variant="title">{t('dashboard.editTitle')}</Text>
             <Text variant="footnote" color="mutedForeground">
-              Choose which sections appear on your Home screen.
+              {t('dashboard.editBody')}
             </Text>
           </View>
           {SECTIONS.map((s, i) => (
@@ -45,7 +47,7 @@ export function EditDashboardModal({ visible, sectionVisibility, onToggle, onDon
                 borderBottomWidth: 1,
                 borderBottomColor: theme.colors.border,
               }}>
-              <Text variant="body">{DASHBOARD_SECTION_LABEL[s]}</Text>
+              <Text variant="body">{t(DASHBOARD_SECTION_LABEL_KEY[s])}</Text>
               <Switch
                 value={sectionVisibility[s]}
                 onValueChange={() => onToggle(s)}
@@ -54,7 +56,7 @@ export function EditDashboardModal({ visible, sectionVisibility, onToggle, onDon
             </View>
           ))}
           <View style={{ padding: spacing.base }}>
-            <Button title="Done" onPress={onDone} fullWidth />
+            <Button title={t('common.done')} onPress={onDone} fullWidth />
           </View>
         </Card>
       </View>

@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DetailHeader } from '@/components/navigation/detail-header';
 import { Card, EmptyState, Input, Skeleton, Text } from '@/components/ui';
+import { chevronForward } from '@/lib/direction';
 import { CATEGORY_ICON, CATEGORY_LABEL, CATEGORY_TONE } from '@/services/report-presentation';
 import { reportsService } from '@/services/reports';
 import type { Report, ReportCategory } from '@/services/types';
@@ -124,7 +125,7 @@ function ArchiveRow({ report, onPress }: { report: Report; onPress: () => void }
             {CATEGORY_LABEL[report.category]} · {report.publishedAt}
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={18} color={theme.colors.mutedForeground} />
+        <Ionicons name={chevronForward()} size={18} color={theme.colors.mutedForeground} />
       </Card>
     </Pressable>
   );

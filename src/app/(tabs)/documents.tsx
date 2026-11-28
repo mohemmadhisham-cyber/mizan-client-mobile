@@ -2,27 +2,29 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { Pressable, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AppHeader } from '@/components/navigation/app-header';
 import { Badge, Card, EmptyState, Screen, Skeleton, Text } from '@/components/ui';
-import { formatMoneyMinor, type Currency } from '@/lib/format';
+import { type Currency, formatMoneyMinor, localeTag } from '@/lib/format';
 import { listMyReceipts, type MyReceipt, type ReceiptStatus } from '@/services/receipts';
 import { radius, softTone, spacing, useTheme, type SoftTone } from '@/theme';
 
 /** Client-facing status labels + tints. Internal machine states
  * (uploaded/extracting) collapse into a calm "Processing" so the client sees a
  * meaningful lifecycle, not implementation detail. */
-const STATUS_META: Record<ReceiptStatus, { label: string; tone: SoftTone }> = {
-  uploaded: { label: 'Processing', tone: 'info' },
-  extracting: { label: 'Processing', tone: 'info' },
-  extracted: { label: 'Ready to send', tone: 'info' },
-  needs_review: { label: 'With accountant', tone: 'success' },
-  approved: { label: 'Approved', tone: 'success' },
-  posted: { label: 'Booked', tone: 'success' },
-  rejected: { label: 'Rejected', tone: 'danger' },
+const STATUS_META: Record<ReceiptStatus, { labelKey: string; tone: SoftTone }> = {
+  uploaded: { labelKey: 'receipts.statusProcessing', tone: 'info' },
+  extracting: { labelKey: 'receipts.statusProcessing', tone: 'info' },
+  extracted: { labelKey: 'receipts.statusReadyToSend', tone: 'info' },
+  needs_review: { labelKey: 'receipts.statusWithAccountant', tone: 'success' },
+  approved: { labelKey: 'receipts.statusApproved', tone: 'success' },
+  posted: { labelKey: 'receipts.statusBooked', tone: 'success' },
+  rejected: { labelKey: 'receipts.statusRejected', tone: 'danger' },
 };
 
 export default function DocumentsScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const router = useRouter();
   const { data, isLoading } = useQuery({ queryKey: ['my-receipts'], queryFn: listMyReceipts });
@@ -33,16 +35,16 @@ export default function DocumentsScreen() {
     <Screen scroll header={<AppHeader />}>
       <View style={{ gap: 4, marginTop: spacing.sm, marginBottom: spacing.lg }}>
         <Text variant="h2" weight="semibold">
-          Receipts
+          {t('receipts.title')}
         </Text>
         <Text variant="body" color="mutedForeground">
-          Photograph a receipt and we’ll read the details for your accountant.
+          {t('receipts.subtitle')}
         </Text>
       </View>
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Photograph a receipt"
+        accessibilityLabel={t('receipts.photograph')}
         onPress={() => router.push('/capture')}
         style={{
           flexDirection: 'row',
@@ -56,7 +58,7 @@ export default function DocumentsScreen() {
         }}>
         <Ionicons name="camera" size={20} color={theme.colors.primaryForeground} />
         <Text variant="callout" weight="semibold" style={{ color: theme.colors.primaryForeground }}>
-          Photograph a receipt
+          {t('receipts.photograph')}
         </Text>
       </Pressable>
 
@@ -68,8 +70,8 @@ export default function DocumentsScreen() {
       ) : receipts.length === 0 ? (
         <EmptyState
           icon="receipt-outline"
-          title="No receipts yet"
-          message="Your captured receipts will appear here with their status."
+          title={t('receipts.emptyTitle')}
+          message={t('receipts.emptyBody')}
         />
       ) : (
         <View style={{ gap: spacing.sm }}>
@@ -83,12 +85,13 @@ export default function DocumentsScreen() {
 }
 
 function ReceiptRow({ receipt }: { receipt: MyReceipt }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const meta = STATUS_META[receipt.status];
   const tone = softTone(theme.colors, meta.tone);
   const dateLabel = receipt.receiptDate
-    ? new Date(receipt.receiptDate).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
-    : new Date(receipt.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+    ? new Date(receipt.receiptDate).toLocaleDateString(localeTag(), { day: 'numeric', month: 'short', year: 'numeric' })
+    : new Date(receipt.createdAt).toLocaleDateString(localeTag(), { day: 'numeric', month: 'short' });
 
   return (
     <Card padded={false} style={{ padding: spacing.base }}>
@@ -106,7 +109,7 @@ function ReceiptRow({ receipt }: { receipt: MyReceipt }) {
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text variant="callout" weight="semibold" numberOfLines={1}>
-            {receipt.vendorName ?? 'Receipt'}
+            {receipt.vendorName ?? t('common.receipt')}
           </Text>
           <Text variant="footnote" color="mutedForeground" numberOfLines={1}>
             {dateLabel}
@@ -119,7 +122,7 @@ function ReceiptRow({ receipt }: { receipt: MyReceipt }) {
               {formatMoneyMinor(receipt.totalMinor, (receipt.currency as Currency) ?? 'AED', { fractionDigits: 2 })}
             </Text>
           ) : null}
-          <Badge label={meta.label} bg={tone.bg} fg={tone.fg} />
+          <Badge label={t(meta.labelKey)} bg={tone.bg} fg={tone.fg} />
         </View>
       </View>
     </Card>

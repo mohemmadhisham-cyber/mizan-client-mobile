@@ -1,3 +1,4 @@
+import i18n from '@/i18n';
 import { supabase } from '@/lib/supabase';
 
 import type { ActionItem, InsightCard, KpiBlock, Severity, TrendPoint } from './types';
@@ -103,8 +104,8 @@ export const clientDataService = {
     const items: ActionItem[] = [];
     const approvalCount = approvals.count ?? 0;
     const docCount = docs.count ?? 0;
-    if (approvalCount > 0) items.push({ id: 'a-approvals', label: 'Review & approve pending items', count: approvalCount, href: '/tasks' });
-    if (docCount > 0) items.push({ id: 'a-docs', label: 'Upload requested documents', count: docCount, href: '/documents' });
+    if (approvalCount > 0) items.push({ id: 'a-approvals', label: i18n.t('tasks.actionApprovals'), count: approvalCount, href: '/tasks' });
+    if (docCount > 0) items.push({ id: 'a-docs', label: i18n.t('tasks.actionDocuments'), count: docCount, href: '/documents' });
     return items;
   },
 };

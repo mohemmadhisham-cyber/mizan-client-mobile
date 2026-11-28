@@ -3,15 +3,18 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 import { AppHeader } from '@/components/navigation/app-header';
 import { StepUpModal } from '@/components/tasks/step-up-modal';
 import { Badge, Card, Screen, Skeleton, Text } from '@/components/ui';
+import { chevronForward } from '@/lib/direction';
 import { tasksService } from '@/services/tasks';
 import type { ActionCenterTask } from '@/services/types';
 import { radius, spacing, useTheme } from '@/theme';
 
 export default function TasksScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const router = useRouter();
   const qc = useQueryClient();
@@ -30,7 +33,7 @@ export default function TasksScreen() {
     } else if (task.actionKind === 'approve') {
       setStepUpTask(task);
     } else {
-      Alert.alert('Coming soon', `"${task.actionLabel}" isn't available yet.`);
+      Alert.alert(t('common.comingSoon'), t('common.notAvailableYet', { name: task.actionLabel }));
     }
   }
 
@@ -54,7 +57,7 @@ export default function TasksScreen() {
           next.delete(task.id);
           return next;
         });
-        Alert.alert('Could not approve', 'Something went wrong saving your approval. Please try again.');
+        Alert.alert(t('tasks.couldNotApproveTitle'), t('tasks.couldNotApproveBody'));
       });
   }
 
@@ -62,10 +65,10 @@ export default function TasksScreen() {
     <Screen scroll header={<AppHeader />}>
       <View style={{ gap: 4, marginTop: spacing.sm, marginBottom: spacing.lg }}>
         <Text variant="h2" weight="semibold">
-          Action Center
+          {t('tasks.title')}
         </Text>
         <Text variant="body" color="mutedForeground">
-          Review and approve pending items from your accountant.
+          {t('tasks.subtitle')}
         </Text>
       </View>
 
@@ -82,9 +85,9 @@ export default function TasksScreen() {
           }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
             <View style={{ width: 4, height: 18, borderRadius: 2, backgroundColor: theme.colors.danger }} />
-            <Text variant="title">Requires Attention</Text>
+            <Text variant="title">{t('tasks.requiresAttention')}</Text>
           </View>
-          <Badge label={`${urgentTasks.length} Urgent`} bg={theme.colors.dangerSoft} fg={theme.colors.dangerSoftForeground} />
+          <Badge label={t('tasks.urgentCount', { count: urgentTasks.length })} bg={theme.colors.dangerSoft} fg={theme.colors.dangerSoftForeground} />
         </View>
 
         {!urgent.data ? (
@@ -94,7 +97,7 @@ export default function TasksScreen() {
         ) : urgentTasks.length === 0 ? (
           <View style={{ padding: spacing.base }}>
             <Text variant="callout" color="mutedForeground">
-              {"You're all caught up."}
+              {t('home.allCaughtUp')}
             </Text>
           </View>
         ) : (
@@ -112,7 +115,7 @@ export default function TasksScreen() {
             borderBottomWidth: 1,
             borderBottomColor: theme.colors.border,
           }}>
-          <Text variant="title">Pending Review</Text>
+          <Text variant="title">{t('tasks.pendingReview')}</Text>
         </View>
         {!pending.data ? (
           <View style={{ padding: spacing.base }}>
@@ -141,13 +144,13 @@ export default function TasksScreen() {
             <Ionicons name="checkmark-done" size={20} color={theme.colors.mutedForeground} />
           </View>
           <View>
-            <Text variant="title">Recently Completed</Text>
+            <Text variant="title">{t('tasks.recentlyCompleted')}</Text>
             <Text variant="footnote" color="mutedForeground">
               {completed.data?.label ?? '—'}
             </Text>
           </View>
         </View>
-        <Ionicons name="chevron-forward" size={16} color={theme.colors.mutedForeground} />
+        <Ionicons name={chevronForward()} size={16} color={theme.colors.mutedForeground} />
       </Card>
 
       <StepUpModal

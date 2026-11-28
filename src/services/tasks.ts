@@ -1,3 +1,7 @@
+// Labels are translated here, at fetch time. That is safe because changing
+// language reloads the app, which also clears the query cache.
+import i18n from '@/i18n';
+import { localeTag } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 
 import type { ActionCenterTask, CompletedSummary } from './types';
@@ -34,11 +38,11 @@ type DocRequestRow = {
 };
 
 function dueLabel(due: string | null): string {
-  if (!due) return 'Requested';
+  if (!due) return i18n.t('tasks.requested');
   const today = new Date().toISOString().slice(0, 10);
-  if (due < today) return 'Overdue';
-  if (due === today) return 'Due Today';
-  return `Due ${new Date(due).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+  if (due < today) return i18n.t('tasks.overdue');
+  if (due === today) return i18n.t('tasks.dueToday');
+  return i18n.t('tasks.dueOn', { date: new Date(due).toLocaleDateString(localeTag(), { month: 'short', day: 'numeric' }) });
 }
 
 export const tasksService = {
@@ -53,10 +57,10 @@ export const tasksService = {
     return ((data ?? []) as ApprovalRow[]).map((r) => ({
       id: r.id,
       title: r.title,
-      description: r.description ?? 'Your accountant needs your approval on this item.',
+      description: r.description ?? i18n.t('tasks.approvalFallback'),
       urgency: 'urgent' as const,
-      badgeLabel: 'Needs Approval',
-      actionLabel: 'Review & Approve',
+      badgeLabel: i18n.t('tasks.needsApproval'),
+      actionLabel: i18n.t('tasks.reviewAndApprove'),
       actionKind: 'approve' as const,
     }));
   },
@@ -72,10 +76,10 @@ export const tasksService = {
     return ((data ?? []) as DocRequestRow[]).map((r) => ({
       id: r.id,
       title: r.title,
-      description: r.notes ?? 'Your accountant requested this document.',
+      description: r.notes ?? i18n.t('tasks.documentFallback'),
       urgency: 'pending' as const,
       badgeLabel: dueLabel(r.due_date),
-      actionLabel: 'Upload Document',
+      actionLabel: i18n.t('tasks.uploadDocument'),
       actionKind: 'upload-receipt' as const,
     }));
   },
@@ -89,7 +93,7 @@ export const tasksService = {
       .gte('decided_at', weekAgo);
     if (error) throw error;
     const n = count ?? 0;
-    return { count: n, label: n === 0 ? 'No tasks finished this week yet' : `${n} task${n === 1 ? '' : 's'} finished this week` };
+    return { count: n, label: n === 0 ? i18n.t('tasks.completedNone') : i18n.t('tasks.completed', { count: n }) };
   },
 
   /** Client decides their own approval (RLS "approvals client update"). Called

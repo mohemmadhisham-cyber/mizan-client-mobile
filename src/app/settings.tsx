@@ -2,11 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { DetailHeader } from '@/components/navigation/detail-header';
 import { Button, Card, Text } from '@/components/ui';
-import i18n, { applyLayoutDirection, type AppLocale } from '@/i18n';
+import i18n, { setAppLocale, type AppLocale } from '@/i18n';
 import { useAuth } from '@/lib/auth-context';
+import { chevronForward } from '@/lib/direction';
 import { supabase } from '@/lib/supabase';
 import { radius, spacing, useTheme, useThemeControls, type ThemeMode } from '@/theme';
 
@@ -15,13 +17,14 @@ const LANGUAGES: { code: AppLocale; label: string }[] = [
   { code: 'ar', label: 'العربية' },
 ];
 
-const MODES: { key: ThemeMode; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { key: 'system', label: 'System', icon: 'phone-portrait-outline' },
-  { key: 'light', label: 'Light', icon: 'sunny-outline' },
-  { key: 'dark', label: 'Dark', icon: 'moon-outline' },
+const MODES: { key: ThemeMode; labelKey: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { key: 'system', labelKey: 'settings.modeSystem', icon: 'phone-portrait-outline' },
+  { key: 'light', labelKey: 'settings.modeLight', icon: 'sunny-outline' },
+  { key: 'dark', labelKey: 'settings.modeDark', icon: 'moon-outline' },
 ];
 
 export default function SettingsScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -29,12 +32,10 @@ export default function SettingsScreen() {
   const { user, signOut } = useAuth();
 
   function changeLanguage(code: AppLocale) {
-    if (code === i18n.language) return;
-    i18n.changeLanguage(code);
-    const needsReload = applyLayoutDirection(code);
-    if (needsReload) {
-      Alert.alert('Restart needed', 'Please close and reopen Mizan to complete the language change.');
-    }
+    // Saves the choice and reloads the app when the layout direction flips.
+    void setAppLocale(code).then((switched) => {
+      if (!switched) Alert.alert(t('settings.languageFailedTitle'), t('settings.languageFailedBody'));
+    });
   }
 
   // "Active sessions": the Supabase client can't enumerate other devices
@@ -42,16 +43,16 @@ export default function SettingsScreen() {
   // So this is a real security control — sign out everywhere.
   function handleActiveSessions() {
     Alert.alert(
-      'Active sessions',
-      "You're signed in on this device. If you've lost a device or just want to be safe, you can sign out everywhere — you'll need to sign in again on all your devices.",
+      t('settings.activeSessions'),
+      t('settings.activeSessionsBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Sign out everywhere',
+          text: t('settings.signOutEverywhere'),
           style: 'destructive',
           onPress: async () => {
             const { error } = await supabase.auth.signOut({ scope: 'global' });
-            if (error) Alert.alert('Could not sign out', error.message);
+            if (error) Alert.alert(t('settings.couldNotSignOut'), error.message);
           },
         },
       ],
@@ -60,7 +61,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
-      <DetailHeader title="Settings" />
+      <DetailHeader title={t('settings.title')} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.gutter, paddingBottom: insets.bottom + spacing.xl, gap: spacing.lg }}>
         <Card elevated style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
           <View style={{ width: 48, height: 48, borderRadius: radius.full, backgroundColor: theme.colors.primary, alignItems: 'center', justifyContent: 'center' }}>
@@ -70,16 +71,16 @@ export default function SettingsScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text variant="callout" weight="semibold" numberOfLines={1}>
-              {user?.email ?? 'Signed in'}
+              {user?.email ?? t('settings.signedIn')}
             </Text>
             <Text variant="footnote" color="mutedForeground">
-              Client account
+              {t('settings.clientAccount')}
             </Text>
           </View>
         </Card>
 
         <View style={{ gap: spacing.sm }}>
-          <Text variant="title">Language</Text>
+          <Text variant="title">{t('settings.language')}</Text>
           <Card padded={false} style={{ overflow: 'hidden' }}>
             {LANGUAGES.map((l, i) => (
               <SelectRow
@@ -94,12 +95,12 @@ export default function SettingsScreen() {
         </View>
 
         <View style={{ gap: spacing.sm }}>
-          <Text variant="title">Appearance</Text>
+          <Text variant="title">{t('settings.appearance')}</Text>
           <Card padded={false} style={{ overflow: 'hidden' }}>
             {MODES.map((m, i) => (
               <SelectRow
                 key={m.key}
-                label={m.label}
+                label={t(m.labelKey)}
                 icon={m.icon}
                 selected={mode === m.key}
                 isLast={i === MODES.length - 1}
@@ -110,22 +111,22 @@ export default function SettingsScreen() {
         </View>
 
         <View style={{ gap: spacing.sm }}>
-          <Text variant="title">Security</Text>
+          <Text variant="title">{t('settings.security')}</Text>
           <Card padded={false} style={{ overflow: 'hidden' }}>
-            <ActionRow icon="finger-print-outline" label="Backup codes" onPress={() => router.push('/backup-codes')} />
-            <ActionRow icon="phone-portrait-outline" label="Active sessions" onPress={handleActiveSessions} isLast />
+            <ActionRow icon="finger-print-outline" label={t('settings.backupCodes')} onPress={() => router.push('/backup-codes')} />
+            <ActionRow icon="phone-portrait-outline" label={t('settings.activeSessions')} onPress={handleActiveSessions} isLast />
           </Card>
         </View>
 
         <View style={{ gap: spacing.sm }}>
-          <Text variant="title">About</Text>
+          <Text variant="title">{t('settings.about')}</Text>
           <Card padded={false} style={{ overflow: 'hidden' }}>
-            <ActionRow icon="document-text-outline" label="Privacy Policy" onPress={() => router.push('/privacy-policy')} />
-            <ActionRow icon="document-text-outline" label="Terms of Service" onPress={() => router.push('/terms-of-service')} isLast />
+            <ActionRow icon="document-text-outline" label={t('settings.privacyPolicy')} onPress={() => router.push('/privacy-policy')} />
+            <ActionRow icon="document-text-outline" label={t('settings.termsOfService')} onPress={() => router.push('/terms-of-service')} isLast />
           </Card>
         </View>
 
-        <Button title="Sign out" variant="secondary" icon="log-out-outline" onPress={signOut} fullWidth />
+        <Button title={t('auth.signOut')} variant="secondary" icon="log-out-outline" onPress={signOut} fullWidth />
       </ScrollView>
     </View>
   );
@@ -185,7 +186,7 @@ function ActionRow({ icon, label, onPress, isLast }: { icon: keyof typeof Ionico
       <Text variant="body" weight="medium" style={{ flex: 1 }}>
         {label}
       </Text>
-      <Ionicons name="chevron-forward" size={16} color={theme.colors.mutedForeground} />
+      <Ionicons name={chevronForward()} size={16} color={theme.colors.mutedForeground} />
     </Pressable>
   );
 }
