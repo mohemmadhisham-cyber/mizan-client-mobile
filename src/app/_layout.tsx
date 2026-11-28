@@ -22,6 +22,7 @@ import { AppError } from '@/components/support/app-error';
 import { useAuthGate } from '@/hooks/use-auth-gate';
 import { syncAiConsent } from '@/lib/ai-consent';
 import { clearDashboardCache } from '@/services/client-data';
+import { wireOnlineManager } from '@/lib/online';
 import { AuthProvider, useAuth } from '@/lib/auth-context';
 import { navigationTheme, ThemeProvider, useTheme } from '@/theme';
 
@@ -31,9 +32,23 @@ SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { staleTime: 60_000, retry: 1, refetchOnWindowFocus: false },
+    queries: {
+      staleTime: 60_000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+      // A request is always made, connection or not, and fails at once without one. The
+      // library's default is to hold it until the connection returns, which leaves a screen
+      // on "loading" for ever when the app is opened offline; failing lets the screen say it
+      // could not load and offer to try again.
+      networkMode: 'always',
+      // When the connection returns, what is on screen and out of date is asked for again.
+      refetchOnReconnect: true,
+    },
   },
 });
+
+// Once, when the app starts: the data layer is told when the connection goes and returns.
+wireOnlineManager();
 
 function RootNav() {
   const theme = useTheme();

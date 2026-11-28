@@ -15,6 +15,7 @@ import { useTheme } from '@/theme';
 import { horizonColors, type HorizonColors } from '@/theme/horizon';
 
 import { FieldLight } from './field-light';
+import { OfflineNote } from './offline-note';
 import { Headline, type HeadlineLine } from './headline';
 import { introCovering, onIntroReveal, reportHorizonLine } from './intro-state';
 import { expoOut, type HorizonMotion, useHorizonMotion } from './motion';
@@ -232,6 +233,7 @@ export function HorizonScreen({
         style={[styles.bridge, { top: fieldHeight - BRIDGE_HEIGHT / 2, backgroundColor: colors.bridge }, bridgeStyle]}
       />
       <Animated.View style={[{ flex: 1 }, groundStyle]}>
+        <OfflineNote />
         {scroll ? (
           <ScrollView
             showsVerticalScrollIndicator={false}
