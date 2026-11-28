@@ -168,7 +168,7 @@ export default function NotificationsScreen() {
             <EmptyState icon="notifications-outline" title={t('notificationsScreen.emptyTitle')} message={t('notificationsScreen.emptyBody')} />
           )
         }
-        ListFooterComponent={isFetchingMore ? <Skeleton height={100} radius={radius.lg} /> : null}
+        ListFooterComponent={isFetchingMore ? <Skeleton height={100} radius={radius.lg} /> : undefined}
       />
     </View>
   );

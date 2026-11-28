@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { forwardRef, useState } from 'react';
+import { type ComponentRef, forwardRef, useState } from 'react';
 import { I18nManager, StyleSheet, TextInput, View, type TextInputProps, type TextStyle } from 'react-native';
 
 import { radius, spacing, useTheme } from '@/theme';
@@ -16,7 +16,7 @@ export interface AppInputProps extends TextInputProps {
   variant?: 'default' | 'underline';
 }
 
-export const Input = forwardRef<TextInput, AppInputProps>(function Input(
+export const Input = forwardRef<ComponentRef<typeof TextInput>, AppInputProps>(function Input(
   { style, icon, label, variant = 'default', onFocus, onBlur, ...rest },
   ref,
 ) {

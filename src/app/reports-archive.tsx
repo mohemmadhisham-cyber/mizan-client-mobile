@@ -89,7 +89,7 @@ export default function ReportsArchiveScreen() {
             <Text variant="caption" color="mutedForeground" center style={{ marginTop: spacing.sm }}>
               {t('reportDetail.showing', { count: filtered.length })}
             </Text>
-          ) : null
+          ) : undefined
         }
       />
     </View>

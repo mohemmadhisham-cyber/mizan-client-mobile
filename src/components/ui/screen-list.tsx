@@ -64,14 +64,14 @@ export function ScreenList<T>({
         renderItem={({ item }) => renderItem(item)}
         keyExtractor={keyExtractor}
         ListHeaderComponent={listHeader}
-        ListEmptyComponent={listEmpty}
+        ListEmptyComponent={listEmpty ?? undefined}
         ListFooterComponent={
           loadingMore || listFooter ? (
             <View>
               {loadingMore ? <ActivityIndicator color={theme.colors.primary} style={{ paddingVertical: spacing.md }} /> : null}
               {listFooter}
             </View>
-          ) : null
+          ) : undefined
         }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: spacing.gutter, paddingTop: spacing.sm, paddingBottom: bottomPad, gap }}
