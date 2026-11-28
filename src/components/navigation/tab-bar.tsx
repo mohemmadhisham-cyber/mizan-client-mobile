@@ -10,7 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '@/components/ui';
 import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { timingConfig } from '@/lib/motion';
-import { radius, useTheme } from '@/theme';
+import { useTheme } from '@/theme';
 
 import { TAB_BAR_HEIGHT } from './metrics';
 
@@ -26,16 +26,20 @@ interface TabMeta {
   iconActive: IconName;
 }
 
-// The Figma tab set + order: Home · Activity · AI Advisor · Reports · Tasks.
-const TAB_ORDER = ['index', 'activity', 'ai-advisor', 'reports', 'tasks'] as const;
+// The tab set and its order: Home, Requests, Calendar, Messages, More.
+const TAB_ORDER = ['index', 'tasks', 'calendar', 'messages', 'more'] as const;
 
 const TAB_META: Record<string, TabMeta> = {
-  index: { labelKey: 'nav.home', icon: 'home-outline', iconActive: 'home' },
-  activity: { labelKey: 'nav.activity', icon: 'pulse-outline', iconActive: 'pulse' },
-  'ai-advisor': { labelKey: 'nav.aiAdvisor', icon: 'sparkles-outline', iconActive: 'sparkles' },
-  reports: { labelKey: 'nav.reports', icon: 'bar-chart-outline', iconActive: 'bar-chart' },
-  tasks: { labelKey: 'nav.tasks', icon: 'checkmark-circle-outline', iconActive: 'checkmark-circle' },
+  index: { labelKey: 'nav.home', icon: 'home-outline', iconActive: 'home-outline' },
+  tasks: { labelKey: 'nav.requests', icon: 'checkbox-outline', iconActive: 'checkbox-outline' },
+  calendar: { labelKey: 'nav.calendar', icon: 'calendar-clear-outline', iconActive: 'calendar-clear-outline' },
+  messages: { labelKey: 'nav.messages', icon: 'chatbox-outline', iconActive: 'chatbox-outline' },
+  more: { labelKey: 'nav.more', icon: 'menu-outline', iconActive: 'menu-outline' },
 };
+
+/** The mark on the top rule that says which tab is open. Ink, never gold: gold is the bridge's alone. */
+const MARKER_WIDTH = 28;
+const MARKER_HEIGHT = 2;
 
 function TabIcon({ focused, name, color, reduced }: { focused: boolean; name: IconName; color: string; reduced: boolean }) {
   const scale = useSharedValue(focused ? 1 : 0.92);
@@ -61,15 +65,17 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
   const indicatorX = useSharedValue(0);
   const indicatorW = useSharedValue(0);
 
-  // Render only the Figma tabs, in order (documents/more are href:null routes).
+  // Render only the tabs above, in order (the other routes are href:null).
   const tabs = TAB_ORDER.map((name) => state.routes.find((r) => r.name === name)).filter(
     (r): r is BottomTabBarProps['state']['routes'][number] => Boolean(r),
   );
-  const activeName = state.routes[state.index]?.name;
+  const openName = state.routes[state.index]?.name;
+  // A screen that is not in the bar was reached from More, so More is its tab.
+  const activeName = (TAB_ORDER as readonly string[]).includes(openName ?? '') ? openName : 'more';
   const activeKey = tabs.find((r) => r.name === activeName)?.key;
   const activeLayout = activeKey ? layouts[activeKey] : undefined;
-  const activeX = activeLayout?.x;
-  const activeW = activeLayout?.width;
+  const activeX = activeLayout ? activeLayout.x + (activeLayout.width - MARKER_WIDTH) / 2 : undefined;
+  const activeW = activeLayout ? MARKER_WIDTH : undefined;
   // The indicator is anchored at the start edge (left in English, right in
   // Arabic) while onLayout reports x from the physical left. In right-to-left
   // the offset is therefore measured back from the right edge of the row.
@@ -98,29 +104,28 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
       style={[
         styles.container,
         {
-          backgroundColor: theme.colors.secondary,
+          backgroundColor: theme.colors.background,
           borderTopColor: theme.colors.border,
           paddingBottom: insets.bottom,
           height: TAB_BAR_HEIGHT + insets.bottom,
-          shadowColor: theme.colors.shadow,
         },
       ]}>
       <View style={styles.row} onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)}>
         <Animated.View
           pointerEvents="none"
-          style={[styles.indicator, { backgroundColor: theme.colors.accent }, indicatorStyle]}
+          style={[styles.indicator, { backgroundColor: theme.colors.foreground }, indicatorStyle]}
         />
         {tabs.map((route) => {
           const focused = route.name === activeName;
           const meta = TAB_META[route.name];
-          const color = focused ? theme.colors.primary : theme.colors.mutedForeground;
+          const color = focused ? theme.colors.foreground : theme.colors.mutedForeground;
 
           const onPress = () => {
             if (process.env.EXPO_OS !== 'web') {
               Haptics.selectionAsync().catch(() => {});
             }
             const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-            if (!focused && !event.defaultPrevented) {
+            if (route.name !== openName && !event.defaultPrevented) {
               navigation.navigate(route.name);
             }
           };
@@ -152,18 +157,12 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
 const styles = StyleSheet.create({
   container: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 12,
   },
   row: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 12,
   },
   tab: {
     flex: 1,
@@ -175,8 +174,7 @@ const styles = StyleSheet.create({
   indicator: {
     position: 'absolute',
     start: 0,
-    top: 10,
-    height: TAB_BAR_HEIGHT - 20,
-    borderRadius: radius.md,
+    top: -StyleSheet.hairlineWidth,
+    height: MARKER_HEIGHT,
   },
 });

@@ -37,7 +37,10 @@
     "reports": "Reports",
     "documents": "Documents",
     "tasks": "Tasks",
-    "more": "More"
+    "more": "More",
+    "requests": "Requests",
+    "calendar": "Calendar",
+    "messages": "Messages"
   },
   "home": {
     "greeting": "Good morning, {{name}}",
@@ -528,5 +531,20 @@
     "skip": "Skip",
     "signIn": "Sign in",
     "invitedOnly": "Mizan Connect opens by invitation from your accountant."
+  },
+  "horizonHome": {
+    "made": "You made",
+    "lost": "You are down",
+    "thisMonth": "this month.",
+    "loadingA": "Getting your",
+    "loadingB": "numbers.",
+    "errorA": "Your numbers",
+    "errorB": "did not load.",
+    "cash": "Cash in bank",
+    "needsYou": "Needs you",
+    "open": "Open",
+    "vatOverdue": "Overdue by {{days}} days",
+    "vatToday": "Due today",
+    "waitingError": "We could not check what is waiting for you."
   }
 }

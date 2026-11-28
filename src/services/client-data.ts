@@ -116,6 +116,8 @@ export const clientDataService = {
       supabase.from('approval_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
       supabase.from('document_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
     ]);
+    // A failed count must not read as "nothing is waiting".
+    if (approvals.error || docs.error) throw new DashboardUnavailableError('actions_unavailable');
     const items: ActionItem[] = [];
     const approvalCount = approvals.count ?? 0;
     const docCount = docs.count ?? 0;

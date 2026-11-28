@@ -48,6 +48,8 @@ function fromRow(r: MessageRow): ChatMessage {
   };
 }
 
+let subscriptionCount = 0;
+
 export const accountantChatService = {
   async getMessages(clientId: string): Promise<ChatMessage[]> {
     const { data, error } = await supabase
@@ -109,8 +111,10 @@ export const accountantChatService = {
   },
 
   subscribeToMessages(clientId: string, onInsert: (message: ChatMessage) => void) {
+    // One channel per open view: two views on one topic would share, and close, each other's.
+    subscriptionCount += 1;
     const channel = supabase
-      .channel(`accountant-messages-${clientId}`)
+      .channel(`accountant-messages-${clientId}-${subscriptionCount}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'accountant_messages', filter: `client_id=eq.${clientId}` },

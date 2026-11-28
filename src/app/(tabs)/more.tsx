@@ -18,8 +18,9 @@ interface MoreItem {
 }
 
 const ITEMS: MoreItem[] = [
-  { icon: 'calendar-outline', labelKey: 'more.calendar', href: '/calendar' },
-  { icon: 'chatbubbles-outline', labelKey: 'more.messages', href: { pathname: '/ai-advisor', params: { tab: 'queries' } } },
+  { icon: 'bar-chart-outline', labelKey: 'nav.reports', href: '/reports' },
+  { icon: 'folder-open-outline', labelKey: 'nav.documents', href: '/documents' },
+  { icon: 'pulse-outline', labelKey: 'nav.activity', href: '/activity' },
   { icon: 'sparkles-outline', labelKey: 'more.askAi', href: '/ai-advisor' },
   { icon: 'card-outline', labelKey: 'more.billing', href: '/billing' },
   { icon: 'people-outline', labelKey: 'more.team', href: { pathname: '/companies', params: { tab: 'team' } } },
