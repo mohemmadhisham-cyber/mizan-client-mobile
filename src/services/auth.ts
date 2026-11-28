@@ -50,8 +50,26 @@ export async function verifyEmailOtp(email: string, code: string): Promise<AuthR
     token: code,
     type: 'email',
   });
-  if (error) return { ok: false, error: error.message };
-  return { ok: true };
+  if (!error) return { ok: true };
+  // The app stores' reviewers cannot read an inbox: one review account, set on the server,
+  // also takes a fixed code. Asked only after the normal code failed; for every other
+  // address the server says no and the normal error is shown.
+  if (await reviewSignIn(parsed.data, code)) return { ok: true };
+  return { ok: false, error: error.message };
+}
+
+/** Signs in to the store review account with its fixed code. False for anything else. Never throws. */
+export async function reviewSignIn(email: string, code: string): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.functions.invoke<{ ok?: boolean; tokenHash?: unknown }>('connect', {
+      body: { action: 'review_sign_in', email, code },
+    });
+    if (error || data?.ok !== true || typeof data.tokenHash !== 'string' || !data.tokenHash) return false;
+    const { error: verifyError } = await supabase.auth.verifyOtp({ token_hash: data.tokenHash, type: 'magiclink' });
+    return !verifyError;
+  } catch {
+    return false;
+  }
 }
 
 export interface PeekResult {
