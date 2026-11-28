@@ -15,23 +15,30 @@ import {
   HorizonScreen,
 } from '@/components/horizon/horizon-screen';
 import { DeclineSheet } from '@/components/requests/decline-sheet';
+import { PriceLines } from '@/components/requests/price-lines';
 import { RequestDetails } from '@/components/requests/request-details';
 import { requestConsequence, requestSentLine, requestTitle } from '@/components/requests/request-text';
 import { StepUpModal } from '@/components/tasks/step-up-modal';
 import { EmptyState, Text } from '@/components/ui';
 import {
+  canChooseLines,
   decideRequest,
   type DecideOutcome,
   isRequestGone,
+  type LineChoice,
+  lineChoice,
   listPendingRequests,
   requestErrorKey,
   REQUESTS_QUERY_KEY,
+  toggleLine,
 } from '@/services/accountant-requests';
 import { spacing, useTheme } from '@/theme';
 import { horizonColors } from '@/theme/horizon';
 
 type Decision = 'approve' | 'decline';
-type Outcome = 'applied' | 'declined';
+type Outcome =
+  | { kind: 'applied'; approved?: number; of?: number; notWritten: number }
+  | { kind: 'declined' };
 
 /** Height of the field: a one-line title and one quiet line under it. */
 const APPROVE_FIELD = 176;
@@ -71,12 +78,25 @@ export default function AccountantRequestScreen() {
   const request = pending.data?.requests.find((r) => r.id === id);
   // Set at once on tap, unlike state: two taps in one frame send one answer.
   const inFlight = useRef(false);
+  // The lines the owner chose when the code was asked for: the code confirms exactly those, even if the list is read again meanwhile.
+  const linesAtCode = useRef<LineChoice | null>(null);
 
   const [busy, setBusy] = useState<Decision | null>(null);
   const [stepUpScope, setStepUpScope] = useState<string | null>(null);
   const [declining, setDeclining] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [errorKey, setErrorKey] = useState<string | null>(null);
+
+  // A price change approved line by line: every line starts approved. What the person chose is kept
+  // with the lines it was chosen from; if the request comes back with other lines, it starts afresh.
+  const choosable = request ? canChooseLines(request) : false;
+  const linesKey = request && choosable ? request.changes.map((c) => c.id).join(',') : '';
+  const [picked, setPicked] = useState<{ key: string; chosen: Set<number>; reasons: Record<string, string> } | null>(null);
+  const fresh = !picked || picked.key !== linesKey;
+  const chosen = fresh ? new Set((request?.changes ?? []).map((c) => c.id as number)) : picked.chosen;
+  const reasons = fresh ? {} : picked.reasons;
+  const lines = request && choosable ? lineChoice(request, chosen, reasons) : null;
+  const noneChosen = choosable && chosen.size === 0;
 
   async function decide(decision: Decision, options: { reason?: string; afterCode?: boolean } = {}) {
     // The id comes from the request the list returned, never from the route.
@@ -85,9 +105,10 @@ export default function AccountantRequestScreen() {
     inFlight.current = true;
     setBusy(decision);
     setErrorKey(null);
+    const sending = decision !== 'approve' ? null : options.afterCode ? linesAtCode.current : lines;
     let result: DecideOutcome;
     try {
-      result = await decideRequest(actionId, decision, options.reason);
+      result = await decideRequest(actionId, decision, options.reason, sending);
     } catch {
       result = { status: 'error', code: 'unknown' };
     } finally {
@@ -99,7 +120,10 @@ export default function AccountantRequestScreen() {
       // A second ask straight after a verified code means the code did not
       // count: say so instead of asking for codes in a loop.
       if (options.afterCode) setErrorKey('requests.errCodeNotAccepted');
-      else setStepUpScope(result.scope);
+      else {
+        linesAtCode.current = sending;
+        setStepUpScope(result.scope);
+      }
       return;
     }
     if (result.status === 'error') {
@@ -110,7 +134,11 @@ export default function AccountantRequestScreen() {
     }
     setDeclining(false);
     // Shown at once: the request is about to leave the list, and nothing may be tapped in between.
-    setOutcome(result.status);
+    setOutcome(
+      result.status === 'applied'
+        ? { kind: 'applied', approved: result.approved, of: result.of, notWritten: result.notWritten?.length ?? 0 }
+        : { kind: 'declined' },
+    );
     successHaptic();
     void queryClient.invalidateQueries({ queryKey: REQUESTS_QUERY_KEY });
   }
@@ -136,17 +164,30 @@ export default function AccountantRequestScreen() {
 
   // The answer is in: show it even though the request has now left the list.
   if (outcome) {
+    const applied = outcome.kind === 'applied';
+    const partial = applied && typeof outcome.approved === 'number' && typeof outcome.of === 'number';
     return shell(
-      outcome,
-      [{ text: t(outcome === 'applied' ? 'requests.appliedTitle' : 'requests.declinedTitle') }],
+      outcome.kind,
+      [
+        {
+          text: partial
+            ? t('requests.partialTitle', { approved: outcome.approved, of: outcome.of })
+            : t(applied ? 'requests.appliedTitle' : 'requests.declinedTitle'),
+        },
+      ],
       <View style={{ padding: HORIZON_GUTTER, gap: spacing.lg }}>
         <Text variant="body" color="mutedForeground">
-          {t(outcome === 'applied' ? 'requests.appliedBody' : 'requests.declinedBody')}
+          {t(partial ? 'requests.partialBody' : applied ? 'requests.appliedBody' : 'requests.declinedBody')}
         </Text>
+        {applied && outcome.notWritten > 0 ? (
+          <Text variant="body" color="danger">
+            {t('requests.notWritten', { count: outcome.notWritten })}
+          </Text>
+        ) : null}
         <Cta title={t('common.done')} onPress={() => router.back()} />
       </View>,
       // Approved: the gold crosses the whole line. Declined: nothing is left to act on.
-      { bridge: outcome === 'applied' ? { start: 0, width } : null },
+      { bridge: applied ? { start: 0, width } : null },
     );
   }
 
@@ -204,7 +245,23 @@ export default function AccountantRequestScreen() {
             {title}
           </Text>
         ) : null}
-        <RequestDetails request={request} />
+        {choosable ? (
+          <PriceLines
+            request={request}
+            chosen={chosen}
+            reasons={reasons}
+            disabled={busy !== null}
+            onToggle={(lineId) => {
+              setErrorKey(null);
+              setPicked({ key: linesKey, chosen: toggleLine(request, chosen, lineId), reasons });
+            }}
+            onReason={(lineId, reason) =>
+              setPicked({ key: linesKey, chosen, reasons: { ...reasons, [String(lineId)]: reason } })
+            }
+          />
+        ) : (
+          <RequestDetails request={request} />
+        )}
       </ScrollView>
 
       <View
@@ -223,11 +280,12 @@ export default function AccountantRequestScreen() {
           </Text>
         ) : null}
         <Cta
-          title={t('requests.approve')}
+          title={lines ? t('requests.approveSome', { approved: lines.items.length, of: request.changes.length }) : t('requests.approve')}
           onPress={() => void decide('approve')}
           busy={busy === 'approve'}
           // Not while the list is being read again: the figures may be about to change.
-          disabled={busy === 'decline' || pending.isFetching}
+          // Nor with no line chosen: that is a decline, which has its own button.
+          disabled={busy === 'decline' || pending.isFetching || noneChosen}
         />
         <Cta
           kind="outline"
@@ -241,7 +299,11 @@ export default function AccountantRequestScreen() {
         visible={stepUpScope !== null}
         scope={stepUpScope ?? ''}
         title={title}
-        actionLabel={t(request.budget ? 'requests.approveBudget' : 'requests.approve')}
+        actionLabel={
+          lines
+            ? t('requests.approveSome', { approved: lines.items.length, of: request.changes.length })
+            : t(request.budget ? 'requests.approveBudget' : 'requests.approve')
+        }
         note={requestConsequence(request, t)}
         onCancel={() => setStepUpScope(null)}
         onVerified={() => {

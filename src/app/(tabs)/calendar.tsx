@@ -11,7 +11,7 @@ import { Text } from '@/components/ui';
 import i18n from '@/i18n';
 import { useAuth } from '@/lib/auth-context';
 import { localeTag } from '@/lib/format';
-import { calendarService } from '@/services/calendar';
+import { calendarService, clientEventControl, requestStatusKey } from '@/services/calendar';
 import type { CalendarEvent, CalendarEventKind, NewCalendarEvent } from '@/services/types';
 import { useTheme } from '@/theme';
 import { horizonColors } from '@/theme/horizon';
@@ -71,26 +71,36 @@ export default function CalendarScreen() {
     }
     const res = await calendarService.createEvent({ ...draft, eventDate: selectedDate }, clientId, user.id);
     if (!res.ok) {
-      Alert.alert(t('calendar.addFailed'), res.error ?? t('common.tryAgainShort'));
+      Alert.alert(
+        t('calendar.addFailed'),
+        res.error === 'too_many_requests' ? t('calendar.tooManyRequests') : (res.error ?? t('common.tryAgainShort')),
+      );
       return;
     }
     setAddingEvent(false);
+    // A meeting a client adds is a request: say so, so it is not taken as booked.
+    if (draft.kind === 'meeting') Alert.alert(t('calendar.requestedTitle'), t('calendar.requestedBody'));
     void qc.invalidateQueries({ queryKey: ['calendar-events', selectedDate] });
     void qc.invalidateQueries({ queryKey: ['calendar-days'] });
   }
 
-  // Deleting cannot be undone, and the control sits at the end of every line: ask first.
-  function confirmDelete(event: CalendarEvent) {
-    Alert.alert(t('common.delete'), event.title, [
+  // Deleting or withdrawing cannot be undone, and the control sits at the end of the line: ask first.
+  function confirmRemove(event: CalendarEvent, control: 'cancel' | 'delete') {
+    const word = control === 'cancel' ? t('calendar.cancelRequest') : t('common.delete');
+    Alert.alert(word, event.title, [
       { text: t('common.cancel'), style: 'cancel' },
-      { text: t('common.delete'), style: 'destructive', onPress: () => void handleDelete(event.id) },
+      { text: word, style: 'destructive', onPress: () => void handleRemove(event.id, control) },
     ]);
   }
 
-  async function handleDelete(id: string) {
-    const res = await calendarService.deleteEvent(id);
+  async function handleRemove(id: string, control: 'cancel' | 'delete') {
+    const res = control === 'cancel' ? await calendarService.cancelRequest(id) : await calendarService.deleteEvent(id);
     if (!res.ok) {
-      Alert.alert(t('calendar.deleteFailed'), res.error ?? t('common.tryAgainShort'));
+      Alert.alert(
+        t(control === 'cancel' ? 'calendar.cancelFailed' : 'calendar.deleteFailed'),
+        res.error === 'not_pending' ? t('calendar.alreadyAnswered') : t('common.tryAgainShort'),
+      );
+      void qc.invalidateQueries({ queryKey: ['calendar-events', selectedDate] });
       return;
     }
     void qc.invalidateQueries({ queryKey: ['calendar-events', selectedDate] });
@@ -175,7 +185,12 @@ export default function CalendarScreen() {
         ) : events.data.length === 0 ? (
           <RuledRow title={t('calendar.nothingScheduled')} plain />
         ) : (
-          events.data.map((e) => <EventRow key={e.id} event={e} onDelete={() => confirmDelete(e)} />)
+          events.data.map((e) => {
+            const control = clientEventControl(e, user?.id);
+            return (
+              <EventRow key={e.id} event={e} control={control} onRemove={control ? () => confirmRemove(e, control) : undefined} />
+            );
+          })
         )}
         <RuledRow title={t('calendar.addEvent')} onPress={() => setAddingEvent(true)} />
       </HorizonScreen>
@@ -191,9 +206,19 @@ export default function CalendarScreen() {
 }
 
 /** One event as a line of a timetable: the time, then what it is, then where. */
-function EventRow({ event, onDelete }: { event: CalendarEvent; onDelete: () => void }) {
+function EventRow({
+  event,
+  control,
+  onRemove,
+}: {
+  event: CalendarEvent;
+  control: 'cancel' | 'delete' | null;
+  onRemove?: () => void;
+}) {
   const { t } = useTranslation();
   const theme = useTheme();
+  const statusKey = requestStatusKey(event);
+  const removeWord = control === 'cancel' ? t('calendar.cancelRequest') : t('common.delete');
   return (
     <View style={[styles.event, { borderBottomColor: theme.colors.border }]}>
       <Text variant="subhead" weight="semibold" style={{ width: TIME_COLUMN }}>
@@ -204,7 +229,7 @@ function EventRow({ event, onDelete }: { event: CalendarEvent; onDelete: () => v
           {event.title}
         </Text>
         <Text variant="subhead" color={event.kind === 'deadline' ? 'danger' : 'mutedForeground'}>
-          {[t(KIND_LABEL_KEY[event.kind]), event.location].filter(Boolean).join(' · ')}
+          {[t(KIND_LABEL_KEY[event.kind]), statusKey ? t(statusKey) : null, event.location].filter(Boolean).join(' · ')}
         </Text>
         {event.description ? (
           <Text variant="subhead" color="mutedForeground">
@@ -212,16 +237,18 @@ function EventRow({ event, onDelete }: { event: CalendarEvent; onDelete: () => v
           </Text>
         ) : null}
       </View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${t('common.delete')}: ${event.title}`}
-        onPress={onDelete}
-        hitSlop={12}
-        style={({ pressed }) => ({ opacity: pressed ? PRESSED_OPACITY : 1 })}>
-        <Text variant="footnote" weight="semibold" color="danger">
-          {t('common.delete')}
-        </Text>
-      </Pressable>
+      {control && onRemove ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${removeWord}: ${event.title}`}
+          onPress={onRemove}
+          hitSlop={12}
+          style={({ pressed }) => ({ opacity: pressed ? PRESSED_OPACITY : 1 })}>
+          <Text variant="footnote" weight="semibold" color="danger">
+            {removeWord}
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }

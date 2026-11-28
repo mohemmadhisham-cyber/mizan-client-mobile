@@ -63,7 +63,16 @@ const minorSchema = z.number().int().nullish();
 const currencySchema = z.string().regex(/^[A-Z]{3}$/);
 const decimalsSchema = z.number().int().min(0).max(4);
 
+const lineIdSchema = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
+
 const changeSchema = z.object({
+  /** On a price change: the product id the owner sends back to approve only some lines. */
+  id: lineIdSchema.nullish(),
+  /**
+   * Not sent today. When the server sends it, lines with the same value are
+   * variants of one product: they share one price, so they are chosen together.
+   */
+  product: lineIdSchema.nullish(),
   label: text(200),
   amountMinor: minorSchema,
   from: minorSchema,
@@ -181,8 +190,18 @@ export async function listPendingRequests(): Promise<PendingRequests> {
   return { requests, unreadable };
 }
 
+/**
+ * Some lines of a price change: the ids approved, and a reason for any kept.
+ * Left out when every line is approved, which is the same as approving the whole request.
+ */
+export interface LineChoice {
+  items: number[];
+  keptReasons: Record<string, string>;
+}
+
 export type DecideOutcome =
-  | { status: 'applied' }
+  /** `approved` and `of` only after a partial approval; `notWritten` are approved lines whose product no longer exists. */
+  | { status: 'applied'; approved?: number; of?: number; notWritten?: number[] }
   | { status: 'declined' }
   /** Approving needs a fresh one-time code for `scope`; run the step-up flow, then decide again. */
   | { status: 'step_up_required'; scope: string }
@@ -193,22 +212,42 @@ const decideSchema = z.object({
   state: z.string().nullish(),
   error: z.string().nullish(),
   scope: z.string().nullish(),
+  approved: z.number().int().nonnegative().nullish(),
+  of: z.number().int().nonnegative().nullish(),
+  notWritten: z.array(lineIdSchema).nullish(),
 });
 
 /**
- * Approve or decline one request. Only the request id, the decision and an
- * optional decline reason leave the device.
+ * Approve or decline one request. Only the request id, the decision, an
+ * optional decline reason and, for a price change approved in part, the lines
+ * chosen and the reasons for those kept leave the device.
  */
 export async function decideRequest(
   actionId: string,
   decision: 'approve' | 'decline',
   reason?: string,
+  lines?: LineChoice | null,
 ): Promise<DecideOutcome> {
   assertSupabaseConfigured();
   const trimmed = reason?.trim();
   if (trimmed && trimmed.length > DECLINE_REASON_MAX) return { status: 'error', code: 'invalid_reason' };
+  const choice = decision === 'approve' && lines ? lines : null;
+  if (choice) {
+    if (choice.items.length === 0) return { status: 'error', code: 'invalid_items' };
+    if (Object.values(choice.keptReasons).some((kept) => kept.length > DECLINE_REASON_MAX)) {
+      return { status: 'error', code: 'invalid_reason' };
+    }
+  }
 
-  const body = { action: 'owner_decide', actionId, decision, ...(decision === 'decline' && trimmed ? { reason: trimmed } : {}) };
+  const body = {
+    action: 'owner_decide',
+    actionId,
+    decision,
+    ...(decision === 'decline' && trimmed ? { reason: trimmed } : {}),
+    ...(choice
+      ? { items: choice.items, ...(Object.keys(choice.keptReasons).length ? { keptReasons: choice.keptReasons } : {}) }
+      : {}),
+  };
   const { data, error } = await supabase.functions.invoke<unknown>(FUNCTION, { body });
   if (error) return { status: 'error', code: await errorCodeFrom(error) };
 
@@ -217,7 +256,13 @@ export async function decideRequest(
 
   const res = parsed.data;
   if (res.ok) {
-    if (res.state === 'applied') return { status: 'applied' };
+    if (res.state === 'applied') {
+      // Counted only from the server's answer: the screen never says "3 of 6" before this.
+      if (choice && typeof res.approved === 'number' && typeof res.of === 'number') {
+        return { status: 'applied', approved: res.approved, of: res.of, notWritten: res.notWritten ?? [] };
+      }
+      return { status: 'applied' };
+    }
     if (res.state === 'declined') return { status: 'declined' };
     return { status: 'error', code: 'request_unreadable' };
   }
@@ -255,6 +300,12 @@ export function requestErrorKey(code: string): string {
       return 'requests.errContactAccountant';
     case 'invalid_reason':
       return 'requests.errReasonTooLong';
+    case 'same_product':
+      return 'requests.errSameProduct';
+    case 'invalid_items':
+      return 'requests.errInvalidItems';
+    case 'items_not_supported':
+      return 'requests.errContactAccountant';
     case 'network_error':
       return 'requests.errNetwork';
     default:
@@ -262,4 +313,54 @@ export function requestErrorKey(code: string): string {
       // the server marks the request failed, so the accountant has to resend it.
       return 'requests.errNotApplied';
   }
+}
+
+// ------------------------------------------------------------------ choosing price lines
+
+/** A price change whose lines can be approved one by one: every line carries its product id. */
+export function canChooseLines(request: AccountantRequest): boolean {
+  return (
+    request.kind === 'set_prices' &&
+    request.changes.length > 1 &&
+    // A line is chosen by what it shows: both prices, never a made-up one.
+    request.changes.every(
+      (change) => typeof change.id === 'number' && typeof change.from === 'number' && typeof change.to === 'number',
+    ) &&
+    new Set(request.changes.map((change) => change.id)).size === request.changes.length
+  );
+}
+
+/**
+ * The lines chosen after tapping one: it flips, and so does every variant of
+ * the same product, since they share one price. A new set; the old one is left as it was.
+ */
+export function toggleLine(request: AccountantRequest, chosen: ReadonlySet<number>, id: number): Set<number> {
+  const line = request.changes.find((change) => change.id === id);
+  if (!line) return new Set(chosen);
+  const together = request.changes
+    .filter((change) => change.id === id || (typeof line.product === 'number' && change.product === line.product))
+    .map((change) => change.id as number);
+  const next = new Set(chosen);
+  const on = !chosen.has(id);
+  for (const lineId of together) {
+    if (on) next.add(lineId);
+    else next.delete(lineId);
+  }
+  return next;
+}
+
+/**
+ * What approving sends: null when every line is chosen (the whole request, as
+ * before), otherwise the ids chosen in the request's order and a reason for
+ * each kept line that has one. A reason is trimmed; an empty one is not sent.
+ */
+export function lineChoice(request: AccountantRequest, chosen: ReadonlySet<number>, reasons: Record<string, string>): LineChoice | null {
+  const ids = request.changes.map((change) => change.id as number);
+  if (ids.every((id) => chosen.has(id))) return null;
+  const keptReasons: Record<string, string> = {};
+  for (const id of ids) {
+    const said = reasons[String(id)]?.trim();
+    if (!chosen.has(id) && said) keptReasons[String(id)] = said;
+  }
+  return { items: ids.filter((id) => chosen.has(id)), keptReasons };
 }

@@ -332,7 +332,17 @@
     "notesLabel": "Notes (optional)",
     "notesPlaceholder": "Anything to remember",
     "titleRequired": "Give the event a title.",
-    "timeFormat": "Time must be in 24-hour HH:MM format, e.g. 14:30."
+    "timeFormat": "Time must be in 24-hour HH:MM format, e.g. 14:30.",
+    "statusRequested": "Requested, waiting for your accountant",
+    "statusConfirmed": "Confirmed",
+    "statusDeclined": "Declined by your accountant",
+    "statusCancelled": "Cancelled",
+    "cancelRequest": "Withdraw",
+    "cancelFailed": "Could not withdraw the request",
+    "alreadyAnswered": "Your accountant has already answered this request.",
+    "tooManyRequests": "You have 10 meeting requests waiting for your accountant. Wait for an answer, or withdraw one.",
+    "requestedTitle": "Meeting requested",
+    "requestedBody": "Your accountant confirms the time. Until then it shows as requested."
   },
   "capture": {
     "uploadFailedShort": "Upload failed.",
@@ -530,7 +540,23 @@
     "errReasonTooLong": "The reason is too long. Keep it under 500 characters.",
     "errNetwork": "No connection. Check your internet and try again.",
     "errNotApplied": "The change could not be applied. Please contact your accountant.",
-    "errCodeNotAccepted": "Your code was checked but the approval did not go through. Please try again."
+    "errCodeNotAccepted": "Your code was checked but the approval did not go through. Please try again.",
+    "linesHint": "Every price is approved unless you keep it. Tap a line to keep its price as it is.",
+    "lineApproveHint": "Approves this price.",
+    "lineKeepHint": "Keeps this price as it is.",
+    "lineApproved": "Approve",
+    "lineKept": "Keep as it is",
+    "keptReasonLabel": "Why keep the price of {{item}}?",
+    "keptReasonPlaceholder": "Why keep it? (optional, your accountant sees this)",
+    "linesNoneChosen": "No price is chosen. To approve none of them, decline the request.",
+    "linesChosen": "{{approved}} of {{of}} prices chosen.",
+    "approveSome": "Approve {{approved}} of {{of}}",
+    "partialTitle": "{{approved}} of {{of}} approved",
+    "partialBody": "The approved prices are being written to your books. The others stay as they are, and your accountant sees your reasons.",
+    "notWritten_one": "{{count}} approved price could not be changed because the product no longer exists in your books.",
+    "notWritten_other": "{{count}} approved prices could not be changed because those products no longer exist in your books.",
+    "errSameProduct": "Some of these lines are versions of one product and share one price. Approve them together or keep them together.",
+    "errInvalidItems": "The list of prices changed. Open the request again and choose once more."
   },
   "intro": {
     "product": "Connect",

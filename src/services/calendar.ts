@@ -20,6 +20,9 @@ interface EventRow {
   location: string | null;
   event_date: string;
   event_time: string | null;
+  status: string | null;
+  source: string | null;
+  created_by: string | null;
 }
 
 function fromRow(r: EventRow): CalendarEvent {
@@ -31,6 +34,9 @@ function fromRow(r: EventRow): CalendarEvent {
     location: r.location,
     eventDate: r.event_date,
     eventTime: r.event_time,
+    status: r.status,
+    source: r.source,
+    createdBy: r.created_by,
   };
 }
 
@@ -73,7 +79,7 @@ export const calendarService = {
   async getEventsForDate(date: string): Promise<CalendarEvent[]> {
     const { data, error } = await supabase
       .from('calendar_events')
-      .select('id, kind, title, description, location, event_date, event_time')
+      .select('id, kind, title, description, location, event_date, event_time, status, source, created_by')
       .eq('event_date', date)
       .order('event_time', { ascending: true, nullsFirst: false });
     // Thrown, so the screen can say the day could not be read: an empty list would read as a free day.
@@ -92,13 +98,64 @@ export const calendarService = {
       event_date: event.eventDate,
       event_time: event.eventTime || null,
     });
+    if (error) {
+      // cal_02: a client may have at most 10 meeting requests waiting for the firm.
+      if (error.message.includes('too many open meeting requests')) return { ok: false, error: 'too_many_requests' };
+      return { ok: false, error: error.message };
+    }
+    return { ok: true };
+  },
+
+  /** Withdraws one of this client's own meeting requests while the firm has not answered it. */
+  async cancelRequest(id: string): Promise<{ ok: boolean; error?: string }> {
+    const { data, error } = await supabase
+      .from('calendar_events')
+      .update({ status: 'cancelled' })
+      .eq('id', id)
+      .eq('source', 'client_request')
+      .eq('status', 'pending')
+      .select('id');
     if (error) return { ok: false, error: error.message };
+    // Nothing changed: the firm answered it in the meantime.
+    if (!data?.length) return { ok: false, error: 'not_pending' };
     return { ok: true };
   },
 
   async deleteEvent(id: string): Promise<{ ok: boolean; error?: string }> {
-    const { error } = await supabase.from('calendar_events').delete().eq('id', id);
+    const { data, error } = await supabase.from('calendar_events').delete().eq('id', id).select('id');
     if (error) return { ok: false, error: error.message };
+    // Nothing removed: the row is not this person's to remove, or it is already gone.
+    if (!data?.length) return { ok: false, error: 'not_removed' };
     return { ok: true };
   },
 };
+
+/**
+ * What this client may do with an event on their calendar (the rules of the
+ * cal_02 migration, which the database enforces): withdraw their own meeting
+ * request while it waits, or remove an entry they made that is not a meeting.
+ * The firm's events and meetings, and meetings made before requests existed,
+ * are theirs to read only.
+ */
+export function clientEventControl(event: CalendarEvent, userId: string | null | undefined): 'cancel' | 'delete' | null {
+  if (event.source === 'client_request') return event.status === 'pending' ? 'cancel' : null;
+  if (userId && event.createdBy === userId && event.kind !== 'meeting') return 'delete';
+  return null;
+}
+
+/** The word for a meeting request's answer, or null when there is nothing to say. */
+export function requestStatusKey(event: CalendarEvent): string | null {
+  if (event.source !== 'client_request') return event.status === 'cancelled' ? 'calendar.statusCancelled' : null;
+  switch (event.status) {
+    case 'pending':
+      return 'calendar.statusRequested';
+    case 'confirmed':
+      return 'calendar.statusConfirmed';
+    case 'declined':
+      return 'calendar.statusDeclined';
+    case 'cancelled':
+      return 'calendar.statusCancelled';
+    default:
+      return null;
+  }
+}
