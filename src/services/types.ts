@@ -114,6 +114,11 @@ export interface CalendarEvent {
   location?: string | null;
   eventDate: string;
   eventTime?: string | null;
+  /** 'pending' while a meeting request waits for the firm; also 'confirmed', 'declined', 'cancelled'. */
+  status?: string | null;
+  /** 'client_request' for a meeting this client asked for; other values are the firm's or the client's own entries. */
+  source?: string | null;
+  createdBy?: string | null;
 }
 
 export interface NewCalendarEvent {
