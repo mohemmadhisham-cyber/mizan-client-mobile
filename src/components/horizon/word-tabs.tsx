@@ -6,6 +6,8 @@ import { useTheme } from '@/theme';
 import { HORIZON_GUTTER } from './horizon-screen';
 
 const TAB_HEIGHT = 46;
+/** The height the line takes, for a screen that must know where the content under it starts. */
+export const WORD_TABS_HEIGHT = TAB_HEIGHT + StyleSheet.hairlineWidth;
 const TAB_GAP = 22;
 const MARKER_HEIGHT = 2;
 const PRESSED_OPACITY = 0.6;

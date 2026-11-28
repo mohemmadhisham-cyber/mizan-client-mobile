@@ -576,6 +576,11 @@
     "suspendedA": "Access",
     "suspendedB": "is paused."
   },
+  "horizonAdvisor": {
+    "sub": "Written by a machine. It can be wrong.",
+    "tryAsking": "Try asking",
+    "writing": "The advisor is writing"
+  },
   "horizonMessages": {
     "title": "Your accountant",
     "sub": "Text, photos and voice messages."

@@ -648,6 +648,11 @@
     "suspendedA": "الوصول",
     "suspendedB": "متوقف مؤقتًا."
   },
+  "horizonAdvisor": {
+    "sub": "إجابات يكتبها نظام آلي، وقد تخطئ.",
+    "tryAsking": "جرّب أن تسأل",
+    "writing": "المستشار يكتب"
+  },
   "horizonMessages": {
     "title": "محاسبك",
     "sub": "نصوص وصور ورسائل صوتية."
