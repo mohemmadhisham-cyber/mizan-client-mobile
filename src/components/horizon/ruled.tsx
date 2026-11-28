@@ -87,7 +87,7 @@ export function RuledRow({ title, meta, action, end, onPress, alert = false, pla
           </Text>
         ) : null}
       </View>
-      {end}
+      {end ? <View style={styles.rowEnd}>{end}</View> : null}
       {onPress ? (
         <View style={styles.rowAction}>
           {action ? (
@@ -224,6 +224,11 @@ const styles = StyleSheet.create({
   rowText: {
     flex: 1,
     gap: 2,
+  },
+  rowEnd: {
+    flexShrink: 1,
+    maxWidth: '55%',
+    alignItems: 'flex-end',
   },
   rowAction: {
     flexDirection: 'row',

@@ -76,8 +76,9 @@ export const calendarService = {
       .select('id, kind, title, description, location, event_date, event_time')
       .eq('event_date', date)
       .order('event_time', { ascending: true, nullsFirst: false });
-    if (error || !data) return [];
-    return (data as EventRow[]).map(fromRow);
+    // Thrown, so the screen can say the day could not be read: an empty list would read as a free day.
+    if (error) throw new Error(error.message);
+    return ((data ?? []) as EventRow[]).map(fromRow);
   },
 
   async createEvent(event: NewCalendarEvent, clientId: string, userId: string): Promise<{ ok: boolean; error?: string }> {

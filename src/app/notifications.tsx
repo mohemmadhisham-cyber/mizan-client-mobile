@@ -2,18 +2,31 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { type Href, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, ScrollView, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { DetailHeader } from '@/components/navigation/detail-header';
-import { AppRefreshControl, Card, EmptyState, Skeleton, Text } from '@/components/ui';
+import { HorizonList } from '@/components/horizon/horizon-list';
+import {
+  FieldBack,
+  HORIZON_GUTTER,
+  HorizonScreen,
+  MAX_FIELD_TEXT_SCALE,
+} from '@/components/horizon/horizon-screen';
+import { RuledRow } from '@/components/horizon/ruled';
+import { WordTabs } from '@/components/horizon/word-tabs';
+import { Text } from '@/components/ui';
 import { usePagedList } from '@/hooks/use-paged-list';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
+import { chevronForward } from '@/lib/direction';
 import { requestIdFromLink } from '@/services/accountant-requests';
 import { NOTIFICATIONS_PAGE_SIZE, notificationsService } from '@/services/notifications';
 import type { NotificationCategory, NotificationItem } from '@/services/types';
-import { radius, softTone, spacing, useTheme } from '@/theme';
+import { useTheme } from '@/theme';
+import { horizonColors } from '@/theme/horizon';
+
+const NOTIFICATIONS_FIELD = 176;
+const UNREAD_MARK = 8;
+const PRESSED_OPACITY = 0.6;
 
 type Filter = NotificationCategory | 'all';
 
@@ -30,12 +43,6 @@ const CATEGORY_LABEL_KEY: Record<NotificationCategory, string> = {
   ai_advisor: 'notificationsScreen.tagAi',
 };
 
-const CATEGORY_ICON: Record<NotificationCategory, keyof typeof Ionicons.glyphMap> = {
-  system: 'shield-checkmark-outline',
-  accountant: 'document-text-outline',
-  ai_advisor: 'sparkles',
-};
-
 const notificationId = (n: NotificationItem): string => n.id;
 
 /** A filtered view keeps loading pages until it shows at least this many rows. */
@@ -44,7 +51,7 @@ const MIN_FILTERED_ROWS = 8;
 export default function NotificationsScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
-  const insets = useSafeAreaInsets();
+  const colors = horizonColors(theme.colors);
   const queryClient = useQueryClient();
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>('all');
@@ -99,117 +106,132 @@ export default function NotificationsScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
-      <DetailHeader title={t('notificationsScreen.title')} />
-      <View style={{ paddingHorizontal: spacing.gutter, marginBottom: spacing.md, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text variant="footnote" color="mutedForeground">
-          {t('notificationsScreen.subtitle')}
-        </Text>
-        <Pressable accessibilityRole="button" onPress={markAllRead}>
-          <Text variant="caption" weight="semibold" color="success" style={{ letterSpacing: 0.6 }}>
-            {t('notificationsScreen.markAllRead')}
-          </Text>
-        </Pressable>
-      </View>
+    <HorizonScreen
+      field={NOTIFICATIONS_FIELD}
+      small
+      scroll={false}
+      safeBottom={false}
+      lines={[{ text: t('notificationsScreen.title') }]}
+      sub={t('notificationsScreen.subtitle')}
+      top={
+        <>
+          <FieldBack colors={colors} />
+          <Pressable
+            accessibilityRole="button"
+            onPress={markAllRead}
+            hitSlop={12}
+            style={({ pressed }) => ({ opacity: pressed ? PRESSED_OPACITY : 1 })}>
+            <Text
+              variant="subhead"
+              weight="semibold"
+              numberOfLines={1}
+              maxFontSizeMultiplier={MAX_FIELD_TEXT_SCALE}
+              style={{ color: colors.onField }}>
+              {t('notificationsScreen.markAllRead')}
+            </Text>
+          </Pressable>
+        </>
+      }
+      // What needs the person is on Requests. This is the record of what was said.
+      bridge={null}>
+      <WordTabs
+        options={FILTERS.map((f) => ({ key: f.key, label: t(f.labelKey) }))}
+        value={filter}
+        onChange={setFilter}
+      />
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ flexGrow: 0 }}
-        contentContainerStyle={{ alignItems: 'center', paddingHorizontal: spacing.gutter, gap: spacing.sm, marginBottom: spacing.md }}>
-        {FILTERS.map((f) => {
-          const active = filter === f.key;
-          return (
-            <Pressable
-              key={f.key}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-              onPress={() => setFilter(f.key)}
-              style={{
-                backgroundColor: active ? theme.colors.primary : theme.colors.secondary,
-                borderRadius: radius.full,
-                paddingHorizontal: spacing.base,
-                paddingVertical: spacing.sm,
-              }}>
-              <Text variant="caption" weight="semibold" style={{ color: active ? theme.colors.primaryForeground : theme.colors.foreground, letterSpacing: 0.6 }}>
-                {t(f.labelKey)}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-
-      <FlatList
+      <HorizonList
         data={items}
         keyExtractor={notificationId}
-        renderItem={({ item }) => (
+        renderItem={(item) => (
           <NotificationRow item={item} onPress={() => markOneRead(item.id)} onAction={() => openNotification(item)} />
         )}
-        contentContainerStyle={{ paddingHorizontal: spacing.gutter, paddingBottom: insets.bottom + spacing.xl, gap: spacing.md }}
-        showsVerticalScrollIndicator={false}
         onEndReached={loadMore}
-        onEndReachedThreshold={0.5}
-        refreshControl={<AppRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        ListEmptyComponent={
+        loadingMore={isFetchingMore}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        listEmpty={
           isLoading || stillSearching ? (
-            <View style={{ gap: spacing.md }}>
-              <Skeleton height={100} radius={radius.lg} />
-              <Skeleton height={100} radius={radius.lg} />
-            </View>
+            <RuledRow title={t('common.loading')} />
           ) : isError ? (
-            <EmptyState
-              icon="cloud-offline-outline"
-              title={t('common.listLoadFailed')}
-              message={t('home.loadErrorBody')}
-              actionLabel={t('common.retry')}
-              onAction={onRefresh}
-            />
+            <RuledRow title={t('common.listLoadFailed')} action={t('common.retry')} onPress={onRefresh} />
           ) : (
-            <EmptyState icon="notifications-outline" title={t('notificationsScreen.emptyTitle')} message={t('notificationsScreen.emptyBody')} />
+            <RuledRow
+              title={t('notificationsScreen.emptyTitle')}
+              meta={t('notificationsScreen.emptyBody')}
+              plain
+            />
           )
         }
-        ListFooterComponent={isFetchingMore ? <Skeleton height={100} radius={radius.lg} /> : undefined}
       />
-    </View>
+    </HorizonScreen>
   );
 }
 
 function NotificationRow({ item, onPress, onAction }: { item: NotificationItem; onPress: () => void; onAction: () => void }) {
   const { t } = useTranslation();
   const theme = useTheme();
-  const tone = softTone(theme.colors, item.severity === 'alert' ? 'danger' : item.severity === 'good' ? 'success' : 'neutral');
 
   return (
-    <Pressable accessibilityRole="button" onPress={onPress}>
-      <Card elevated style={{ flexDirection: 'row', gap: spacing.md, opacity: item.read ? 0.6 : 1 }}>
-        <View style={{ width: 40, height: 40, borderRadius: radius.full, backgroundColor: tone.bg, alignItems: 'center', justifyContent: 'center' }}>
-          <Ionicons name={CATEGORY_ICON[item.category]} size={18} color={tone.fg} />
-        </View>
-        <View style={{ flex: 1, gap: 4 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <View style={{ backgroundColor: theme.colors.secondary, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 1 }}>
-              <Text variant="caption" color="mutedForeground" style={{ fontSize: 10, letterSpacing: 0.5 }}>
-                {t(CATEGORY_LABEL_KEY[item.category])}
-              </Text>
-            </View>
-            <Text variant="footnote" color="mutedForeground">
-              {item.timeLabel}
-            </Text>
-          </View>
-          <Text variant="title" style={item.severity === 'alert' ? { color: tone.fg } : undefined}>
-            {item.title}
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.row,
+        { borderBottomColor: theme.colors.border, opacity: pressed ? PRESSED_OPACITY : 1 },
+      ]}>
+      <View style={styles.rowHead}>
+        <Text variant="footnote" weight="semibold" color="mutedForeground" style={{ flex: 1 }}>
+          {`${t(CATEGORY_LABEL_KEY[item.category])} · ${item.timeLabel}`}
+        </Text>
+        {/* Unread is an ink mark and a heavier title. A read row stays at full strength, so it stays readable. */}
+        {!item.read ? <View style={[styles.unread, { backgroundColor: theme.colors.foreground }]} /> : null}
+      </View>
+      <Text
+        variant="body"
+        weight={item.read ? 'regular' : 'semibold'}
+        color={item.severity === 'alert' ? 'danger' : undefined}>
+        {item.title}
+      </Text>
+      <Text variant="subhead">{item.body}</Text>
+      {item.actionLabel ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={onAction}
+          hitSlop={10}
+          style={({ pressed }) => [styles.action, { opacity: pressed ? PRESSED_OPACITY : 1 }]}>
+          <Text variant="subhead" weight="bold">
+            {item.actionLabel}
           </Text>
-          <Text variant="body">{item.body}</Text>
-          {item.actionLabel ? (
-            <Pressable accessibilityRole="button" onPress={onAction} style={{ paddingTop: spacing.xs }}>
-              <Text variant="callout" weight="semibold" color="success">
-                {item.actionLabel}
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
-        {!item.read ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: theme.colors.primary, marginTop: 4 }} /> : null}
-      </Card>
+          <Ionicons name={chevronForward()} size={16} color={theme.colors.foreground} />
+        </Pressable>
+      ) : null}
     </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  row: {
+    marginHorizontal: HORIZON_GUTTER,
+    paddingVertical: 16,
+    gap: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  rowHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  unread: {
+    width: UNREAD_MARK,
+    height: UNREAD_MARK,
+    borderRadius: UNREAD_MARK / 2,
+  },
+  action: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    paddingTop: 6,
+  },
+});

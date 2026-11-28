@@ -1,10 +1,11 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
-import { DetailHeader } from '@/components/navigation/detail-header';
-import { Badge, Card, EmptyState, ScreenList, Skeleton, Text } from '@/components/ui';
+import { Cta } from '@/components/horizon/cta';
+import { HorizonList } from '@/components/horizon/horizon-list';
+import { FieldBack, HORIZON_GUTTER, HorizonScreen } from '@/components/horizon/horizon-screen';
+import { Figure, RuledRow } from '@/components/horizon/ruled';
 import { usePagedList } from '@/hooks/use-paged-list';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { type Currency, formatMoneyMinor, localeTag } from '@/lib/format';
@@ -15,19 +16,25 @@ import {
   type MyReceipt,
   type ReceiptStatus,
 } from '@/services/receipts';
-import { radius, softTone, spacing, useTheme, type SoftTone } from '@/theme';
+import { useTheme } from '@/theme';
+import { horizonColors } from '@/theme/horizon';
 
-/** Client-facing status labels + tints. Internal machine states
+/** Height of the field: a one-line title and a quiet line that may take two lines. */
+const DOCUMENTS_FIELD = 200;
+const ACTION_SPACE_ABOVE = 20;
+const ACTION_SPACE_BELOW = 6;
+
+/** Client-facing status labels. Internal machine states
  * (uploaded/extracting) collapse into a calm "Processing" so the client sees a
  * meaningful lifecycle, not implementation detail. */
-const STATUS_META: Record<ReceiptStatus, { labelKey: string; tone: SoftTone }> = {
-  uploaded: { labelKey: 'receipts.statusProcessing', tone: 'info' },
-  extracting: { labelKey: 'receipts.statusProcessing', tone: 'info' },
-  extracted: { labelKey: 'receipts.statusReadyToSend', tone: 'info' },
-  needs_review: { labelKey: 'receipts.statusWithAccountant', tone: 'success' },
-  approved: { labelKey: 'receipts.statusApproved', tone: 'success' },
-  posted: { labelKey: 'receipts.statusBooked', tone: 'success' },
-  rejected: { labelKey: 'receipts.statusRejected', tone: 'danger' },
+const STATUS_LABEL_KEY: Record<ReceiptStatus, string> = {
+  uploaded: 'receipts.statusProcessing',
+  extracting: 'receipts.statusProcessing',
+  extracted: 'receipts.statusReadyToSend',
+  needs_review: 'receipts.statusWithAccountant',
+  approved: 'receipts.statusApproved',
+  posted: 'receipts.statusBooked',
+  rejected: 'receipts.statusRejected',
 };
 
 const receiptId = (r: MyReceipt): string => r.id;
@@ -35,6 +42,7 @@ const receiptId = (r: MyReceipt): string => r.id;
 export default function DocumentsScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
+  const colors = horizonColors(theme.colors);
   const router = useRouter();
   const {
     items: receipts,
@@ -47,75 +55,50 @@ export default function DocumentsScreen() {
   const { refreshing, onRefresh } = usePullToRefresh(refetch);
 
   return (
-    <ScreenList
-      header={<DetailHeader title={t('nav.documents')} />}
-      clearsTabBar={false}
-      data={receipts}
-      keyExtractor={receiptId}
-      renderItem={(r) => <ReceiptRow receipt={r} />}
-      onEndReached={loadMore}
-      loadingMore={isFetchingMore}
-      refreshing={refreshing}
-      onRefresh={onRefresh}
-      listHeader={
-        // The list adds `spacing.sm` under the header; the margin makes up the rest of `spacing.lg`.
-        <View style={{ marginBottom: spacing.lg - spacing.sm }}>
-          <View style={{ gap: 4, marginTop: spacing.sm, marginBottom: spacing.lg }}>
-            <Text variant="h2" weight="semibold">
-              {t('receipts.title')}
-            </Text>
-            <Text variant="body" color="mutedForeground">
-              {t('receipts.subtitle')}
-            </Text>
-          </View>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('receipts.photograph')}
-            onPress={() => router.push('/capture')}
+    <HorizonScreen
+      field={DOCUMENTS_FIELD}
+      small
+      scroll={false}
+      safeBottom={false}
+      lines={[{ text: t('receipts.title') }]}
+      sub={t('receipts.subtitle')}
+      top={<FieldBack colors={colors} />}
+      // Photographing a receipt is offered, not owed.
+      bridge={null}>
+      <HorizonList
+        data={receipts}
+        keyExtractor={receiptId}
+        renderItem={(r) => <ReceiptRow receipt={r} />}
+        onEndReached={loadMore}
+        loadingMore={isFetchingMore}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        listHeader={
+          <View
             style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: spacing.sm,
-              backgroundColor: theme.colors.primary,
-              borderRadius: radius.lg,
-              paddingVertical: spacing.base,
+              paddingHorizontal: HORIZON_GUTTER,
+              paddingTop: ACTION_SPACE_ABOVE,
+              paddingBottom: ACTION_SPACE_BELOW,
             }}>
-            <Ionicons name="camera" size={20} color={theme.colors.primaryForeground} />
-            <Text variant="callout" weight="semibold" style={{ color: theme.colors.primaryForeground }}>
-              {t('receipts.photograph')}
-            </Text>
-          </Pressable>
-        </View>
-      }
-      listEmpty={
-        isLoading ? (
-          <View style={{ gap: spacing.md }}>
-            <Skeleton height={72} radius={radius.lg} />
-            <Skeleton height={72} radius={radius.lg} />
+            <Cta title={t('receipts.photograph')} onPress={() => router.push('/capture')} />
           </View>
-        ) : isError ? (
-          <EmptyState
-            icon="cloud-offline-outline"
-            title={t('common.listLoadFailed')}
-            message={t('home.loadErrorBody')}
-            actionLabel={t('common.retry')}
-            onAction={onRefresh}
-          />
-        ) : (
-          <EmptyState icon="receipt-outline" title={t('receipts.emptyTitle')} message={t('receipts.emptyBody')} />
-        )
-      }
-    />
+        }
+        listEmpty={
+          isLoading ? (
+            <RuledRow title={t('common.loading')} />
+          ) : isError ? (
+            <RuledRow title={t('common.listLoadFailed')} action={t('common.retry')} onPress={onRefresh} />
+          ) : (
+            <RuledRow title={t('receipts.emptyTitle')} meta={t('receipts.emptyBody')} plain />
+          )
+        }
+      />
+    </HorizonScreen>
   );
 }
 
 function ReceiptRow({ receipt }: { receipt: MyReceipt }) {
   const { t } = useTranslation();
-  const theme = useTheme();
-  const meta = STATUS_META[receipt.status];
-  const tone = softTone(theme.colors, meta.tone);
   const categoryKey = receipt.category ? expenseCategoryKey(receipt.category) : null;
   const categoryLabel = categoryKey ? t(categoryKey) : receipt.category;
   const dateLabel = receipt.receiptDate
@@ -123,37 +106,18 @@ function ReceiptRow({ receipt }: { receipt: MyReceipt }) {
     : new Date(receipt.createdAt).toLocaleDateString(localeTag(), { day: 'numeric', month: 'short' });
 
   return (
-    <Card padded={false} style={{ padding: spacing.base }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-        <View
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: radius.md,
-            backgroundColor: theme.colors.secondary,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-          <Ionicons name="receipt-outline" size={18} color={theme.colors.mutedForeground} />
-        </View>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text variant="callout" weight="semibold" numberOfLines={1}>
-            {receipt.vendorName ?? t('common.receipt')}
-          </Text>
-          <Text variant="footnote" color="mutedForeground" numberOfLines={1}>
-            {dateLabel}
-            {categoryLabel ? ` · ${categoryLabel}` : ''}
-          </Text>
-        </View>
-        <View style={{ alignItems: 'flex-end', gap: 6 }}>
-          {receipt.totalMinor != null ? (
-            <Text variant="callout" weight="semibold">
-              {formatMoneyMinor(receipt.totalMinor, (receipt.currency as Currency) ?? 'AED', { fractionDigits: 2 })}
-            </Text>
-          ) : null}
-          <Badge label={t(meta.labelKey)} bg={tone.bg} fg={tone.fg} />
-        </View>
-      </View>
-    </Card>
+    <RuledRow
+      title={receipt.vendorName ?? t('common.receipt')}
+      // The status is a word in the line, not a coloured badge. A returned receipt is the one that needs a look.
+      meta={[dateLabel, categoryLabel, t(STATUS_LABEL_KEY[receipt.status])].filter(Boolean).join(' · ')}
+      alert={receipt.status === 'rejected'}
+      end={
+        receipt.totalMinor != null ? (
+          <Figure>
+            {formatMoneyMinor(receipt.totalMinor, (receipt.currency as Currency) ?? 'AED', { fractionDigits: 2 })}
+          </Figure>
+        ) : undefined
+      }
+    />
   );
 }
