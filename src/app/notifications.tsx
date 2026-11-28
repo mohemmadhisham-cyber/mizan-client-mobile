@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { DetailHeader } from '@/components/navigation/detail-header';
 import { Card, EmptyState, Skeleton, Text } from '@/components/ui';
@@ -12,17 +13,17 @@ import { radius, softTone, spacing, useTheme } from '@/theme';
 
 type Filter = NotificationCategory | 'all';
 
-const FILTERS: { key: Filter; label: string }[] = [
-  { key: 'all', label: 'All Alerts' },
-  { key: 'system', label: 'System' },
-  { key: 'accountant', label: 'Accountant' },
-  { key: 'ai_advisor', label: 'AI Advisor' },
+const FILTERS: { key: Filter; labelKey: string }[] = [
+  { key: 'all', labelKey: 'notificationsScreen.filterAll' },
+  { key: 'system', labelKey: 'notificationsScreen.filterSystem' },
+  { key: 'accountant', labelKey: 'notificationsScreen.filterAccountant' },
+  { key: 'ai_advisor', labelKey: 'notificationsScreen.filterAi' },
 ];
 
-const CATEGORY_LABEL: Record<NotificationCategory, string> = {
-  system: 'SYSTEM',
-  accountant: 'ACCOUNTANT',
-  ai_advisor: 'AI ADVISOR',
+const CATEGORY_LABEL_KEY: Record<NotificationCategory, string> = {
+  system: 'notificationsScreen.tagSystem',
+  accountant: 'notificationsScreen.tagAccountant',
+  ai_advisor: 'notificationsScreen.tagAi',
 };
 
 const CATEGORY_ICON: Record<NotificationCategory, keyof typeof Ionicons.glyphMap> = {
@@ -32,6 +33,7 @@ const CATEGORY_ICON: Record<NotificationCategory, keyof typeof Ionicons.glyphMap
 };
 
 export default function NotificationsScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
@@ -65,14 +67,14 @@ export default function NotificationsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
-      <DetailHeader title="Notification Center" />
+      <DetailHeader title={t('notificationsScreen.title')} />
       <View style={{ paddingHorizontal: spacing.gutter, marginBottom: spacing.md, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <Text variant="footnote" color="mutedForeground">
-          Stay updated with your latest alerts
+          {t('notificationsScreen.subtitle')}
         </Text>
         <Pressable accessibilityRole="button" onPress={markAllRead}>
           <Text variant="caption" weight="semibold" color="success" style={{ letterSpacing: 0.6 }}>
-            Mark all as read
+            {t('notificationsScreen.markAllRead')}
           </Text>
         </Pressable>
       </View>
@@ -97,7 +99,7 @@ export default function NotificationsScreen() {
                 paddingVertical: spacing.sm,
               }}>
               <Text variant="caption" weight="semibold" style={{ color: active ? theme.colors.primaryForeground : theme.colors.foreground, letterSpacing: 0.6 }}>
-                {f.label}
+                {t(f.labelKey)}
               </Text>
             </Pressable>
           );
@@ -111,7 +113,7 @@ export default function NotificationsScreen() {
             <Skeleton height={100} radius={radius.lg} />
           </>
         ) : items.length === 0 ? (
-          <EmptyState icon="notifications-outline" title="No notifications" message="You're all caught up in this category." />
+          <EmptyState icon="notifications-outline" title={t('notificationsScreen.emptyTitle')} message={t('notificationsScreen.emptyBody')} />
         ) : (
           items.map((n) => (
             <NotificationRow
@@ -128,6 +130,7 @@ export default function NotificationsScreen() {
 }
 
 function NotificationRow({ item, onPress, onAction }: { item: NotificationItem; onPress: () => void; onAction: () => void }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const tone = softTone(theme.colors, item.severity === 'alert' ? 'danger' : item.severity === 'good' ? 'success' : 'neutral');
 
@@ -141,7 +144,7 @@ function NotificationRow({ item, onPress, onAction }: { item: NotificationItem; 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View style={{ backgroundColor: theme.colors.secondary, borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 1 }}>
               <Text variant="caption" color="mutedForeground" style={{ fontSize: 10, letterSpacing: 0.5 }}>
-                {CATEGORY_LABEL[item.category]}
+                {t(CATEGORY_LABEL_KEY[item.category])}
               </Text>
             </View>
             <Text variant="footnote" color="mutedForeground">

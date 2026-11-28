@@ -1,3 +1,4 @@
+import i18n from '@/i18n';
 import { assertSupabaseConfigured } from '@/lib/env';
 import { supabase } from '@/lib/supabase';
 
@@ -19,7 +20,7 @@ async function call<T>(action: string): Promise<{ ok: boolean; error?: string } 
     body: { action },
   });
   if (error) return { ok: false, error: error.message } as { ok: boolean; error?: string } & T;
-  return data ?? ({ ok: false, error: 'No response from server.' } as { ok: boolean; error?: string } & T);
+  return data ?? ({ ok: false, error: i18n.t('errors.noServerResponse') } as { ok: boolean; error?: string } & T);
 }
 
 export async function getBackupCodesStatus(): Promise<BackupCodesStatus> {

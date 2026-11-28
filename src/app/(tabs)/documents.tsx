@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { AppHeader } from '@/components/navigation/app-header';
 import { Badge, Card, EmptyState, Screen, Skeleton, Text } from '@/components/ui';
 import { type Currency, formatMoneyMinor, localeTag } from '@/lib/format';
-import { listMyReceipts, type MyReceipt, type ReceiptStatus } from '@/services/receipts';
+import { expenseCategoryKey, listMyReceipts, type MyReceipt, type ReceiptStatus } from '@/services/receipts';
 import { radius, softTone, spacing, useTheme, type SoftTone } from '@/theme';
 
 /** Client-facing status labels + tints. Internal machine states
@@ -89,6 +89,8 @@ function ReceiptRow({ receipt }: { receipt: MyReceipt }) {
   const theme = useTheme();
   const meta = STATUS_META[receipt.status];
   const tone = softTone(theme.colors, meta.tone);
+  const categoryKey = receipt.category ? expenseCategoryKey(receipt.category) : null;
+  const categoryLabel = categoryKey ? t(categoryKey) : receipt.category;
   const dateLabel = receipt.receiptDate
     ? new Date(receipt.receiptDate).toLocaleDateString(localeTag(), { day: 'numeric', month: 'short', year: 'numeric' })
     : new Date(receipt.createdAt).toLocaleDateString(localeTag(), { day: 'numeric', month: 'short' });
@@ -113,7 +115,7 @@ function ReceiptRow({ receipt }: { receipt: MyReceipt }) {
           </Text>
           <Text variant="footnote" color="mutedForeground" numberOfLines={1}>
             {dateLabel}
-            {receipt.category ? ` · ${receipt.category}` : ''}
+            {categoryLabel ? ` · ${categoryLabel}` : ''}
           </Text>
         </View>
         <View style={{ alignItems: 'flex-end', gap: 6 }}>

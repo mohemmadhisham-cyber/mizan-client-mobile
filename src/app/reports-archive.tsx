@@ -4,11 +4,12 @@ import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { DetailHeader } from '@/components/navigation/detail-header';
 import { Card, EmptyState, Input, Skeleton, Text } from '@/components/ui';
 import { chevronForward } from '@/lib/direction';
-import { CATEGORY_ICON, CATEGORY_LABEL, CATEGORY_TONE } from '@/services/report-presentation';
+import { CATEGORY_ICON, CATEGORY_LABEL_KEY, CATEGORY_TONE } from '@/services/report-presentation';
 import { reportsService } from '@/services/reports';
 import type { Report, ReportCategory } from '@/services/types';
 import { radius, softTone, spacing, useTheme } from '@/theme';
@@ -18,11 +19,12 @@ type CategoryFilter = ReportCategory | 'all';
 const CATEGORIES: CategoryFilter[] = ['all', 'pl', 'balance_sheet', 'tax', 'audit'];
 const YEARS = ['2023', '2024', '2025'];
 
-function labelFor(cat: CategoryFilter): string {
-  return cat === 'all' ? 'All Reports' : CATEGORY_LABEL[cat];
+function labelKeyFor(cat: CategoryFilter): string {
+  return cat === 'all' ? 'reportDetail.allReports' : CATEGORY_LABEL_KEY[cat];
 }
 
 export default function ReportsArchiveScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -39,14 +41,14 @@ export default function ReportsArchiveScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
-      <DetailHeader title="Document Archive" />
+      <DetailHeader title={t('reportDetail.archiveTitle')} />
 
       <View style={{ paddingHorizontal: spacing.gutter, gap: spacing.md, marginBottom: spacing.md }}>
-        <Input icon="search-outline" placeholder="Search reports" value={query} onChangeText={setQuery} returnKeyType="search" />
+        <Input icon="search-outline" placeholder={t('reportDetail.searchPlaceholder')} value={query} onChangeText={setQuery} returnKeyType="search" />
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
           {CATEGORIES.map((c) => (
-            <FilterChip key={c} label={labelFor(c)} active={category === c} onPress={() => setCategory(c)} />
+            <FilterChip key={c} label={t(labelKeyFor(c))} active={category === c} onPress={() => setCategory(c)} />
           ))}
         </ScrollView>
 
@@ -65,14 +67,14 @@ export default function ReportsArchiveScreen() {
             <Skeleton height={72} radius={radius.md} />
           </>
         ) : filtered.length === 0 ? (
-          <EmptyState icon="document-text-outline" title="No reports found" message="Try a different search term or filter." />
+          <EmptyState icon="document-text-outline" title={t('reportDetail.noneFoundTitle')} message={t('reportDetail.noneFoundBody')} />
         ) : (
           <>
             {filtered.map((r) => (
               <ArchiveRow key={r.id} report={r} onPress={() => router.push({ pathname: '/report/[id]', params: { id: r.id } })} />
             ))}
             <Text variant="caption" color="mutedForeground" center style={{ marginTop: spacing.sm }}>
-              Showing {filtered.length} report{filtered.length === 1 ? '' : 's'}
+              {t('reportDetail.showing', { count: filtered.length })}
             </Text>
           </>
         )}
@@ -102,6 +104,7 @@ function FilterChip({ label, active, onPress }: { label: string; active: boolean
 }
 
 function ArchiveRow({ report, onPress }: { report: Report; onPress: () => void }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   return (
     <Pressable accessibilityRole="button" onPress={onPress}>
@@ -122,7 +125,7 @@ function ArchiveRow({ report, onPress }: { report: Report; onPress: () => void }
             {report.title}
           </Text>
           <Text variant="footnote" color="mutedForeground">
-            {CATEGORY_LABEL[report.category]} · {report.publishedAt}
+            {t(CATEGORY_LABEL_KEY[report.category])} · {report.publishedAt}
           </Text>
         </View>
         <Ionicons name={chevronForward()} size={18} color={theme.colors.mutedForeground} />

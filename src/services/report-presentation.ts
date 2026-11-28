@@ -4,11 +4,12 @@ import type { SoftTone } from '@/theme';
 
 import type { ReportCategory } from './types';
 
-export const CATEGORY_LABEL: Record<ReportCategory, string> = {
-  pl: 'Profit & Loss',
-  balance_sheet: 'Balance Sheet',
-  tax: 'Tax',
-  audit: 'Audit',
+/** Translation key of each category's name (see `reportDetail.*` in src/i18n). */
+export const CATEGORY_LABEL_KEY: Record<ReportCategory, string> = {
+  pl: 'reportDetail.categoryPl',
+  balance_sheet: 'reportDetail.categoryBalanceSheet',
+  tax: 'reportDetail.categoryTax',
+  audit: 'reportDetail.categoryAudit',
 };
 
 export const CATEGORY_ICON: Record<ReportCategory, keyof typeof Ionicons.glyphMap> = {

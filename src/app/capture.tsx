@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { CaptureControls } from '@/components/capture/capture-controls';
 import { ScanningReticle } from '@/components/capture/scanning-reticle';
@@ -17,6 +18,7 @@ type CaptureMode = 'single' | 'batch';
 type UploadStatus = 'idle' | 'uploading' | 'success' | 'error';
 
 export default function CaptureScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { firmId, clientId, user } = useAuth();
@@ -35,7 +37,7 @@ export default function CaptureScreen() {
   async function runUpload(files: CapturedFile[]) {
     if (!canUpload) {
       setStatus('error');
-      setErrorMsg('Your account is not linked to a company yet. Ask your accountant to check your invite.');
+      setErrorMsg(t('common.notLinkedBody'));
       return;
     }
     setStatus('uploading');
@@ -46,7 +48,7 @@ export default function CaptureScreen() {
       const res = await uploadReceipt(files[i], firmId as string, clientId as string, (user as { id: string }).id);
       if (!res.ok) {
         setStatus('error');
-        setErrorMsg(res.error ?? 'Upload failed.');
+        setErrorMsg(res.error ?? t('capture.uploadFailedShort'));
         return;
       }
       lastReceiptId = res.receiptId;
@@ -78,16 +80,16 @@ export default function CaptureScreen() {
       }
     } catch {
       setStatus('error');
-      setErrorMsg('Could not capture the photo. Try again.');
+      setErrorMsg(t('capture.captureFailed'));
     }
   }
 
   async function handleGallery() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Photo access needed', 'Enable photo library access in Settings to upload a receipt.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Open Settings', onPress: () => Linking.openSettings() },
+      Alert.alert(t('common.photoAccessTitle'), t('capture.photoAccessBody'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.openSettings'), onPress: () => Linking.openSettings() },
       ]);
       return;
     }
@@ -99,12 +101,12 @@ export default function CaptureScreen() {
 
   async function handleManualEntry() {
     if (!canUpload) {
-      Alert.alert('Not linked yet', 'Your account is not linked to a company yet. Ask your accountant to check your invite.');
+      Alert.alert(t('common.notLinkedTitle'), t('common.notLinkedBody'));
       return;
     }
     const res = await createManualReceipt(firmId as string, clientId as string, (user as { id: string }).id);
     if (!res.ok || !res.receiptId) {
-      Alert.alert('Could not start', res.error ?? 'Please try again.');
+      Alert.alert(t('capture.couldNotStart'), res.error ?? t('common.pleaseTryAgain'));
       return;
     }
     // Reuse the review wizard, but skip OCR (there's no photo to read).
@@ -141,15 +143,15 @@ export default function CaptureScreen() {
       <View style={[styles.root, styles.center, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <Ionicons name="camera-outline" size={48} color={cameraChrome.foregroundSubtle} />
         <Text variant="title" style={{ color: cameraChrome.foreground, marginTop: 16, textAlign: 'center' }}>
-          Camera access needed
+          {t('capture.cameraNeededTitle')}
         </Text>
         <Text variant="body" style={{ color: cameraChrome.foregroundMuted, textAlign: 'center', marginTop: 8, marginBottom: 24 }}>
-          Mizan uses your camera to photograph receipts for your accountant to review.
+          {t('capture.cameraNeededBody')}
         </Text>
-        <Button title="Enable camera" onPress={() => requestPermission()} />
+        <Button title={t('capture.enableCamera')} onPress={() => requestPermission()} />
         <Pressable onPress={close} style={{ marginTop: 16 }}>
           <Text variant="footnote" style={{ color: cameraChrome.foregroundSubtle }}>
-            Cancel
+            {t('common.cancel')}
           </Text>
         </Pressable>
       </View>
@@ -171,12 +173,12 @@ export default function CaptureScreen() {
 
       <View style={[styles.overlay, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <View style={styles.topBar}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={close} style={styles.roundButton}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t('common.close')} onPress={close} style={styles.roundButton}>
             <Ionicons name="close" size={20} color={cameraChrome.foreground} />
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Toggle flash"
+            accessibilityLabel={t('capture.toggleFlash')}
             onPress={() => setTorch((t) => !t)}
             style={styles.roundButton}>
             <Ionicons name={torch ? 'flash' : 'flash-outline'} size={20} color={cameraChrome.foreground} />
@@ -185,7 +187,7 @@ export default function CaptureScreen() {
 
         <View style={styles.instructionWrap}>
           <View style={styles.instructionPill}>
-            <Text style={styles.instructionText}>Position receipt within the frame</Text>
+            <Text style={styles.instructionText}>{t('capture.positionReceipt')}</Text>
           </View>
         </View>
 
@@ -195,7 +197,7 @@ export default function CaptureScreen() {
 
         {queue.length > 0 ? (
           <Pressable accessibilityRole="button" onPress={finishBatch} style={styles.queueBadge}>
-            <Text style={styles.queueBadgeText}>Done ({queue.length})</Text>
+            <Text style={styles.queueBadgeText}>{t('capture.doneCount', { count: queue.length })}</Text>
           </Pressable>
         ) : null}
 
@@ -214,26 +216,26 @@ export default function CaptureScreen() {
         <View style={[StyleSheet.absoluteFill, styles.statusOverlay]}>
           {status === 'uploading' ? (
             <>
-              <Text style={styles.statusTitle}>Uploading receipt…</Text>
+              <Text style={styles.statusTitle}>{t('capture.uploading')}</Text>
               {progress ? (
                 <Text style={styles.statusBody}>
-                  {progress.done} of {progress.total}
+                  {t('capture.progress', { done: progress.done, total: progress.total })}
                 </Text>
               ) : null}
             </>
           ) : status === 'success' ? (
             <>
               <Ionicons name="checkmark-circle" size={56} color={cameraChrome.success} />
-              <Text style={styles.statusTitle}>Receipt uploaded</Text>
-              <Text style={styles.statusBody}>Pending review by your accountant.</Text>
-              <Button title="Done" onPress={close} />
+              <Text style={styles.statusTitle}>{t('capture.uploadedTitle')}</Text>
+              <Text style={styles.statusBody}>{t('capture.uploadedBody')}</Text>
+              <Button title={t('common.done')} onPress={close} />
             </>
           ) : (
             <>
               <Ionicons name="alert-circle" size={56} color={cameraChrome.danger} />
-              <Text style={styles.statusTitle}>Upload failed</Text>
+              <Text style={styles.statusTitle}>{t('capture.uploadFailedTitle')}</Text>
               <Text style={styles.statusBody}>{errorMsg}</Text>
-              <Button title="Try again" onPress={reset} />
+              <Button title={t('common.retry')} onPress={reset} />
             </>
           )}
         </View>

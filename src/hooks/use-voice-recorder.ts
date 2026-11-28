@@ -7,6 +7,7 @@ import {
 } from 'expo-audio';
 import { useState } from 'react';
 import { Alert } from 'react-native';
+import i18n from '@/i18n';
 
 export interface VoiceRecording {
   uri: string;
@@ -26,7 +27,7 @@ export function useVoiceRecorder() {
     const perm = await requestRecordingPermissionsAsync();
     if (!perm.granted) {
       setBusy(false);
-      Alert.alert('Microphone access needed', 'Enable microphone access in Settings to record a voice message.');
+      Alert.alert(i18n.t('capture.micTitle'), i18n.t('capture.micBody'));
       return;
     }
     await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });

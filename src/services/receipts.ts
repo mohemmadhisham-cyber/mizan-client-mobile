@@ -1,5 +1,6 @@
 import * as FileSystem from 'expo-file-system';
 
+import i18n from '@/i18n';
 import { assertSupabaseConfigured } from '@/lib/env';
 import { supabase } from '@/lib/supabase';
 
@@ -67,13 +68,13 @@ export async function uploadReceipt(
   // Verified by the value we ourselves set from the capture/picker result, not
   // a client-supplied filename extension.
   if (!ALLOWED_MIME.has(file.mimeType)) {
-    return { ok: false, error: 'Unsupported file type. Use a photo or PDF.' };
+    return { ok: false, error: i18n.t('errors.receiptTypeUnsupported') };
   }
 
   const info = await FileSystem.getInfoAsync(file.uri);
-  if (!info.exists) return { ok: false, error: 'The file could not be found.' };
+  if (!info.exists) return { ok: false, error: i18n.t('errors.fileNotFound') };
   if ((info.size ?? 0) > MAX_BYTES) {
-    return { ok: false, error: 'That file is larger than 10MB.' };
+    return { ok: false, error: i18n.t('errors.fileTooLarge') };
   }
 
   const path = `${firmId}/${clientId}/${generatedName(file.mimeType)}`;
@@ -82,7 +83,7 @@ export async function uploadReceipt(
   try {
     arrayBuffer = await fetch(file.uri).then((r) => r.arrayBuffer());
   } catch {
-    return { ok: false, error: 'Could not read the file. Please try again.' };
+    return { ok: false, error: i18n.t('errors.fileReadFailed') };
   }
 
   const { error: uploadError } = await supabase.storage
@@ -159,6 +160,16 @@ export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
   { key: 'other', label: 'Other Expenses', glCode: '6900', glName: 'Other Expenses', icon: 'ellipsis-horizontal' },
 ];
 
+/**
+ * Translation key for a stored category. Receipts keep the English `label`
+ * (the accountant and the books read it), so screens translate for display
+ * only. Returns null for a category that is not one of ours.
+ */
+export function expenseCategoryKey(label: string): string | null {
+  const match = EXPENSE_CATEGORIES.find((c) => c.label === label);
+  return match ? `expenseCategories.${match.key}` : null;
+}
+
 export interface ExtractedReceipt {
   vendor: string | null;
   date: string | null;
@@ -193,7 +204,7 @@ export async function submitReceiptReview(input: {
   currency: string | null;
 }): Promise<{ ok: boolean; error?: string }> {
   const { data, error } = await supabase.functions.invoke('receipt-ocr', { body: { action: 'submit', ...input } });
-  if (error || !data?.ok) return { ok: false, error: error?.message ?? data?.error ?? 'Could not save.' };
+  if (error || !data?.ok) return { ok: false, error: error?.message ?? data?.error ?? i18n.t('errors.saveFailed') };
   return { ok: true };
 }
 

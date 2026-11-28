@@ -1,3 +1,4 @@
+import i18n from '@/i18n';
 import { supabase } from '@/lib/supabase';
 
 import type { CompanyInfo, TeamMemberInfo } from './types';
@@ -13,13 +14,13 @@ import type { CompanyInfo, TeamMemberInfo } from './types';
  * auth.users. */
 
 function relativeSyncLabel(updatedAt: string | null): string {
-  if (!updatedAt) return 'Not yet synced';
+  if (!updatedAt) return i18n.t('companies.notSynced');
   const ms = Date.now() - new Date(updatedAt).getTime();
   const hours = Math.floor(ms / (1000 * 60 * 60));
-  if (hours < 1) return 'Last synced: just now';
-  if (hours < 24) return `Last synced: ${hours} hr${hours === 1 ? '' : 's'} ago`;
+  if (hours < 1) return i18n.t('companies.syncedJustNow');
+  if (hours < 24) return i18n.t('companies.syncedHours', { count: hours });
   const days = Math.floor(hours / 24);
-  return `Last synced: ${days} day${days === 1 ? '' : 's'} ago`;
+  return i18n.t('companies.syncedDays', { count: days });
 }
 
 export const companiesService = {

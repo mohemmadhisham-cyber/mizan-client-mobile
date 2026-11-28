@@ -2,9 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { DetailHeader } from '@/components/navigation/detail-header';
 import { Badge, Card, Skeleton, Text } from '@/components/ui';
+import i18n from '@/i18n';
 import { formatMoneyMinor } from '@/lib/format';
 import { billingService } from '@/services/billing';
 import type { Invoice } from '@/services/types';
@@ -16,14 +18,18 @@ const STATUS_TONE: Record<string, SoftTone> = {
   partial: 'warning',
 };
 
+const STATUS_LABEL_KEY: Record<string, string> = {
+  paid: 'billing.statusPaid',
+  unpaid: 'billing.statusUnpaid',
+  partial: 'billing.statusPartial',
+};
+
 function notAvailable(feature: string) {
-  Alert.alert(
-    'Managed by your accountant',
-    `${feature} is managed at the firm level by your accountant, not from this app. Ask your accountant if you need this changed.`,
-  );
+  Alert.alert(i18n.t('billing.managedTitle'), i18n.t('billing.managedBody', { feature }));
 }
 
 export default function BillingScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -32,10 +38,10 @@ export default function BillingScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
-      <DetailHeader title="Billing & Subscriptions" />
+      <DetailHeader title={t('billing.title')} />
       <ScrollView contentContainerStyle={{ paddingHorizontal: spacing.gutter, paddingBottom: insets.bottom + spacing.xl, gap: spacing.lg }}>
         <Text variant="body" color="mutedForeground">
-          {"Your accountant's firm subscribes to Mizan on your behalf — this is a read-only view of that plan."}
+          {t('billing.intro')}
         </Text>
 
         {plan.isLoading ? (
@@ -43,7 +49,7 @@ export default function BillingScreen() {
         ) : !plan.data ? (
           <Card>
             <Text variant="callout" color="mutedForeground">
-              No billing information is available for your firm yet.
+              {t('billing.noInfo')}
             </Text>
           </Card>
         ) : (
@@ -53,10 +59,10 @@ export default function BillingScreen() {
                 {plan.data.firmName}
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm }}>
-                <Text variant="title">{plan.data.planName ?? 'No active plan'}</Text>
+                <Text variant="title">{plan.data.planName ?? t('billing.noPlan')}</Text>
                 {plan.data.priceMinor > 0 ? (
                   <Text variant="footnote" color="mutedForeground">
-                    {formatMoneyMinor(plan.data.priceMinor, plan.data.currency)}/mo
+                    {t('billing.perMonth', { amount: formatMoneyMinor(plan.data.priceMinor, plan.data.currency) })}
                   </Text>
                 ) : null}
               </View>
@@ -75,7 +81,7 @@ export default function BillingScreen() {
                 <Ionicons name="calendar-outline" size={18} color={theme.colors.mutedForeground} />
                 <View style={{ flex: 1 }}>
                   <Text variant="footnote" color="mutedForeground">
-                    Next payment due
+                    {t('billing.nextPayment')}
                   </Text>
                   <Text variant="callout" weight="semibold">
                     {plan.data.nextPaymentDue}
@@ -89,10 +95,10 @@ export default function BillingScreen() {
               weight="semibold"
               color="primary"
               accessibilityRole="button"
-              accessibilityLabel="Change plan"
+              accessibilityLabel={t('billing.changePlan')}
               style={{ letterSpacing: 0.6 }}
-              onPress={() => notAvailable('Changing plans')}>
-              Change Plan
+              onPress={() => notAvailable(t('billing.featureChangePlan'))}>
+              {t('billing.changePlan')}
             </Text>
           </Card>
         )}
@@ -102,20 +108,20 @@ export default function BillingScreen() {
           weight="semibold"
           color="primary"
           accessibilityRole="button"
-          accessibilityLabel="Update payment method"
+          accessibilityLabel={t('billing.updatePayment')}
           style={{ letterSpacing: 0.6 }}
-          onPress={() => notAvailable('Updating the payment method')}>
-          Update payment method
+          onPress={() => notAvailable(t('billing.featureUpdatePayment'))}>
+          {t('billing.updatePayment')}
         </Text>
 
-        <Text variant="title">Invoice History</Text>
+        <Text variant="title">{t('billing.invoiceHistory')}</Text>
 
         {invoices.isLoading ? (
           <Skeleton height={180} radius={radius.lg} />
         ) : invoices.data && invoices.data.length === 0 ? (
           <Card>
             <Text variant="callout" color="mutedForeground">
-              No invoices yet.
+              {t('billing.noInvoices')}
             </Text>
           </Card>
         ) : (
@@ -131,6 +137,7 @@ export default function BillingScreen() {
 }
 
 function InvoiceRow({ invoice, isLast }: { invoice: Invoice; isLast: boolean }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const tone = softTone(theme.colors, STATUS_TONE[invoice.status] ?? 'neutral');
   return (
@@ -164,7 +171,7 @@ function InvoiceRow({ invoice, isLast }: { invoice: Invoice; isLast: boolean }) 
       <Text variant="callout" color="mutedForeground" style={{ marginEnd: spacing.sm }}>
         {formatMoneyMinor(invoice.amountMinor, invoice.currency)}
       </Text>
-      <Badge label={invoice.status} bg={tone.bg} fg={tone.fg} />
+      <Badge label={STATUS_LABEL_KEY[invoice.status] ? t(STATUS_LABEL_KEY[invoice.status]) : invoice.status} bg={tone.bg} fg={tone.fg} />
     </View>
   );
 }

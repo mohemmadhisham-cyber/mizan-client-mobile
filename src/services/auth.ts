@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import i18n from '@/i18n';
 import { assertSupabaseConfigured } from '@/lib/env';
 import { supabase } from '@/lib/supabase';
 
@@ -27,7 +28,7 @@ function normalizeEmail(email: string): string {
 export async function sendEmailOtp(email: string, createUser: boolean): Promise<AuthResult> {
   assertSupabaseConfigured();
   const parsed = emailSchema.safeParse(normalizeEmail(email));
-  if (!parsed.success) return { ok: false, error: 'Enter a valid email address' };
+  if (!parsed.success) return { ok: false, error: i18n.t('auth.invalidEmail') };
 
   const { error } = await supabase.auth.signInWithOtp({
     email: parsed.data,
@@ -41,8 +42,8 @@ export async function sendEmailOtp(email: string, createUser: boolean): Promise<
 export async function verifyEmailOtp(email: string, code: string): Promise<AuthResult> {
   assertSupabaseConfigured();
   const parsed = emailSchema.safeParse(normalizeEmail(email));
-  if (!parsed.success) return { ok: false, error: 'Enter a valid email address' };
-  if (!OTP_CODE.test(code)) return { ok: false, error: 'Enter the 6-digit code' };
+  if (!parsed.success) return { ok: false, error: i18n.t('auth.invalidEmail') };
+  if (!OTP_CODE.test(code)) return { ok: false, error: i18n.t('errors.codeFormat') };
 
   const { error } = await supabase.auth.verifyOtp({
     email: parsed.data,
@@ -86,7 +87,7 @@ export async function acceptInvite(token: string): Promise<AcceptResult> {
     client_id?: string;
   }>('client-accept', { body: { token } });
   if (error || !data?.ok) {
-    return { ok: false, error: data?.error ?? error?.message ?? 'Could not accept the invitation.' };
+    return { ok: false, error: data?.error ?? error?.message ?? i18n.t('errors.inviteFailed') };
   }
   return { ok: true, firmId: data.firm_id, clientId: data.client_id };
 }

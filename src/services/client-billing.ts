@@ -1,3 +1,4 @@
+import i18n from '@/i18n';
 import { assertSupabaseConfigured } from '@/lib/env';
 import { supabase } from '@/lib/supabase';
 
@@ -21,6 +22,6 @@ export async function createRenewalLink(): Promise<CreateRenewalLinkResult> {
     { body: { action: 'create_renewal_link' } },
   );
   if (error) return { ok: false, error: error.message };
-  if (!data?.ok) return { ok: false, error: data?.error ?? 'Could not create a renewal link.' };
+  if (!data?.ok) return { ok: false, error: data?.error ?? i18n.t('errors.renewalLinkFailed') };
   return { ok: true, token: data.token };
 }

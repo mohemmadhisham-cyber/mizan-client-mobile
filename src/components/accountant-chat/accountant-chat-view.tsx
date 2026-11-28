@@ -233,7 +233,7 @@ function MessageBubble({ message, isSelf }: { message: ChatMessage; isSelf: bool
         ) : null}
       </View>
       <Text variant="caption" color="mutedForeground" style={{ alignSelf: isSelf ? 'flex-end' : 'flex-start' }}>
-        {new Date(message.createdAt).toLocaleTimeString(localeTag(), { hour: 'numeric', minute: '2-digit' })}
+        {new Date(message.createdAt).toLocaleTimeString(localeTag(), { hour12: true, hour: 'numeric', minute: '2-digit' })}
       </Text>
     </View>
   );

@@ -46,7 +46,7 @@ export default function EmailScreen() {
       setError(
         canCreateAccount
           ? (res.error ?? t('auth.genericError'))
-          : "We couldn't find an account for that email. Ask your accountant to send you an invite.",
+          : t('auth.noAccount'),
       );
       return;
     }

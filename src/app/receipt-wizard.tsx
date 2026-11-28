@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 
 import { DetailHeader } from '@/components/navigation/detail-header';
 import { Button, Card, Input, Text } from '@/components/ui';
@@ -22,6 +23,7 @@ import { radius, spacing, useTheme } from '@/theme';
  * booked anything.
  */
 export default function ReceiptWizardScreen() {
+  const { t } = useTranslation();
   const theme = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -88,7 +90,7 @@ export default function ReceiptWizardScreen() {
     });
     setSaving(false);
     if (!res.ok) {
-      setError(res.error ?? 'Could not save. Please try again.');
+      setError(res.error ?? t('receiptWizard.saveFailed'));
       return;
     }
     router.replace('/(tabs)');
@@ -96,13 +98,13 @@ export default function ReceiptWizardScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background, paddingTop: insets.top }}>
-      <DetailHeader title="Review receipt" />
+      <DetailHeader title={t('receiptWizard.title')} />
 
       {loading ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md }}>
           <ActivityIndicator color={theme.colors.primary} />
           <Text variant="callout" color="mutedForeground">
-            Reading your receipt…
+            {t('receiptWizard.reading')}
           </Text>
         </View>
       ) : (
@@ -110,40 +112,40 @@ export default function ReceiptWizardScreen() {
           contentContainerStyle={{ paddingHorizontal: spacing.gutter, paddingBottom: insets.bottom + spacing.xl, gap: spacing.lg }}>
           <Text variant="footnote" color="mutedForeground">
             {ocrConfigured
-              ? 'We read what we could from your photo. Check it’s right, then tell us what it was for.'
-              : 'Add the details from your receipt, then tell us what it was for.'}
+              ? t('receiptWizard.introOcr')
+              : t('receiptWizard.introManual')}
           </Text>
 
           <Card style={{ gap: spacing.md }}>
-            <Text variant="title">Details</Text>
+            <Text variant="title">{t('receiptWizard.details')}</Text>
             <View style={{ gap: 4 }}>
               <Text variant="caption" color="mutedForeground">
-                Supplier
+                {t('receiptWizard.supplier')}
               </Text>
-              <Input value={vendor} onChangeText={setVendor} placeholder="e.g. Carrefour" />
+              <Input value={vendor} onChangeText={setVendor} placeholder={t('receiptWizard.supplierPlaceholder')} />
             </View>
             <View style={{ gap: 4 }}>
               <Text variant="caption" color="mutedForeground">
-                Date
+                {t('receiptWizard.date')}
               </Text>
               <Input value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" />
             </View>
             <View style={{ flexDirection: 'row', gap: spacing.md }}>
               <View style={{ flex: 1, gap: 4 }}>
                 <Text variant="caption" color="mutedForeground">
-                  Total
+                  {t('receiptWizard.total')}
                 </Text>
                 <Input value={total} onChangeText={setTotal} placeholder="0.00" keyboardType="decimal-pad" />
               </View>
               <View style={{ flex: 1, gap: 4 }}>
                 <Text variant="caption" color="mutedForeground">
-                  VAT
+                  {t('receiptWizard.vat')}
                 </Text>
                 <Input value={vat} onChangeText={setVat} placeholder="0.00" keyboardType="decimal-pad" />
               </View>
               <View style={{ width: 80, gap: 4 }}>
                 <Text variant="caption" color="mutedForeground">
-                  Currency
+                  {t('receiptWizard.currency')}
                 </Text>
                 <Input value={currency} onChangeText={setCurrency} autoCapitalize="characters" />
               </View>
@@ -152,9 +154,9 @@ export default function ReceiptWizardScreen() {
 
           <Card style={{ gap: spacing.md }}>
             <View style={{ gap: 4 }}>
-              <Text variant="title">What was this for?</Text>
+              <Text variant="title">{t('receiptWizard.whatFor')}</Text>
               <Text variant="footnote" color="mutedForeground">
-                This helps your accountant book it to the right account.
+                {t('receiptWizard.whatForHint')}
               </Text>
             </View>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
@@ -165,7 +167,7 @@ export default function ReceiptWizardScreen() {
                     key={c.key}
                     accessibilityRole="button"
                     accessibilityState={{ selected: active }}
-                    accessibilityLabel={c.label}
+                    accessibilityLabel={t(`expenseCategories.${c.key}`)}
                     onPress={() => setCategory(c)}
                     style={{
                       flexDirection: 'row',
@@ -185,7 +187,7 @@ export default function ReceiptWizardScreen() {
                       variant="caption"
                       weight="semibold"
                       style={{ color: active ? theme.colors.primaryForeground : theme.colors.foreground }}>
-                      {c.label}
+                      {t(`expenseCategories.${c.key}`)}
                     </Text>
                   </Pressable>
                 );
@@ -204,7 +206,7 @@ export default function ReceiptWizardScreen() {
             }}>
             <Ionicons name="information-circle-outline" size={16} color={theme.colors.mutedForeground} />
             <Text variant="caption" color="mutedForeground" style={{ flex: 1 }}>
-              Your accountant reviews every receipt before anything is recorded in your books.
+              {t('receiptWizard.reviewNote')}
             </Text>
           </View>
 
@@ -215,7 +217,7 @@ export default function ReceiptWizardScreen() {
           ) : null}
 
           <Button
-            title={saving ? 'Sending…' : 'Send to my accountant'}
+            title={saving ? t('receiptWizard.sending') : t('receiptWizard.send')}
             fullWidth
             disabled={!category || saving}
             onPress={submit}
